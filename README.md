@@ -1,0 +1,68 @@
+# ai-learn
+
+A local-first AI learning app. You chat with a tutor, attach your own material, and work through hard topics on your own computer.
+
+> **Status: early development.** Milestone 1 of 5 is done: a working chat with streaming, tools, and file uploads. The teaching engine isn't built yet, so today it behaves like a general tutor chat, and conversations are lost when you quit.
+
+## What works today
+
+- Streaming replies from Claude, with a Stop button
+- Attach images, PDFs, and text files with the button, drag and drop, or paste
+- A tool that lets the model read long attachments in parts
+- Running token and cost totals
+- A desktop app (Electron) and a browser dev mode
+- A free fake model for trying the app and running tests without an API key
+
+## Run it
+
+You need Node 22.19 or newer and an [Anthropic API key](https://console.anthropic.com/). API usage is billed by Anthropic.
+
+```bash
+npm install
+cp .env.example .env.local   # then add your ANTHROPIC_API_KEY
+npm run desktop              # builds and opens the desktop app
+```
+
+Other commands:
+
+```bash
+npm run dev         # browser dev mode. Open the link it prints
+npm test            # no API key or network needed
+npm run typecheck
+AI_LEARN_FAKE_MODEL=1 npm run desktop   # try it for free with the fake model
+```
+
+## Privacy
+
+Your files and the app's data stay on your computer, but your messages and attachments are sent to Anthropic to generate replies. The local server only listens on `127.0.0.1` and requires a secret token created at each launch.
+
+## Current limits
+
+- Conversations aren't saved yet. This comes in milestone 2.
+- Images must be 5 MB or smaller.
+- Scanned PDFs without a text layer aren't supported.
+- There's no packaged installer yet, so you run it from source.
+
+## How it's organized
+
+| Path | What it does |
+|---|---|
+| `src/harness/` | The agent harness: model engine, session, tools, and attachments |
+| `src/server/` | Local HTTP server that streams events to the UI |
+| `src/web/` | React chat UI |
+| `src/shared/` | Types shared by the server and UI |
+| `electron/` | Desktop shell |
+
+It's built on [Pi](https://github.com/earendil-works/pi) for the agent loop and model access.
+
+## Roadmap
+
+1. ~~Chat, streaming, tools, and uploads~~
+2. Saved sessions that survive crashes and can resume
+3. Teaching engine: measure what you know, plan, teach, and practice
+4. Two-way Excalidraw diagrams that you and the tutor can both edit
+5. Knowledge memory across sessions, with a graph view
+
+## License
+
+[MIT](LICENSE)
