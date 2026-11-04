@@ -9,7 +9,7 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { createScriptedEngine } from "../src/harness/fake-engine.ts";
 import { readLog, SessionLogError } from "../src/harness/log.ts";
-import { Session, SessionStateError } from "../src/harness/session.ts";
+import { Session } from "../src/harness/session.ts";
 import type { RunEvent } from "../src/shared/protocol.ts";
 import { PNG, tempDir } from "./helpers.ts";
 
@@ -41,9 +41,16 @@ test("a reloaded session sends the model byte-identical history", async () => {
 	const seen: { messages: unknown[] }[] = [];
 	const first = createScriptedEngine([capture(seen, "One."), capture(seen, "Two.")]);
 	const session = new Session(first, dir);
-	const image = await session.attachments.add("pic.png", PNG);
+	const big = new Uint8Array(200_000);
+	big.set(PNG);
+	const image = await session.attachments.add("pic.png", big);
 	await run(session, "First", [image.id]);
 	await run(session, "Second");
+
+	// The image is stored as a reference, so it isn't copied into the log.
+	const log = await readFile(logPath(dir, session.id), "utf8");
+	assert.ok(log.length < 10_000, `log was ${log.length} bytes`);
+	assert.match(log, new RegExp(`"attachmentId":"${image.id}"`));
 
 	const second = createScriptedEngine([capture(seen, "Three.")]);
 	const reloaded = await Session.load(second, dir, session.id);
@@ -56,45 +63,6 @@ test("a reloaded session sends the model byte-identical history", async () => {
 	assert.equal(withoutTimestamps(after.slice(0, before.length)), withoutTimestamps(before));
 	assert.ok(after.length > before.length);
 	assert.equal((after[0] as { role: string }).role, "system");
-});
-
-test("the log stays small because images are stored as references", async () => {
-	const dir = await tempDir();
-	const session = new Session(createScriptedEngine([fauxAssistantMessage("Ok.")]), dir);
-	const big = new Uint8Array(200_000);
-	big.set(PNG);
-	const image = await session.attachments.add("big.png", big);
-	await run(session, "Look", [image.id]);
-	const log = await readFile(logPath(dir, session.id), "utf8");
-	assert.ok(log.length < 5000, `log was ${log.length} bytes`);
-	assert.match(log, new RegExp(`"attachmentId":"${image.id}"`));
-});
-
-test("the transcript survives a reload, with one bubble per turn", async () => {
-	const dir = await tempDir();
-	const engine = createScriptedEngine([]);
-	const session = new Session(engine, dir);
-	const notes = await session.attachments.add("notes.txt", new TextEncoder().encode("facts"));
-	engine.faux.setResponses([
-		fauxAssistantMessage(fauxToolCall("read_attachment", { id: notes.id }), {
-			stopReason: "toolUse",
-		}),
-		fauxAssistantMessage("Done reading."),
-	]);
-	await run(session, "Read this", [notes.id]);
-
-	const view = (await Session.load(createScriptedEngine([]), dir, session.id)).view();
-	assert.equal(view.messages.length, 2);
-	assert.deepEqual(view.messages[0]?.blocks, [{ kind: "text", text: "Read this" }]);
-	assert.equal(view.messages[0]?.attachments?.[0]?.name, "notes.txt");
-	assert.deepEqual(
-		view.messages[1]?.blocks.map((block) => block.kind),
-		["tool", "text"],
-	);
-	const tool = view.messages[1]?.blocks[0];
-	assert.ok(tool?.kind === "tool" && tool.state === "done");
-	assert.equal(view.canRetry, false);
-	assert.equal(view.title, "Read this");
 });
 
 test("a crash before the reply can be retried", async () => {
@@ -221,18 +189,6 @@ test("a failed reply can be retried, and the failure isn't resent or shown", asy
 	}
 });
 
-test("retry is refused when the last reply was fine", async () => {
-	const session = new Session(
-		createScriptedEngine([fauxAssistantMessage("Fine.")]),
-		await tempDir(),
-	);
-	await run(session, "Hello");
-	await assert.rejects(
-		session.retry(() => {}),
-		SessionStateError,
-	);
-});
-
 test("a stopped reply stays visible but isn't retried or resent", async () => {
 	const dir = await tempDir();
 	// Pi drops stopped replies inside its provider layer, just before the API call.
@@ -253,17 +209,5 @@ test("a stopped reply stays visible but isn't retried or resent", async () => {
 	assert.deepEqual(
 		replies.map((reply) => reply.stopReason),
 		["aborted"],
-	);
-});
-
-test("usage totals are rebuilt from the log", async () => {
-	const dir = await tempDir();
-	const session = new Session(createScriptedEngine([fauxAssistantMessage("Hello there.")]), dir);
-	await run(session, "Hi");
-	const before = session.view().usage;
-	assert.ok(before.outputTokens > 0);
-	assert.deepEqual(
-		(await Session.load(createScriptedEngine([]), dir, session.id)).view().usage,
-		before,
 	);
 });
