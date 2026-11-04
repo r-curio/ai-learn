@@ -1,12 +1,13 @@
+import type { AssistantMessage } from "@earendil-works/pi-ai";
 import type {
 	AttachmentInfo,
 	TranscriptBlock,
 	TranscriptMessage,
 	UsageSummary,
-} from "../shared/protocol.ts";
-import { noticeFor } from "../shared/protocol.ts";
+} from "../../shared/protocol.ts";
+import { noticeFor } from "../../shared/protocol.ts";
 import type { LogEntry } from "./log.ts";
-import { TOOL_LABELS } from "./tools.ts";
+import { TOOL_LABELS } from "../tools.ts";
 
 export const INTERRUPTED_NOTICE = "The app closed before this reply finished.";
 
@@ -85,14 +86,18 @@ export function buildTranscript(
 	return messages;
 }
 
+export function addUsage(total: UsageSummary, message: AssistantMessage): void {
+	const { usage } = message;
+	total.inputTokens += usage.input + usage.cacheRead + usage.cacheWrite;
+	total.outputTokens += usage.output;
+	total.costUsd += usage.cost.total;
+}
+
 export function usageOf(entries: LogEntry[]): UsageSummary {
 	const total: UsageSummary = { inputTokens: 0, outputTokens: 0, costUsd: 0 };
 	for (const entry of entries) {
-		if (entry.type !== "message" || entry.message.role !== "assistant") continue;
-		const { usage } = entry.message;
-		total.inputTokens += usage.input + usage.cacheRead + usage.cacheWrite;
-		total.outputTokens += usage.output;
-		total.costUsd += usage.cost.total;
+		if (entry.type === "message" && entry.message.role === "assistant")
+			addUsage(total, entry.message);
 	}
 	return total;
 }

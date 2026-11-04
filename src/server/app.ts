@@ -7,11 +7,11 @@ import { streamSSE } from "hono/streaming";
 import { z } from "zod";
 import { AttachmentError, MAX_FILE_BYTES } from "../harness/attachments.ts";
 import type { Engine } from "../harness/engine.ts";
-import type { Session } from "../harness/session.ts";
-import { SessionBusyError, SessionStateError } from "../harness/session.ts";
-import { SessionStore } from "../harness/store.ts";
+import type { Session } from "../harness/sessions/session.ts";
+import { SessionBusyError, SessionStateError } from "../harness/sessions/session.ts";
+import { SessionStore } from "../harness/sessions/store.ts";
 import type { RunEvent } from "../shared/protocol.ts";
-import { SessionLogError } from "../harness/log.ts";
+import { SessionLogError } from "../harness/sessions/log.ts";
 
 export interface AppOptions {
 	engine: Engine;

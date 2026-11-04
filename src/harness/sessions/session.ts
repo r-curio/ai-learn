@@ -1,22 +1,20 @@
 import { Agent, type AgentEvent } from "@earendil-works/pi-agent-core";
-import type { AssistantMessage, Message, ToolResultMessage } from "@earendil-works/pi-ai";
+import type { AssistantMessage, Message } from "@earendil-works/pi-ai";
 import { randomUUID } from "node:crypto";
-import { readFile, rename, writeFile } from "node:fs/promises";
+import { rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { RunEvent, SessionSummary, SessionView, UsageSummary } from "../shared/protocol.ts";
-import { AttachmentStore } from "./attachments.ts";
-import type { Engine } from "./engine.ts";
+import type { RunEvent, SessionSummary, SessionView, UsageSummary } from "../../shared/protocol.ts";
+import { AttachmentStore } from "../attachments.ts";
+import type { Engine } from "../engine.ts";
+import { LOG_VERSION, LogWriter, readLog, toStored, type LogEntry, type LogHeader } from "./log.ts";
 import {
-	fromStored,
-	LOG_VERSION,
-	LogWriter,
-	readLog,
-	toStored,
-	type LogEntry,
-	type LogHeader,
-} from "./log.ts";
-import { createTools } from "./tools.ts";
-import { buildTranscript, INTERRUPTED_NOTICE, titleOf, usageOf } from "./transcript.ts";
+	interruptedToolResult,
+	isFailedReply,
+	messagesFromLog,
+	unresolvedToolCalls,
+} from "./recovery.ts";
+import { createTools } from "../tools.ts";
+import { addUsage, buildTranscript, INTERRUPTED_NOTICE, titleOf, usageOf } from "./transcript.ts";
 
 const SYSTEM_PROMPT = `You are a patient, accurate tutor running inside a local learning app.
 Explain clearly, check your facts, and say when you are unsure.
@@ -32,31 +30,6 @@ export class SessionBusyError extends Error {
 export class SessionStateError extends Error {}
 
 const emptyUsage = (): UsageSummary => ({ inputTokens: 0, outputTokens: 0, costUsd: 0 });
-
-function addUsage(total: UsageSummary, message: AssistantMessage): void {
-	const { usage } = message;
-	total.inputTokens += usage.input + usage.cacheRead + usage.cacheWrite;
-	total.outputTokens += usage.output;
-	total.costUsd += usage.cost.total;
-}
-
-const isFailedReply = (message: Message | undefined): boolean =>
-	message?.role === "assistant" && message.stopReason === "error";
-
-/** Tool calls in the latest reply that never got a result, for example after a crash. */
-function unresolvedToolCalls(messages: Message[]): { id: string; name: string }[] {
-	const lastReply = messages.findLastIndex((message) => message.role === "assistant");
-	const reply = messages[lastReply];
-	if (reply?.role !== "assistant" || reply.stopReason !== "toolUse") return [];
-	const answered = new Set(
-		messages
-			.slice(lastReply + 1)
-			.flatMap((message) => (message.role === "toolResult" ? [message.toolCallId] : [])),
-	);
-	return reply.content.flatMap((part) =>
-		part.type === "toolCall" && !answered.has(part.id) ? [{ id: part.id, name: part.name }] : [],
-	);
-}
 
 interface Restored {
 	id: string;
@@ -108,27 +81,10 @@ export class Session {
 		const attachments = new AttachmentStore(join(dir, "attachments"));
 		await attachments.load();
 
-		const messages: Message[] = [];
-		for (const entry of entries) {
-			if (entry.type === "message") messages.push(fromStored(entry.message, attachments));
-			else if (entry.type === "retry" && isFailedReply(messages.at(-1))) messages.pop();
-		}
-
+		const messages = messagesFromLog(entries, attachments);
 		const session = new Session(engine, dataDir, { id, entries, messages, attachments });
 		for (const call of unresolvedToolCalls(messages)) {
-			const result: ToolResultMessage = {
-				role: "toolResult",
-				toolCallId: call.id,
-				toolName: call.name,
-				content: [
-					{
-						type: "text",
-						text: "The app closed before this tool finished, so there is no result.",
-					},
-				],
-				isError: true,
-				timestamp: Date.now(),
-			};
+			const result = interruptedToolResult(call);
 			// Add to the agent's own list, which also holds the system prompt.
 			session.agent.state.messages.push(result);
 			await session.record({ type: "message", message: result });
@@ -306,25 +262,5 @@ export class Session {
 
 	abort(): void {
 		this.agent.abort();
-	}
-}
-
-/** Read a saved summary, or rebuild it if a crash left it missing. */
-export async function readSummary(
-	engine: Engine,
-	dataDir: string,
-	id: string,
-): Promise<SessionSummary | undefined> {
-	try {
-		return JSON.parse(
-			await readFile(join(dataDir, "sessions", id, "summary.json"), "utf8"),
-		) as SessionSummary;
-	} catch {
-		try {
-			const session = await Session.load(engine, dataDir, id);
-			return session.hasContent ? { ...session.summary(), updatedAt: 0 } : undefined;
-		} catch {
-			return undefined;
-		}
 	}
 }
