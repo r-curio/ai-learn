@@ -55,7 +55,9 @@ Your files and the app's data stay on your computer, but your messages and attac
 | `src/shared/`  | Types shared by the server and UI                                            |
 | `electron/`    | Desktop shell                                                                |
 
-It's built on [Pi](https://github.com/earendil-works/pi) for the agent loop and model access. See [how sessions are saved](docs/sessions.md).
+It's built on [Pi](https://github.com/earendil-works/pi) for the agent loop and model access.
+
+Read more in the [architecture overview](docs/architecture.md), [how sessions are saved](docs/sessions.md), the [glossary](GLOSSARY.md), and the [decision records](docs/adr/).
 
 ## Roadmap
 

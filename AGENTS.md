@@ -7,6 +7,9 @@ A local-first AI learning app. It's an Electron app with a local server and an a
 - Every change ships through an issue, a branch, and a pull request. The owner merges.
 - Read `CONTRIBUTING.md` before opening a PR or adding files, folders, or tests. It holds the size limits, import rules, proof requirements, and testing policy.
 - Read `docs/sessions.md` before changing how sessions are saved or replayed.
+- Read `docs/architecture.md` before changing how the layers connect.
+- Check `docs/adr/` before reversing a recorded decision, and add a record for a new decision that is hard to reverse, surprising, and a real trade-off.
+- Use the terms in `GLOSSARY.md` in code, docs, and PRs, and update it when a term is settled.
 
 ## Codebase structure
 
