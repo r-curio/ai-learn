@@ -53,19 +53,15 @@ test("PDF text is extracted page by page", async () => {
 	);
 });
 
-test("a PDF with no text is refused with a clear reason", async () => {
+test("a PDF with no readable text is refused with a clear reason", async () => {
 	const store = new AttachmentStore(await tempDir());
 	await assert.rejects(
 		store.add("scan.pdf", makePdf(" ")),
 		(error: AttachmentError) => error.status === 422 && /Scanned/.test(error.message),
 	);
-});
-
-test("a corrupt PDF is refused", async () => {
-	const store = new AttachmentStore(await tempDir());
 	await assert.rejects(
 		store.add("bad.pdf", encode("%PDF-garbage")),
-		(error: AttachmentError) => error.status === 422,
+		(error: AttachmentError) => error.status === 422 && /couldn't be read/.test(error.message),
 	);
 });
 
