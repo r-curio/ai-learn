@@ -27,7 +27,8 @@ const messageInput = z.object({
 	attachmentIds: z.array(z.string()).max(20).default([]),
 });
 
-const CSP = "default-src 'self'; img-src 'self' blob: data:; style-src 'self' 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'";
+const CSP =
+	"default-src 'self'; img-src 'self' blob: data:; style-src 'self' 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'";
 
 function tokensMatch(given: string | undefined, expected: string): boolean {
 	const a = Buffer.from(given ?? "");
@@ -38,7 +39,11 @@ function tokensMatch(given: string | undefined, expected: string): boolean {
 const NO_USAGE = { inputTokens: 0, outputTokens: 0, costUsd: 0 };
 
 /** Stream a run's events to the client. A client that disconnects stops the run. */
-function streamRun(c: Context, session: Session, run: (onEvent: (event: RunEvent) => void) => Promise<void>) {
+function streamRun(
+	c: Context,
+	session: Session,
+	run: (onEvent: (event: RunEvent) => void) => Promise<void>,
+) {
 	return streamSSE(c, async (stream) => {
 		stream.onAbort(() => session.abort());
 		let writes = Promise.resolve();
@@ -53,7 +58,7 @@ function streamRun(c: Context, session: Session, run: (onEvent: (event: RunEvent
 			emit({
 				type: "done",
 				stopReason: "error",
-				errorMessage: expected ? (error as Error).message : "The response failed.",
+				errorMessage: expected ? error.message : "The response failed.",
 				usage: NO_USAGE,
 				sessionUsage: NO_USAGE,
 			});
@@ -73,17 +78,18 @@ export function createApp({ engine, dataDir, token, webRoot }: AppOptions): Hono
 		return c.json({ error: "Something went wrong." }, 500);
 	});
 
-
 	// Blocks websites that point their own domain at 127.0.0.1 (DNS rebinding).
 	app.use("*", async (c, next) => {
 		const host = (c.req.header("host") ?? "").replace(/:\d+$/, "");
-		if (host !== "127.0.0.1" && host !== "localhost") return c.json({ error: "Forbidden host." }, 403);
+		if (host !== "127.0.0.1" && host !== "localhost")
+			return c.json({ error: "Forbidden host." }, 403);
 		await next();
 	});
 
 	app.use("/api/*", async (c, next) => {
 		const header = c.req.header("authorization");
-		if (!tokensMatch(header?.replace(/^Bearer /, ""), token)) return c.json({ error: "Unauthorized." }, 401);
+		if (!tokensMatch(header?.replace(/^Bearer /, ""), token))
+			return c.json({ error: "Unauthorized." }, 401);
 		await next();
 	});
 
@@ -99,13 +105,20 @@ export function createApp({ engine, dataDir, token, webRoot }: AppOptions): Hono
 	});
 
 	app.delete("/api/sessions/:id", async (c) => {
-		return (await store.delete(c.req.param("id"))) ? c.json({ ok: true }) : c.json({ error: "Session not found." }, 404);
+		return (await store.delete(c.req.param("id")))
+			? c.json({ ok: true })
+			: c.json({ error: "Session not found." }, 404);
 	});
 
 	app.get("/api/sessions/:id/attachments/:attachmentId", async (c) => {
-		const image = (await store.get(c.req.param("id")))?.attachments.image(c.req.param("attachmentId"));
+		const image = (await store.get(c.req.param("id")))?.attachments.image(
+			c.req.param("attachmentId"),
+		);
 		if (!image) return c.json({ error: "Image not found." }, 404);
-		return c.body(new Uint8Array(image.bytes), 200, { "Content-Type": image.mimeType, "X-Content-Type-Options": "nosniff" });
+		return c.body(new Uint8Array(image.bytes), 200, {
+			"Content-Type": image.mimeType,
+			"X-Content-Type-Options": "nosniff",
+		});
 	});
 
 	app.post(
@@ -120,7 +133,10 @@ export function createApp({ engine, dataDir, token, webRoot }: AppOptions): Hono
 			const file = (await c.req.formData()).get("file");
 			if (!(file instanceof File)) return c.json({ error: "No file was sent." }, 400);
 			try {
-				return c.json(await session.attachments.add(file.name, new Uint8Array(await file.arrayBuffer())), 201);
+				return c.json(
+					await session.attachments.add(file.name, new Uint8Array(await file.arrayBuffer())),
+					201,
+				);
 			} catch (error) {
 				if (error instanceof AttachmentError) return c.json({ error: error.message }, error.status);
 				throw error;
@@ -137,7 +153,8 @@ export function createApp({ engine, dataDir, token, webRoot }: AppOptions): Hono
 		const parsed = messageInput.safeParse(await c.req.json().catch(() => undefined));
 		if (!parsed.success) return c.json({ error: "Invalid message." }, 400);
 		const { text, attachmentIds } = parsed.data;
-		if (!text.trim() && attachmentIds.length === 0) return c.json({ error: "Message is empty." }, 400);
+		if (!text.trim() && attachmentIds.length === 0)
+			return c.json({ error: "Message is empty." }, 400);
 		const unknown = attachmentIds.find((id) => !session.attachments.has(id));
 		if (unknown) return c.json({ error: "Unknown attachment." }, 400);
 

@@ -19,7 +19,13 @@ export type RunEvent =
 	| { type: "text_delta"; delta: string }
 	| { type: "tool_start"; id: string; name: string; label: string }
 	| { type: "tool_end"; id: string; isError: boolean }
-	| { type: "done"; stopReason: string; errorMessage?: string; usage: UsageSummary; sessionUsage: UsageSummary };
+	| {
+			type: "done";
+			stopReason: string;
+			errorMessage?: string;
+			usage: UsageSummary;
+			sessionUsage: UsageSummary;
+	  };
 
 export interface EngineStatus {
 	ready: boolean;
@@ -55,9 +61,13 @@ export interface SessionView {
 }
 
 /** What to tell the learner about how a reply ended. Nothing, if it ended normally. */
-export function noticeFor(stopReason: string, errorMessage?: string): { notice: string; failed?: boolean } | undefined {
+export function noticeFor(
+	stopReason: string,
+	errorMessage?: string,
+): { notice: string; failed?: boolean } | undefined {
 	if (stopReason === "stop" || stopReason === "toolUse") return undefined;
 	if (stopReason === "aborted") return { notice: "Stopped." };
-	if (stopReason === "length") return { notice: "This reply hit the length limit and was cut off." };
+	if (stopReason === "length")
+		return { notice: "This reply hit the length limit and was cut off." };
 	return { notice: errorMessage ?? "The response failed.", failed: true };
 }

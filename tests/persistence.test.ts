@@ -1,4 +1,8 @@
-import { fauxAssistantMessage, fauxToolCall, type FauxResponseFactory } from "@earendil-works/pi-ai";
+import {
+	fauxAssistantMessage,
+	fauxToolCall,
+	type FauxResponseFactory,
+} from "@earendil-works/pi-ai";
 import assert from "node:assert/strict";
 import { appendFile, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -11,13 +15,18 @@ import { PNG, tempDir } from "./helpers.ts";
 
 const logPath = (dir: string, id: string) => join(dir, "sessions", id, "session.jsonl");
 
-async function run(session: Session, text: string, attachmentIds: string[] = []): Promise<RunEvent[]> {
+async function run(
+	session: Session,
+	text: string,
+	attachmentIds: string[] = [],
+): Promise<RunEvent[]> {
 	const events: RunEvent[] = [];
 	await session.send({ text, attachmentIds }, (event) => events.push(event));
 	return events;
 }
 
-const streamed = (events: RunEvent[]) => events.flatMap((event) => (event.type === "text_delta" ? [event.delta] : [])).join("");
+const streamed = (events: RunEvent[]) =>
+	events.flatMap((event) => (event.type === "text_delta" ? [event.delta] : [])).join("");
 
 /** A response step that records exactly what would be sent to the model. */
 function capture(into: unknown[], reply: string): FauxResponseFactory {
@@ -42,7 +51,8 @@ test("a reloaded session sends the model byte-identical history", async () => {
 
 	const before = seen[1]!.messages;
 	const after = seen[2]!.messages;
-	const withoutTimestamps = (value: unknown) => JSON.stringify(value, (key, field) => (key === "durationMs" ? undefined : field));
+	const withoutTimestamps = (value: unknown) =>
+		JSON.stringify(value, (key, field: unknown) => (key === "durationMs" ? undefined : field));
 	assert.equal(withoutTimestamps(after.slice(0, before.length)), withoutTimestamps(before));
 	assert.ok(after.length > before.length);
 	assert.equal((after[0] as { role: string }).role, "system");
@@ -65,14 +75,22 @@ test("the transcript survives a reload, with one bubble per turn", async () => {
 	const engine = createScriptedEngine([]);
 	const session = new Session(engine, dir);
 	const notes = await session.attachments.add("notes.txt", new TextEncoder().encode("facts"));
-	engine.faux.setResponses([fauxAssistantMessage(fauxToolCall("read_attachment", { id: notes.id }), { stopReason: "toolUse" }), fauxAssistantMessage("Done reading.")]);
+	engine.faux.setResponses([
+		fauxAssistantMessage(fauxToolCall("read_attachment", { id: notes.id }), {
+			stopReason: "toolUse",
+		}),
+		fauxAssistantMessage("Done reading."),
+	]);
 	await run(session, "Read this", [notes.id]);
 
 	const view = (await Session.load(createScriptedEngine([]), dir, session.id)).view();
 	assert.equal(view.messages.length, 2);
 	assert.deepEqual(view.messages[0]?.blocks, [{ kind: "text", text: "Read this" }]);
 	assert.equal(view.messages[0]?.attachments?.[0]?.name, "notes.txt");
-	assert.deepEqual(view.messages[1]?.blocks.map((block) => block.kind), ["tool", "text"]);
+	assert.deepEqual(
+		view.messages[1]?.blocks.map((block) => block.kind),
+		["tool", "text"],
+	);
 	const tool = view.messages[1]?.blocks[0];
 	assert.ok(tool?.kind === "tool" && tool.state === "done");
 	assert.equal(view.canRetry, false);
@@ -81,12 +99,19 @@ test("the transcript survives a reload, with one bubble per turn", async () => {
 
 test("a crash before the reply can be retried", async () => {
 	const dir = await tempDir();
-	const session = new Session(createScriptedEngine([fauxAssistantMessage("Lost in the crash.")]), dir);
+	const session = new Session(
+		createScriptedEngine([fauxAssistantMessage("Lost in the crash.")]),
+		dir,
+	);
 	await run(session, "Hello");
 	const lines = (await readFile(logPath(dir, session.id), "utf8")).split("\n").filter(Boolean);
 	await writeFile(logPath(dir, session.id), `${lines.slice(0, 2).join("\n")}\n`);
 
-	const reloaded = await Session.load(createScriptedEngine([fauxAssistantMessage("Recovered.")]), dir, session.id);
+	const reloaded = await Session.load(
+		createScriptedEngine([fauxAssistantMessage("Recovered.")]),
+		dir,
+		session.id,
+	);
 	const view = reloaded.view();
 	assert.equal(view.canRetry, true);
 	assert.match(view.messages.at(-1)?.notice ?? "", /closed before/);
@@ -103,17 +128,29 @@ test("a tool cut off by a crash gets an error result and is never rerun", async 
 	const engine = createScriptedEngine([]);
 	const session = new Session(engine, dir);
 	const notes = await session.attachments.add("notes.txt", new TextEncoder().encode("facts"));
-	engine.faux.setResponses([fauxAssistantMessage(fauxToolCall("read_attachment", { id: notes.id }, { id: "call-1" }), { stopReason: "toolUse" }), fauxAssistantMessage("Done.")]);
+	engine.faux.setResponses([
+		fauxAssistantMessage(fauxToolCall("read_attachment", { id: notes.id }, { id: "call-1" }), {
+			stopReason: "toolUse",
+		}),
+		fauxAssistantMessage("Done."),
+	]);
 	await run(session, "Read");
 	const lines = (await readFile(logPath(dir, session.id), "utf8")).split("\n").filter(Boolean);
 	const cut = lines.findIndex((line) => line.includes('"role":"toolResult"'));
 	await writeFile(logPath(dir, session.id), `${lines.slice(0, cut).join("\n")}\n`);
 
 	const seen: { messages: { role: string; isError?: boolean }[] }[] = [];
-	const reloaded = await Session.load(createScriptedEngine([capture(seen, "Recovered.")]), dir, session.id);
+	const reloaded = await Session.load(
+		createScriptedEngine([capture(seen, "Recovered.")]),
+		dir,
+		session.id,
+	);
 	const events: RunEvent[] = [];
 	await reloaded.retry((event) => events.push(event));
-	assert.equal(events.some((event) => event.type === "tool_start"), false);
+	assert.equal(
+		events.some((event) => event.type === "tool_start"),
+		false,
+	);
 	const result = seen[0]?.messages.find((message) => message.role === "toolResult");
 	assert.equal(result?.isError, true);
 	const view = reloaded.view();
@@ -127,7 +164,11 @@ test("a half-written last line is trimmed, and appending still works", async () 
 	await run(session, "Hello");
 	await appendFile(logPath(dir, session.id), '{"type":"message","message":{"role":"assis');
 
-	const reloaded = await Session.load(createScriptedEngine([fauxAssistantMessage("Still fine.")]), dir, session.id);
+	const reloaded = await Session.load(
+		createScriptedEngine([fauxAssistantMessage("Still fine.")]),
+		dir,
+		session.id,
+	);
 	assert.equal(reloaded.view().canRetry, false);
 	await run(reloaded, "Again");
 	const entries = await readLog(logPath(dir, session.id));
@@ -156,7 +197,10 @@ test("a log from a newer version is refused", async () => {
 test("a failed reply can be retried, and the failure isn't resent or shown", async () => {
 	const dir = await tempDir();
 	const seen: { messages: { role: string }[] }[] = [];
-	const engine = createScriptedEngine([fauxAssistantMessage("", { stopReason: "error", errorMessage: "Overloaded" }), capture(seen, "Worked.")]);
+	const engine = createScriptedEngine([
+		fauxAssistantMessage("", { stopReason: "error", errorMessage: "Overloaded" }),
+		capture(seen, "Worked."),
+	]);
 	const session = new Session(engine, dir);
 	await run(session, "Hello");
 	assert.equal(session.view().canRetry, true);
@@ -167,7 +211,10 @@ test("a failed reply can be retried, and the failure isn't resent or shown", asy
 	assert.equal(streamed(events), "Worked.");
 	assert.equal(seen[0]?.messages.filter((message) => message.role === "assistant").length, 0);
 
-	for (const view of [session.view(), (await Session.load(createScriptedEngine([]), dir, session.id)).view()]) {
+	for (const view of [
+		session.view(),
+		(await Session.load(createScriptedEngine([]), dir, session.id)).view(),
+	]) {
 		assert.equal(view.canRetry, false);
 		assert.equal(view.messages.at(-1)?.notice, undefined);
 		assert.deepEqual(view.messages.at(-1)?.blocks, [{ kind: "text", text: "Worked." }]);
@@ -175,16 +222,25 @@ test("a failed reply can be retried, and the failure isn't resent or shown", asy
 });
 
 test("retry is refused when the last reply was fine", async () => {
-	const session = new Session(createScriptedEngine([fauxAssistantMessage("Fine.")]), await tempDir());
+	const session = new Session(
+		createScriptedEngine([fauxAssistantMessage("Fine.")]),
+		await tempDir(),
+	);
 	await run(session, "Hello");
-	await assert.rejects(session.retry(() => {}), SessionStateError);
+	await assert.rejects(
+		session.retry(() => {}),
+		SessionStateError,
+	);
 });
 
 test("a stopped reply stays visible but isn't retried or resent", async () => {
 	const dir = await tempDir();
 	// Pi drops stopped replies inside its provider layer, just before the API call.
 	const seen: { messages: { role: string; stopReason?: string }[] }[] = [];
-	const engine = createScriptedEngine([fauxAssistantMessage("word ".repeat(400)), capture(seen, "Next.")], 300);
+	const engine = createScriptedEngine(
+		[fauxAssistantMessage("word ".repeat(400)), capture(seen, "Next.")],
+		300,
+	);
 	const session = new Session(engine, dir);
 	await session.send({ text: "Go", attachmentIds: [] }, (event) => {
 		if (event.type === "text_delta") session.abort();
@@ -194,7 +250,10 @@ test("a stopped reply stays visible but isn't retried or resent", async () => {
 	assert.equal(reloaded.view().messages.at(-1)?.notice, "Stopped.");
 	await run(reloaded, "Continue");
 	const replies = seen[0]?.messages.filter((message) => message.role === "assistant") ?? [];
-	assert.deepEqual(replies.map((reply) => reply.stopReason), ["aborted"]);
+	assert.deepEqual(
+		replies.map((reply) => reply.stopReason),
+		["aborted"],
+	);
 });
 
 test("usage totals are rebuilt from the log", async () => {
@@ -203,5 +262,8 @@ test("usage totals are rebuilt from the log", async () => {
 	await run(session, "Hi");
 	const before = session.view().usage;
 	assert.ok(before.outputTokens > 0);
-	assert.deepEqual((await Session.load(createScriptedEngine([]), dir, session.id)).view().usage, before);
+	assert.deepEqual(
+		(await Session.load(createScriptedEngine([]), dir, session.id)).view().usage,
+		before,
+	);
 });

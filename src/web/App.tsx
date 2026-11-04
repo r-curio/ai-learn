@@ -1,8 +1,35 @@
-import { useCallback, useEffect, useRef, useState, type ClipboardEvent, type DragEvent, type KeyboardEvent } from "react";
+import {
+	useCallback,
+	useEffect,
+	useRef,
+	useState,
+	type ClipboardEvent,
+	type DragEvent,
+	type KeyboardEvent,
+} from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { noticeFor, type AttachmentInfo, type EngineStatus, type RunEvent, type SessionSummary, type TranscriptMessage, type UsageSummary } from "../shared/protocol.ts";
-import { abortRun, createSession, deleteSession, fetchImageUrl, getSession, getStatus, listSessions, retryRun, sendMessage, uploadAttachment } from "./api.ts";
+import {
+	noticeFor,
+	type AttachmentInfo,
+	type EngineStatus,
+	type RunEvent,
+	type SessionSummary,
+	type TranscriptMessage,
+	type UsageSummary,
+} from "../shared/protocol.ts";
+import {
+	abortRun,
+	createSession,
+	deleteSession,
+	fetchImageUrl,
+	getSession,
+	getStatus,
+	listSessions,
+	retryRun,
+	sendMessage,
+	uploadAttachment,
+} from "./api.ts";
 
 interface Draft {
 	key: string;
@@ -17,7 +44,9 @@ let nextKey = 0;
 const makeKey = () => `local-${++nextKey}`;
 
 function formatSize(bytes: number): string {
-	return bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+	return bytes < 1024 * 1024
+		? `${Math.max(1, Math.round(bytes / 1024))} KB`
+		: `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function formatCost(usage: UsageSummary): string {
@@ -43,32 +72,65 @@ function SavedImage({ sessionId, attachment }: { sessionId: string; attachment: 
 		};
 	}, [sessionId, attachment.id]);
 	if (failed) return <span className="sent-file">{attachment.name}</span>;
-	return url ? <img src={url} alt={attachment.name} /> : <span className="image-placeholder" aria-label={attachment.name} />;
+	return url ? (
+		<img src={url} alt={attachment.name} />
+	) : (
+		<span className="image-placeholder" aria-label={attachment.name} />
+	);
 }
 
 function DraftChip({ draft, onRemove }: { draft: Draft; onRemove: () => void }) {
 	return (
 		<li className={`chip chip-${draft.state}`} title={draft.error}>
-			{draft.preview ? <img src={draft.preview} alt="" /> : <span className="chip-type">{draft.file.name.split(".").at(-1)?.slice(0, 4) || "file"}</span>}
+			{draft.preview ? (
+				<img src={draft.preview} alt="" />
+			) : (
+				<span className="chip-type">
+					{draft.file.name.split(".").at(-1)?.slice(0, 4) || "file"}
+				</span>
+			)}
 			<span className="chip-text">
 				<span className="chip-name">{draft.file.name}</span>
-				<span className="chip-meta">{draft.state === "uploading" ? "Reading…" : draft.state === "failed" ? draft.error : formatSize(draft.file.size)}</span>
+				<span className="chip-meta">
+					{draft.state === "uploading"
+						? "Reading…"
+						: draft.state === "failed"
+							? draft.error
+							: formatSize(draft.file.size)}
+				</span>
 			</span>
-			<button type="button" className="chip-remove" onClick={onRemove} aria-label={`Remove ${draft.file.name}`}>
+			<button
+				type="button"
+				className="chip-remove"
+				onClick={onRemove}
+				aria-label={`Remove ${draft.file.name}`}
+			>
 				×
 			</button>
 		</li>
 	);
 }
 
-function MessageView({ message, sessionId, onRetry }: { message: TranscriptMessage; sessionId: string; onRetry?: () => void }) {
+function MessageView({
+	message,
+	sessionId,
+	onRetry,
+}: {
+	message: TranscriptMessage;
+	sessionId: string;
+	onRetry?: () => void;
+}) {
 	return (
 		<article className={`message message-${message.role}`}>
 			{message.attachments && message.attachments.length > 0 && (
 				<ul className="sent-attachments">
 					{message.attachments.map((attachment) => (
 						<li key={attachment.id}>
-							{attachment.kind === "image" ? <SavedImage sessionId={sessionId} attachment={attachment} /> : <span className="sent-file">{attachment.name}</span>}
+							{attachment.kind === "image" ? (
+								<SavedImage sessionId={sessionId} attachment={attachment} />
+							) : (
+								<span className="sent-file">{attachment.name}</span>
+							)}
 						</li>
 					))}
 				</ul>
@@ -124,7 +186,9 @@ export function App() {
 	const dragDepth = useRef(0);
 
 	const refreshSessions = useCallback(() => {
-		listSessions().then(setSessions).catch((cause: Error) => setError(cause.message));
+		listSessions()
+			.then(setSessions)
+			.catch((cause: Error) => setError(cause.message));
 	}, []);
 
 	const startNewChat = useCallback(async () => {
@@ -188,24 +252,42 @@ export function App() {
 				const preview = file.type.startsWith("image/") ? URL.createObjectURL(file) : undefined;
 				setDrafts((current) => [...current, { key, file, preview, state: "uploading" }]);
 				uploadAttachment(sessionId, file)
-					.then((info) => setDrafts((current) => current.map((d) => (d.key === key ? { ...d, state: "ready", info } : d))))
-					.catch((cause: Error) => setDrafts((current) => current.map((d) => (d.key === key ? { ...d, state: "failed", error: cause.message } : d))));
+					.then((info) =>
+						setDrafts((current) =>
+							current.map((d) => (d.key === key ? { ...d, state: "ready", info } : d)),
+						),
+					)
+					.catch((cause: Error) =>
+						setDrafts((current) =>
+							current.map((d) =>
+								d.key === key ? { ...d, state: "failed", error: cause.message } : d,
+							),
+						),
+					);
 			}
 		},
 		[sessionId],
 	);
 
-	const removeDraft = (key: string) => setDrafts((current) => current.filter((draft) => draft.key !== key));
+	const removeDraft = (key: string) =>
+		setDrafts((current) => current.filter((draft) => draft.key !== key));
 
 	const ready = drafts.filter((draft) => draft.state === "ready");
 	const uploading = drafts.some((draft) => draft.state === "uploading");
-	const canSend = Boolean(sessionId && status?.ready && !running && !uploading && (text.trim() || ready.length > 0));
+	const canSend = Boolean(
+		sessionId && status?.ready && !running && !uploading && (text.trim() || ready.length > 0),
+	);
 
 	const updateMessage = (id: string, change: (message: TranscriptMessage) => TranscriptMessage) =>
-		setMessages((current) => current.map((message) => (message.id === id ? change(message) : message)));
+		setMessages((current) =>
+			current.map((message) => (message.id === id ? change(message) : message)),
+		);
 
 	/** Apply a run's events to one assistant message. The server's copy replaces it when the run ends. */
-	async function follow(assistantId: string, run: (onEvent: (event: RunEvent) => void) => Promise<void>) {
+	async function follow(
+		assistantId: string,
+		run: (onEvent: (event: RunEvent) => void) => Promise<void>,
+	) {
 		const id = sessionId!;
 		setRunning(true);
 		setCanRetry(false);
@@ -215,15 +297,31 @@ export function App() {
 					updateMessage(assistantId, (message) => {
 						const last = message.blocks.at(-1);
 						return last?.kind === "text"
-							? { ...message, blocks: [...message.blocks.slice(0, -1), { kind: "text", text: last.text + event.delta }] }
+							? {
+									...message,
+									blocks: [
+										...message.blocks.slice(0, -1),
+										{ kind: "text", text: last.text + event.delta },
+									],
+								}
 							: { ...message, blocks: [...message.blocks, { kind: "text", text: event.delta }] };
 					});
 				} else if (event.type === "tool_start") {
-					updateMessage(assistantId, (message) => ({ ...message, blocks: [...message.blocks, { kind: "tool", id: event.id, label: event.label, state: "running" }] }));
+					updateMessage(assistantId, (message) => ({
+						...message,
+						blocks: [
+							...message.blocks,
+							{ kind: "tool", id: event.id, label: event.label, state: "running" },
+						],
+					}));
 				} else if (event.type === "tool_end") {
 					updateMessage(assistantId, (message) => ({
 						...message,
-						blocks: message.blocks.map((block) => (block.kind === "tool" && block.id === event.id ? { ...block, state: event.isError ? "failed" : "done" } : block)),
+						blocks: message.blocks.map((block) =>
+							block.kind === "tool" && block.id === event.id
+								? { ...block, state: event.isError ? "failed" : "done" }
+								: block,
+						),
 					}));
 				} else {
 					setUsage(event.sessionUsage);
@@ -236,7 +334,11 @@ export function App() {
 			setCanRetry(view.canRetry);
 			setUsage(view.usage);
 		} catch (cause) {
-			updateMessage(assistantId, (message) => ({ ...message, notice: (cause as Error).message, failed: true }));
+			updateMessage(assistantId, (message) => ({
+				...message,
+				notice: (cause as Error).message,
+				failed: true,
+			}));
 		} finally {
 			setRunning(false);
 			refreshSessions();
@@ -250,7 +352,12 @@ export function App() {
 		const assistantId = makeKey();
 		setMessages((current) => [
 			...current,
-			{ id: makeKey(), role: "user", blocks: text.trim() ? [{ kind: "text", text }] : [], attachments: ready.map((draft) => draft.info!) },
+			{
+				id: makeKey(),
+				role: "user",
+				blocks: text.trim() ? [{ kind: "text", text }] : [],
+				attachments: ready.map((draft) => draft.info!),
+			},
 			{ id: assistantId, role: "assistant", blocks: [] },
 		]);
 		setText("");
@@ -264,7 +371,9 @@ export function App() {
 		const assistantId = tail?.role === "assistant" ? tail.id : makeKey();
 		setMessages((current) => {
 			const last = current.at(-1);
-			return last?.role === "assistant" ? [...current.slice(0, -1), { ...last, notice: undefined, failed: undefined }] : [...current, { id: assistantId, role: "assistant", blocks: [] }];
+			return last?.role === "assistant"
+				? [...current.slice(0, -1), { ...last, notice: undefined, failed: undefined }]
+				: [...current, { id: assistantId, role: "assistant", blocks: [] }];
 		});
 		void follow(assistantId, (onEvent) => retryRun(sessionId, onEvent));
 	}
@@ -314,17 +423,37 @@ export function App() {
 			<aside className="sidebar" aria-label="Chats">
 				<div className="sidebar-head">
 					<span className="brand">ai-learn</span>
-					<button type="button" className="button-quiet" disabled={running} onClick={() => void startNewChat()}>
+					<button
+						type="button"
+						className="button-quiet"
+						disabled={running}
+						onClick={() => void startNewChat()}
+					>
 						New chat
 					</button>
 				</div>
 				<ul className="session-list">
 					{sessions.map((summary) => (
-						<li key={summary.id} className={summary.id === sessionId ? "session session-active" : "session"}>
-							<button type="button" className="session-open" disabled={running} onClick={() => void openSession(summary.id)} aria-current={summary.id === sessionId ? "true" : undefined}>
+						<li
+							key={summary.id}
+							className={summary.id === sessionId ? "session session-active" : "session"}
+						>
+							<button
+								type="button"
+								className="session-open"
+								disabled={running}
+								onClick={() => void openSession(summary.id)}
+								aria-current={summary.id === sessionId ? "true" : undefined}
+							>
 								{summary.title}
 							</button>
-							<button type="button" className="session-delete" disabled={running} onClick={() => void removeSession(summary)} aria-label={`Delete ${summary.title}`}>
+							<button
+								type="button"
+								className="session-delete"
+								disabled={running}
+								onClick={() => void removeSession(summary)}
+								aria-label={`Delete ${summary.title}`}
+							>
 								×
 							</button>
 						</li>
@@ -335,7 +464,12 @@ export function App() {
 
 			<div className="workspace">
 				<header className="topbar">
-					<button type="button" className="button-quiet sidebar-toggle" onClick={() => setSidebarOpen((open) => !open)} aria-expanded={sidebarOpen}>
+					<button
+						type="button"
+						className="button-quiet sidebar-toggle"
+						onClick={() => setSidebarOpen((open) => !open)}
+						aria-expanded={sidebarOpen}
+					>
 						Chats
 					</button>
 					<span className="meta">
@@ -351,7 +485,8 @@ export function App() {
 							<div className="setup">
 								<h2>Add your API key to start</h2>
 								<p>
-									{status.reason} Add it to <code>.env.local</code> in the project folder, then restart the app.
+									{status.reason} Add it to <code>.env.local</code> in the project folder, then
+									restart the app.
 								</p>
 							</div>
 						)}
@@ -363,9 +498,18 @@ export function App() {
 						)}
 						{sessionId &&
 							messages.map((message, index) => (
-								<MessageView message={message} sessionId={sessionId} key={message.id} onRetry={canRetry && !running && index === messages.length - 1 ? retry : undefined} />
+								<MessageView
+									message={message}
+									sessionId={sessionId}
+									key={message.id}
+									onRetry={
+										canRetry && !running && index === messages.length - 1 ? retry : undefined
+									}
+								/>
 							))}
-						{running && messages.at(-1)?.blocks.length === 0 && <p className="thinking">Thinking…</p>}
+						{running && messages.at(-1)?.blocks.length === 0 && (
+							<p className="thinking">Thinking…</p>
+						)}
 					</main>
 				</div>
 
@@ -384,9 +528,24 @@ export function App() {
 						</ul>
 					)}
 					<div className="composer-box">
-						<textarea ref={textArea} aria-label="Message" rows={2} placeholder="Message ai-learn" value={text} onChange={(event) => setText(event.target.value)} onKeyDown={onKeyDown} onPaste={onPaste} autoFocus />
+						<textarea
+							ref={textArea}
+							aria-label="Message"
+							rows={2}
+							placeholder="Message ai-learn"
+							value={text}
+							onChange={(event) => setText(event.target.value)}
+							onKeyDown={onKeyDown}
+							onPaste={onPaste}
+							autoFocus
+						/>
 						<div className="composer-actions">
-							<button type="button" className="button-quiet" disabled={!sessionId} onClick={() => fileInput.current?.click()}>
+							<button
+								type="button"
+								className="button-quiet"
+								disabled={!sessionId}
+								onClick={() => fileInput.current?.click()}
+							>
 								Attach
 							</button>
 							<input
@@ -400,7 +559,11 @@ export function App() {
 								}}
 							/>
 							{running ? (
-								<button type="button" className="button-primary" onClick={() => sessionId && void abortRun(sessionId)}>
+								<button
+									type="button"
+									className="button-primary"
+									onClick={() => sessionId && void abortRun(sessionId)}
+								>
 									Stop
 								</button>
 							) : (

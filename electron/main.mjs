@@ -39,11 +39,16 @@ if (!app.requestSingleInstanceLock()) {
 		}
 	});
 	app.whenReady().then(async () => {
-		session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
+		session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) =>
+			callback(false),
+		);
 		const envFile = join(root, ".env.local");
 		if (existsSync(envFile)) process.loadEnvFile(envFile);
 		const { startServer } = await import("../dist/server/index.mjs");
-		server = await startServer({ dataDir: app.getPath("userData"), webRoot: join(root, "dist/web") });
+		server = await startServer({
+			dataDir: app.getPath("userData"),
+			webRoot: join(root, "dist/web"),
+		});
 		await createWindow();
 		app.on("activate", () => {
 			if (BrowserWindow.getAllWindows().length === 0) void createWindow();
