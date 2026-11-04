@@ -14,10 +14,7 @@ const DEPTH_BELOW_SRC = { warn: 3, error: 4 };
 const SOURCE = /\.(ts|tsx|js|mjs|cjs|css)$/;
 
 /** Files allowed past a hard limit for now. Each one must name the issue that removes it. */
-const EXCEPTIONS = new Map([
-	["src/web/App.tsx", "#3"],
-	["src/web/styles.css", "#3"],
-]);
+const EXCEPTIONS = new Map();
 
 const isTest = (path) => path.startsWith("tests/");
 const isExempt = (path) => path.startsWith("tests/fixtures/");
