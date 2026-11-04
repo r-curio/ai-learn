@@ -8,8 +8,8 @@ import { appendFile, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { test } from "node:test";
 import { createScriptedEngine } from "../src/harness/fake-engine.ts";
-import { readLog, SessionLogError } from "../src/harness/log.ts";
-import { Session } from "../src/harness/session.ts";
+import { readLog, SessionLogError } from "../src/harness/sessions/log.ts";
+import { Session } from "../src/harness/sessions/session.ts";
 import type { RunEvent } from "../src/shared/protocol.ts";
 import { PNG, tempDir } from "./helpers.ts";
 

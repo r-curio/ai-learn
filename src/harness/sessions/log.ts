@@ -8,7 +8,7 @@ import type {
 } from "@earendil-works/pi-ai";
 import { appendFile, mkdir, readFile, truncate } from "node:fs/promises";
 import { dirname } from "node:path";
-import type { AttachmentStore } from "./attachments.ts";
+import type { AttachmentStore } from "../attachments.ts";
 
 export const LOG_VERSION = 1;
 

@@ -21,9 +21,9 @@ sessions/<id>/
 
 | View                  | Used by             | Built in                                     |
 | --------------------- | ------------------- | -------------------------------------------- |
-| The saved record      | Reloading a session | `src/harness/log.ts`                         |
+| The saved record      | Reloading a session | `src/harness/sessions/log.ts`                |
 | What the model sees   | Each model request  | `Session.load`, then Pi's message conversion |
-| What the learner sees | The chat UI         | `src/harness/transcript.ts`                  |
+| What the learner sees | The chat UI         | `src/harness/sessions/transcript.ts`         |
 
 For example, a message with a PDF is one long block of text for the model, but the learner sees only what they typed and a file chip. One learner turn can also span several model calls, which the UI shows as a single reply.
 

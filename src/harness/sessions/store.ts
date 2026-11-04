@@ -1,10 +1,30 @@
-import { readdir, rm } from "node:fs/promises";
+import { readdir, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
-import type { SessionSummary } from "../shared/protocol.ts";
-import type { Engine } from "./engine.ts";
-import { readSummary, Session, SessionBusyError } from "./session.ts";
+import type { SessionSummary } from "../../shared/protocol.ts";
+import type { Engine } from "../engine.ts";
+import { Session, SessionBusyError } from "./session.ts";
 
 const SESSION_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+/** Read a saved summary, or rebuild it if a crash left it missing. */
+async function readSummary(
+	engine: Engine,
+	dataDir: string,
+	id: string,
+): Promise<SessionSummary | undefined> {
+	try {
+		return JSON.parse(
+			await readFile(join(dataDir, "sessions", id, "summary.json"), "utf8"),
+		) as SessionSummary;
+	} catch {
+		try {
+			const session = await Session.load(engine, dataDir, id);
+			return session.hasContent ? { ...session.summary(), updatedAt: 0 } : undefined;
+		} catch {
+			return undefined;
+		}
+	}
+}
 
 /** Finds, opens, and deletes sessions in the data folder. */
 export class SessionStore {

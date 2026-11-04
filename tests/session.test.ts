@@ -2,7 +2,7 @@ import { fauxAssistantMessage, type FauxResponseFactory } from "@earendil-works/
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createScriptedEngine } from "../src/harness/fake-engine.ts";
-import { Session, SessionBusyError } from "../src/harness/session.ts";
+import { Session, SessionBusyError } from "../src/harness/sessions/session.ts";
 import type { RunEvent } from "../src/shared/protocol.ts";
 import { PNG, tempDir } from "./helpers.ts";
 
