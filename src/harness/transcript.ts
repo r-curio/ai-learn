@@ -58,7 +58,7 @@ export function buildTranscript(
 				} else if (part.type === "toolCall") {
 					const block = { kind: "tool" as const, id: part.id, label: TOOL_LABELS[part.name] ?? part.name, state: "running" as const };
 					current.blocks.push(block);
-					toolBlocks.set(part.id, block as Extract<TranscriptBlock, { kind: "tool" }>);
+					toolBlocks.set(part.id, block);
 				}
 			}
 			const ending = noticeFor(message.stopReason, message.errorMessage);

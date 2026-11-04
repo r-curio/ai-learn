@@ -57,20 +57,20 @@ export function toStored(message: Message, attachments: AttachmentStore): Stored
 			const attachmentId = attachments.idForImage(part.data);
 			return attachmentId ? { type: "image", attachmentId, mimeType: part.mimeType } : part;
 		}),
-	} as StoredMessage;
+	};
 }
 
 export function fromStored(stored: StoredMessage, attachments: AttachmentStore): Message {
 	if ((stored.role !== "user" && stored.role !== "toolResult") || typeof stored.content === "string") return stored as Message;
 	return {
 		...stored,
-		content: (stored.content as StoredContent[]).map((part) => {
+		content: (stored.content).map((part) => {
 			if (part.type !== "image" || !("attachmentId" in part)) return part;
 			const data = attachments.imageData(part.attachmentId);
 			if (data === undefined) throw new SessionLogError(`A saved image is missing: ${part.attachmentId}`);
 			return { type: "image", data, mimeType: part.mimeType };
 		}),
-	} as Message;
+	};
 }
 
 /** Read a log, repairing a last line cut short by a crash. Any other damage is an error. */

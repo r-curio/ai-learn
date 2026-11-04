@@ -35,7 +35,7 @@ async function request(path: string, init: RequestInit = {}): Promise<Response> 
 }
 
 export async function getStatus(): Promise<EngineStatus> {
-	return (await request("/api/status")).json();
+	return (await request("/api/status")).json() as Promise<EngineStatus>;
 }
 
 export async function createSession(): Promise<string> {
@@ -44,11 +44,11 @@ export async function createSession(): Promise<string> {
 }
 
 export async function listSessions(): Promise<SessionSummary[]> {
-	return (await request("/api/sessions")).json();
+	return (await request("/api/sessions")).json() as Promise<SessionSummary[]>;
 }
 
 export async function getSession(id: string): Promise<SessionView> {
-	return (await request(`/api/sessions/${id}`)).json();
+	return (await request(`/api/sessions/${id}`)).json() as Promise<SessionView>;
 }
 
 export async function deleteSession(id: string): Promise<void> {
@@ -64,7 +64,7 @@ export async function fetchImageUrl(sessionId: string, attachmentId: string): Pr
 export async function uploadAttachment(sessionId: string, file: File): Promise<AttachmentInfo> {
 	const form = new FormData();
 	form.set("file", file);
-	return (await request(`/api/sessions/${sessionId}/attachments`, { method: "POST", body: form })).json();
+	return (await request(`/api/sessions/${sessionId}/attachments`, { method: "POST", body: form })).json() as Promise<AttachmentInfo>;
 }
 
 export async function abortRun(sessionId: string): Promise<void> {

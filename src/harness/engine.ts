@@ -18,8 +18,8 @@ export function createClaudeEngine(modelId = process.env.AI_LEARN_MODEL ?? DEFAU
 	const model = models.getModel("anthropic", modelId);
 	if (!model) throw new Error(`Unknown Claude model: ${modelId}`);
 	return {
-		model: model as Model<string>,
-		streamFn: models.streamSimple.bind(models) as StreamFn,
+		model: model,
+		streamFn: models.streamSimple.bind(models),
 		status: () =>
 			process.env.ANTHROPIC_API_KEY
 				? { ready: true, model: modelId }

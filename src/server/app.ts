@@ -53,7 +53,7 @@ function streamRun(c: Context, session: Session, run: (onEvent: (event: RunEvent
 			emit({
 				type: "done",
 				stopReason: "error",
-				errorMessage: expected ? (error as Error).message : "The response failed.",
+				errorMessage: expected ? (error).message : "The response failed.",
 				usage: NO_USAGE,
 				sessionUsage: NO_USAGE,
 			});

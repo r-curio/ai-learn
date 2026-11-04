@@ -10,7 +10,7 @@ const readAttachmentInput = z.object({
 
 export const TOOL_LABELS: Record<string, string> = { read_attachment: "Read attachment" };
 
-export function createTools(attachments: AttachmentStore): AgentTool<any>[] {
+export function createTools(attachments: AttachmentStore): AgentTool[] {
 	return [
 		{
 			name: "read_attachment",

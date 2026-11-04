@@ -19,14 +19,14 @@ async function startServer(dataDir: string): Promise<ChildProcess> {
 		`],
 		{ env: { ...process.env, AI_LEARN_FAKE_MODEL: "1" }, stdio: ["ignore", "pipe", "inherit"] },
 	);
-	await once(child.stdout!, "data");
+	await once(child.stdout, "data");
 	return child;
 }
 
 test("killing the process mid-reply loses nothing the learner sent, and retry works", { timeout: 30_000 }, async () => {
 	const dataDir = await tempDir();
 	const first = await startServer(dataDir);
-	let id = "";
+	let id: string;
 	try {
 		id = ((await (await fetch(`${BASE}/api/sessions`, { method: "POST", headers })).json()) as { id: string }).id;
 		const response = await fetch(`${BASE}/api/sessions/${id}/messages`, {

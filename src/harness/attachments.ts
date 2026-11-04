@@ -54,6 +54,8 @@ export function detectType(bytes: Uint8Array): { kind: AttachmentKind; mimeType:
 
 export function sanitizeName(raw: string): string {
 	const base = raw.split(/[/\\]/).at(-1) ?? "";
+	// Control characters are exactly what this removes from names.
+	// eslint-disable-next-line no-control-regex
 	const clean = base.replace(/[\u0000-\u001f\u007f<>"&']/g, "").trim().slice(0, 120);
 	return clean || "attachment";
 }

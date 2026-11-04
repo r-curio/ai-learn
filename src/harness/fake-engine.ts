@@ -24,8 +24,8 @@ export function createScriptedEngine(
 	faux.setResponses(responses);
 	return {
 		faux,
-		model: faux.getModel() as Model<string>,
-		streamFn: models.streamSimple.bind(models) as StreamFn,
+		model: faux.getModel(),
+		streamFn: models.streamSimple.bind(models),
 		status: () => ({ ready: true, model: FAKE_MODEL.id }),
 	};
 }

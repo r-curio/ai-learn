@@ -108,7 +108,7 @@ export class Session {
 				content: [{ type: "text", text: "The app closed before this tool finished, so there is no result." }],
 				isError: true,
 				timestamp: Date.now(),
-			} as ToolResultMessage;
+			};
 			// Add to the agent's own list, which also holds the system prompt.
 			session.agent.state.messages.push(result);
 			await session.record({ type: "message", message: result });

@@ -30,7 +30,7 @@ export function startServer(options: StartOptions): Promise<RunningServer> {
 	return new Promise((resolve, reject) => {
 		const server: ServerType = serve({ fetch: app.fetch, hostname: "127.0.0.1", port: options.port ?? 0 }, (info) => {
 			resolve({
-				port: (info as AddressInfo).port,
+				port: (info).port,
 				token,
 				close: () => new Promise((done) => server.close(() => done())),
 			});

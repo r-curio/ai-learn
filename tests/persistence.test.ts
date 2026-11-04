@@ -42,7 +42,7 @@ test("a reloaded session sends the model byte-identical history", async () => {
 
 	const before = seen[1]!.messages;
 	const after = seen[2]!.messages;
-	const withoutTimestamps = (value: unknown) => JSON.stringify(value, (key, field) => (key === "durationMs" ? undefined : field));
+	const withoutTimestamps = (value: unknown) => JSON.stringify(value, (key, field: unknown) => (key === "durationMs" ? undefined : field));
 	assert.equal(withoutTimestamps(after.slice(0, before.length)), withoutTimestamps(before));
 	assert.ok(after.length > before.length);
 	assert.equal((after[0] as { role: string }).role, "system");
