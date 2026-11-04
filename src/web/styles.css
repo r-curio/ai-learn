@@ -34,10 +34,23 @@
 html, body, #root { height: 100%; margin: 0; }
 body { background: var(--bg); color: var(--ink); }
 
-.app { display: flex; flex-direction: column; height: 100%; position: relative; }
+.app { display: flex; height: 100%; position: relative; }
+.workspace { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+.sidebar { flex: none; width: 250px; display: flex; flex-direction: column; border-right: 1px solid var(--line); overflow-y: auto; }
+.sidebar-head { display: flex; justify-content: space-between; align-items: center; padding: 9px 10px 9px 16px; border-bottom: 1px solid var(--line); font-size: 13px; }
+.sidebar-head button { font-size: 13px; padding: 3px 9px; }
+.session-list { list-style: none; margin: 0; padding: 8px; }
+.session { display: flex; align-items: center; border-radius: 7px; }
+.session:hover, .session-active { background: var(--user-bg); }
+.session-open { flex: 1; min-width: 0; text-align: left; background: none; color: inherit; padding: 6px 8px; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.session-delete { flex: none; background: none; color: var(--muted); padding: 2px 8px; font-size: 15px; line-height: 1; opacity: 0; }
+.session:hover .session-delete, .session-active .session-delete, .session-delete:focus-visible { opacity: 1; }
+.sidebar-empty { color: var(--muted); font-size: 13px; padding: 4px 16px; margin: 0; }
+.sidebar-toggle { display: none; font-size: 13px; padding: 2px 9px; }
 .column { width: 100%; max-width: 760px; margin-inline: auto; padding-inline: 20px; }
 
-.topbar { display: flex; justify-content: space-between; gap: 16px; padding: 12px 20px; border-bottom: 1px solid var(--line); font-size: 13px; }
+.topbar { display: flex; justify-content: flex-end; align-items: center; gap: 16px; min-height: 45px; padding: 9px 20px; border-bottom: 1px solid var(--line); font-size: 13px; }
 .brand { font-weight: 600; }
 .meta { color: var(--muted); font-variant-numeric: tabular-nums; text-align: right; }
 
@@ -71,6 +84,8 @@ main.column { padding-block: 28px; display: flex; flex-direction: column; gap: 2
 .tool-failed { color: var(--danger); }
 .thinking { color: var(--muted); margin: 0; font-size: 14px; }
 .notice { margin: 8px 0 0; font-size: 13px; color: var(--muted); }
+.button-inline { background: none; color: inherit; text-decoration: underline; padding: 0 0 0 8px; font-size: inherit; }
+.image-placeholder { display: block; width: 120px; height: 90px; border-radius: 8px; background: var(--line); }
 .notice-error { color: var(--danger); background: var(--danger-bg); padding: 8px 11px; border-radius: 8px; }
 
 .composer { padding-bottom: 18px; padding-top: 6px; }
@@ -100,8 +115,12 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 .drop-overlay { position: absolute; inset: 10px; display: grid; place-items: center; background: color-mix(in srgb, var(--bg) 88%, transparent); border: 2px dashed var(--accent); border-radius: 14px; font-weight: 600; pointer-events: none; }
 
-@media (max-width: 560px) {
+@media (max-width: 720px) {
 	.column { padding-inline: 16px; }
 	.message-user { max-width: 92%; }
-	.topbar { padding-inline: 16px; }
+	.topbar { justify-content: space-between; padding-inline: 16px; }
+	.sidebar-toggle { display: block; }
+	.sidebar { display: none; position: absolute; inset: 0 auto 0 0; z-index: 2; width: min(280px, 85vw); background: var(--bg); box-shadow: 0 0 0 100vw rgb(0 0 0 / 0.3); }
+	.sidebar-open .sidebar { display: flex; }
+	.session-delete { opacity: 1; }
 }

@@ -28,7 +28,11 @@ test("images become native image content and are saved", async () => {
 	assert.equal(info.kind, "image");
 	const content = store.toContent([info.id]);
 	assert.equal(content[1]?.type, "image");
-	assert.deepEqual(await readdir(dir), [info.id]);
+	assert.deepEqual((await readdir(dir)).sort(), [info.id, `${info.id}.json`]);
+
+	const restored = new AttachmentStore(dir);
+	await restored.load();
+	assert.deepEqual(restored.toContent([info.id]), content);
 });
 
 test("PDF text is extracted page by page", async () => {

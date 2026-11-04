@@ -5,7 +5,7 @@ import { startServer } from "./index.ts";
 if (existsSync(".env.local")) process.loadEnvFile(".env.local");
 
 const server = await startServer({
-	dataDir: resolve("data"),
+	dataDir: resolve(process.env.AI_LEARN_DATA_DIR ?? "data"),
 	port: Number(process.env.AI_LEARN_PORT ?? 8787),
 	token: process.env.AI_LEARN_TOKEN,
 });

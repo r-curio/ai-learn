@@ -26,3 +26,38 @@ export interface EngineStatus {
 	model: string;
 	reason?: string;
 }
+
+export interface SessionSummary {
+	id: string;
+	title: string;
+	updatedAt: number;
+}
+
+export type TranscriptBlock =
+	| { kind: "text"; text: string }
+	| { kind: "tool"; id: string; label: string; state: "running" | "done" | "failed" };
+
+export interface TranscriptMessage {
+	id: string;
+	role: "user" | "assistant";
+	blocks: TranscriptBlock[];
+	attachments?: AttachmentInfo[];
+	notice?: string;
+	failed?: boolean;
+}
+
+export interface SessionView {
+	id: string;
+	title: string;
+	messages: TranscriptMessage[];
+	canRetry: boolean;
+	usage: UsageSummary;
+}
+
+/** What to tell the learner about how a reply ended. Nothing, if it ended normally. */
+export function noticeFor(stopReason: string, errorMessage?: string): { notice: string; failed?: boolean } | undefined {
+	if (stopReason === "stop" || stopReason === "toolUse") return undefined;
+	if (stopReason === "aborted") return { notice: "Stopped." };
+	if (stopReason === "length") return { notice: "This reply hit the length limit and was cut off." };
+	return { notice: errorMessage ?? "The response failed.", failed: true };
+}

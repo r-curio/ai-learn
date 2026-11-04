@@ -1,4 +1,4 @@
-import type { AttachmentInfo, EngineStatus, RunEvent } from "../shared/protocol.ts";
+import type { AttachmentInfo, EngineStatus, RunEvent, SessionSummary, SessionView } from "../shared/protocol.ts";
 
 const STORAGE_KEY = "ai-learn-token";
 
@@ -43,6 +43,24 @@ export async function createSession(): Promise<string> {
 	return id;
 }
 
+export async function listSessions(): Promise<SessionSummary[]> {
+	return (await request("/api/sessions")).json();
+}
+
+export async function getSession(id: string): Promise<SessionView> {
+	return (await request(`/api/sessions/${id}`)).json();
+}
+
+export async function deleteSession(id: string): Promise<void> {
+	await request(`/api/sessions/${id}`, { method: "DELETE" });
+}
+
+/** Images need the auth header, so they load as blobs rather than through a plain src URL. */
+export async function fetchImageUrl(sessionId: string, attachmentId: string): Promise<string> {
+	const blob = await (await request(`/api/sessions/${sessionId}/attachments/${attachmentId}`)).blob();
+	return URL.createObjectURL(blob);
+}
+
 export async function uploadAttachment(sessionId: string, file: File): Promise<AttachmentInfo> {
 	const form = new FormData();
 	form.set("file", file);
@@ -53,17 +71,24 @@ export async function abortRun(sessionId: string): Promise<void> {
 	await request(`/api/sessions/${sessionId}/abort`, { method: "POST" });
 }
 
-/** Send a message and call `onEvent` for each server-sent event until the run ends. */
-export async function sendMessage(
-	sessionId: string,
-	body: { text: string; attachmentIds: string[] },
-	onEvent: (event: RunEvent) => void,
-): Promise<void> {
-	const response = await request(`/api/sessions/${sessionId}/messages`, {
-		method: "POST",
-		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify(body),
-	});
+export function sendMessage(sessionId: string, body: { text: string; attachmentIds: string[] }, onEvent: (event: RunEvent) => void): Promise<void> {
+	return streamRun(
+		request(`/api/sessions/${sessionId}/messages`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(body),
+		}),
+		onEvent,
+	);
+}
+
+export function retryRun(sessionId: string, onEvent: (event: RunEvent) => void): Promise<void> {
+	return streamRun(request(`/api/sessions/${sessionId}/retry`, { method: "POST" }), onEvent);
+}
+
+/** Read server-sent events and call `onEvent` for each until the run ends. */
+async function streamRun(pending: Promise<Response>, onEvent: (event: RunEvent) => void): Promise<void> {
+	const response = await pending;
 	const reader = response.body!.pipeThrough(new TextDecoderStream()).getReader();
 	let buffer = "";
 	for (;;) {

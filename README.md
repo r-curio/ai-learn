@@ -2,13 +2,15 @@
 
 A local-first AI learning app. You chat with a tutor, attach your own material, and work through hard topics on your own computer.
 
-> **Status: early development.** Milestone 1 of 5 is done: a working chat with streaming, tools, and file uploads. The teaching engine isn't built yet, so today it behaves like a general tutor chat, and conversations are lost when you quit.
+> **Status: early development.** Milestones 1 and 2 of 5 are done: a working chat with streaming, tools, file uploads, and saved sessions. The teaching engine isn't built yet, so today it behaves like a general tutor chat.
 
 ## What works today
 
 - Streaming replies from Claude, with a Stop button
 - Attach images, PDFs, and text files with the button, drag and drop, or paste
 - A tool that lets the model read long attachments in parts
+- Saved chats you can reopen, continue, and delete
+- Crash recovery, with a Retry button for failed or interrupted replies
 - Running token and cost totals
 - A desktop app (Electron) and a browser dev mode
 - A free fake model for trying the app and running tests without an API key
@@ -38,7 +40,7 @@ Your files and the app's data stay on your computer, but your messages and attac
 
 ## Current limits
 
-- Conversations aren't saved yet. This comes in milestone 2.
+- Closing the window during a reply stops that reply.
 - Images must be 5 MB or smaller.
 - Scanned PDFs without a text layer aren't supported.
 - There's no packaged installer yet, so you run it from source.
@@ -47,18 +49,18 @@ Your files and the app's data stay on your computer, but your messages and attac
 
 | Path | What it does |
 |---|---|
-| `src/harness/` | The agent harness: model engine, session, tools, and attachments |
+| `src/harness/` | The agent harness: model engine, sessions, saved log, tools, and attachments |
 | `src/server/` | Local HTTP server that streams events to the UI |
 | `src/web/` | React chat UI |
 | `src/shared/` | Types shared by the server and UI |
 | `electron/` | Desktop shell |
 
-It's built on [Pi](https://github.com/earendil-works/pi) for the agent loop and model access.
+It's built on [Pi](https://github.com/earendil-works/pi) for the agent loop and model access. See [how sessions are saved](docs/sessions.md).
 
 ## Roadmap
 
 1. ~~Chat, streaming, tools, and uploads~~
-2. Saved sessions that survive crashes and can resume
+2. ~~Saved sessions that survive crashes and can resume~~
 3. Teaching engine: measure what you know, plan, teach, and practice
 4. Two-way Excalidraw diagrams that you and the tutor can both edit
 5. Knowledge memory across sessions, with a graph view

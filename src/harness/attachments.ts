@@ -1,12 +1,13 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { ImageContent, TextContent } from "@earendil-works/pi-ai";
 import type { AttachmentInfo, AttachmentKind } from "../shared/protocol.ts";
 
 export const MAX_FILE_BYTES = 25 * 1024 * 1024;
 export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
-export const INLINE_TEXT_CHARS = 100_000;
+/** About 7,500 tokens. Larger files stay out of the history, and the model reads them on demand. */
+export const INLINE_TEXT_CHARS = 30_000;
 const MAX_PDF_PAGES = 1000;
 
 export class AttachmentError extends Error {
@@ -16,6 +17,12 @@ export class AttachmentError extends Error {
 	) {
 		super(message);
 	}
+}
+
+interface SavedAttachment {
+	info: AttachmentInfo;
+	text?: string;
+	mimeType?: string;
 }
 
 interface Stored extends AttachmentInfo {
@@ -84,6 +91,20 @@ export class AttachmentStore {
 
 	constructor(private readonly dir: string) {}
 
+	/** Restore everything saved in `dir`. A half-written upload has no metadata file, so it's skipped. */
+	async load(): Promise<void> {
+		const names = await readdir(this.dir).catch(() => [] as string[]);
+		for (const name of names.filter((entry) => entry.endsWith(".json"))) {
+			const saved = JSON.parse(await readFile(join(this.dir, name), "utf8")) as SavedAttachment;
+			const stored: Stored = { ...saved.info, text: saved.text };
+			if (saved.mimeType) {
+				const bytes = await readFile(join(this.dir, saved.info.id));
+				stored.image = { data: bytes.toString("base64"), mimeType: saved.mimeType };
+			}
+			this.items.set(saved.info.id, stored);
+		}
+	}
+
 	async add(rawName: string, bytes: Uint8Array): Promise<AttachmentInfo> {
 		const name = sanitizeName(rawName);
 		if (bytes.length === 0) throw new AttachmentError(400, `${name} is empty.`);
@@ -106,10 +127,15 @@ export class AttachmentStore {
 			stored.text = new TextDecoder().decode(bytes);
 		}
 
+		const info: AttachmentInfo = { id, name, kind: stored.kind, size: stored.size };
+		const saved: SavedAttachment = { info, text: stored.text, mimeType: stored.image?.mimeType };
 		await mkdir(this.dir, { recursive: true });
 		await writeFile(join(this.dir, id), bytes);
+		// The metadata goes last and atomically, so its presence means the upload is complete.
+		await writeFile(join(this.dir, `${id}.json.tmp`), JSON.stringify(saved));
+		await rename(join(this.dir, `${id}.json.tmp`), join(this.dir, `${id}.json`));
 		this.items.set(id, stored);
-		return { id, name, kind: stored.kind, size: stored.size };
+		return info;
 	}
 
 	private async readPdf(name: string, bytes: Uint8Array): Promise<string> {
@@ -123,6 +149,26 @@ export class AttachmentStore {
 
 	has(id: string): boolean {
 		return this.items.has(id);
+	}
+
+	info(id: string): AttachmentInfo | undefined {
+		const item = this.items.get(id);
+		return item && { id: item.id, name: item.name, kind: item.kind, size: item.size };
+	}
+
+	image(id: string): { bytes: Buffer; mimeType: string } | undefined {
+		const image = this.items.get(id)?.image;
+		return image && { bytes: Buffer.from(image.data, "base64"), mimeType: image.mimeType };
+	}
+
+	imageData(id: string): string | undefined {
+		return this.items.get(id)?.image?.data;
+	}
+
+	/** Find which attachment an image block came from, so the log can store a reference to it. */
+	idForImage(data: string): string | undefined {
+		for (const item of this.items.values()) if (item.image?.data === data) return item.id;
+		return undefined;
 	}
 
 	/** Build the message content that puts these attachments in front of the model. */

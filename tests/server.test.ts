@@ -75,6 +75,49 @@ test("a file can be uploaded and then sent", async () => {
 	assert.equal(response.status, 200);
 });
 
+test("saved chats can be listed, opened, and deleted", async () => {
+	const app = await setup([fauxAssistantMessage("Hello."), fauxAssistantMessage("Hello again.")]);
+	const id = await newSession(app);
+	const empty = (await (await app.request(`${BASE}/api/sessions`, { headers: auth })).json()) as unknown[];
+	assert.equal(empty.length, 0);
+
+	const send = await app.request(`${BASE}/api/sessions/${id}/messages`, {
+		method: "POST",
+		headers: { ...auth, "Content-Type": "application/json" },
+		body: JSON.stringify({ text: "What is DNA?" }),
+	});
+	await send.text();
+
+	const listed = (await (await app.request(`${BASE}/api/sessions`, { headers: auth })).json()) as { id: string; title: string }[];
+	assert.deepEqual(listed.map((item) => item.title), ["What is DNA?"]);
+	const view = (await (await app.request(`${BASE}/api/sessions/${id}`, { headers: auth })).json()) as { messages: unknown[] };
+	assert.equal(view.messages.length, 2);
+
+	assert.equal((await app.request(`${BASE}/api/sessions/${id}`, { method: "DELETE", headers: auth })).status, 200);
+	assert.equal((await app.request(`${BASE}/api/sessions/${id}`, { headers: auth })).status, 404);
+	assert.equal(((await (await app.request(`${BASE}/api/sessions`, { headers: auth })).json()) as unknown[]).length, 0);
+});
+
+test("saved images can be fetched, only with the token", async () => {
+	const app = await setup();
+	const id = await newSession(app);
+	const { id: imageId } = (await (await upload(app, id, PNG, "photo.png")).json()) as { id: string };
+	const url = `${BASE}/api/sessions/${id}/attachments/${imageId}`;
+	const response = await app.request(url, { headers: auth });
+	assert.equal(response.status, 200);
+	assert.equal(response.headers.get("content-type"), "image/png");
+	assert.deepEqual(new Uint8Array(await response.arrayBuffer()), PNG);
+	assert.equal((await app.request(url, { headers: { Host: auth.Host } })).status, 401);
+});
+
+test("paths can't escape the sessions folder", async () => {
+	const app = await setup();
+	for (const id of ["..", "..%2F..", "not-a-uuid"]) {
+		assert.equal((await app.request(`${BASE}/api/sessions/${id}`, { headers: auth })).status, 404);
+		assert.equal((await app.request(`${BASE}/api/sessions/${id}`, { method: "DELETE", headers: auth })).status, 404);
+	}
+});
+
 test("bad input gets a clear error", async () => {
 	const app = await setup();
 	const id = await newSession(app);

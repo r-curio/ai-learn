@@ -1,13 +1,17 @@
 import { serveStatic } from "@hono/node-server/serve-static";
 import { timingSafeEqual } from "node:crypto";
 import { relative } from "node:path";
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { streamSSE } from "hono/streaming";
 import { z } from "zod";
 import { AttachmentError, MAX_FILE_BYTES } from "../harness/attachments.ts";
 import type { Engine } from "../harness/engine.ts";
-import { Session, SessionBusyError } from "../harness/session.ts";
+import type { Session } from "../harness/session.ts";
+import { SessionBusyError, SessionStateError } from "../harness/session.ts";
+import { SessionStore } from "../harness/store.ts";
+import type { RunEvent } from "../shared/protocol.ts";
+import { SessionLogError } from "../harness/log.ts";
 
 export interface AppOptions {
 	engine: Engine;
@@ -31,9 +35,44 @@ function tokensMatch(given: string | undefined, expected: string): boolean {
 	return a.length === b.length && timingSafeEqual(a, b);
 }
 
+const NO_USAGE = { inputTokens: 0, outputTokens: 0, costUsd: 0 };
+
+/** Stream a run's events to the client. A client that disconnects stops the run. */
+function streamRun(c: Context, session: Session, run: (onEvent: (event: RunEvent) => void) => Promise<void>) {
+	return streamSSE(c, async (stream) => {
+		stream.onAbort(() => session.abort());
+		let writes = Promise.resolve();
+		const emit = (event: RunEvent) => {
+			writes = writes.then(() => stream.writeSSE({ data: JSON.stringify(event) }));
+		};
+		try {
+			await run(emit);
+		} catch (error) {
+			const expected = error instanceof SessionBusyError || error instanceof SessionStateError;
+			if (!expected) console.error(error);
+			emit({
+				type: "done",
+				stopReason: "error",
+				errorMessage: expected ? (error as Error).message : "The response failed.",
+				usage: NO_USAGE,
+				sessionUsage: NO_USAGE,
+			});
+		}
+		await writes;
+	});
+}
+
 export function createApp({ engine, dataDir, token, webRoot }: AppOptions): Hono {
 	const app = new Hono();
-	const sessions = new Map<string, Session>();
+	const store = new SessionStore(engine, dataDir);
+
+	app.onError((error, c) => {
+		if (error instanceof SessionLogError) return c.json({ error: error.message }, 422);
+		if (error instanceof SessionBusyError) return c.json({ error: error.message }, 409);
+		console.error(error);
+		return c.json({ error: "Something went wrong." }, 500);
+	});
+
 
 	// Blocks websites that point their own domain at 127.0.0.1 (DNS rebinding).
 	app.use("*", async (c, next) => {
@@ -50,10 +89,23 @@ export function createApp({ engine, dataDir, token, webRoot }: AppOptions): Hono
 
 	app.get("/api/status", (c) => c.json(engine.status()));
 
-	app.post("/api/sessions", (c) => {
-		const session = new Session(engine, dataDir);
-		sessions.set(session.id, session);
-		return c.json({ id: session.id }, 201);
+	app.get("/api/sessions", async (c) => c.json(await store.list()));
+
+	app.post("/api/sessions", (c) => c.json({ id: store.create().id }, 201));
+
+	app.get("/api/sessions/:id", async (c) => {
+		const session = await store.get(c.req.param("id"));
+		return session ? c.json(session.view()) : c.json({ error: "Session not found." }, 404);
+	});
+
+	app.delete("/api/sessions/:id", async (c) => {
+		return (await store.delete(c.req.param("id"))) ? c.json({ ok: true }) : c.json({ error: "Session not found." }, 404);
+	});
+
+	app.get("/api/sessions/:id/attachments/:attachmentId", async (c) => {
+		const image = (await store.get(c.req.param("id")))?.attachments.image(c.req.param("attachmentId"));
+		if (!image) return c.json({ error: "Image not found." }, 404);
+		return c.body(new Uint8Array(image.bytes), 200, { "Content-Type": image.mimeType, "X-Content-Type-Options": "nosniff" });
 	});
 
 	app.post(
@@ -63,7 +115,7 @@ export function createApp({ engine, dataDir, token, webRoot }: AppOptions): Hono
 			onError: (c) => c.json({ error: "That file is over the 25 MB limit." }, 413),
 		}),
 		async (c) => {
-			const session = sessions.get(c.req.param("id"));
+			const session = await store.get(c.req.param("id"));
 			if (!session) return c.json({ error: "Session not found." }, 404);
 			const file = (await c.req.formData()).get("file");
 			if (!(file instanceof File)) return c.json({ error: "No file was sent." }, 400);
@@ -77,7 +129,7 @@ export function createApp({ engine, dataDir, token, webRoot }: AppOptions): Hono
 	);
 
 	app.post("/api/sessions/:id/messages", async (c) => {
-		const session = sessions.get(c.req.param("id"));
+		const session = await store.get(c.req.param("id"));
 		if (!session) return c.json({ error: "Session not found." }, 404);
 		const status = engine.status();
 		if (!status.ready) return c.json({ error: status.reason }, 503);
@@ -89,35 +141,19 @@ export function createApp({ engine, dataDir, token, webRoot }: AppOptions): Hono
 		const unknown = attachmentIds.find((id) => !session.attachments.has(id));
 		if (unknown) return c.json({ error: "Unknown attachment." }, 400);
 
-		return streamSSE(c, async (stream) => {
-			stream.onAbort(() => session.abort());
-			let writes = Promise.resolve();
-			try {
-				await session.send({ text, attachmentIds }, (event) => {
-					writes = writes.then(() => stream.writeSSE({ data: JSON.stringify(event) }));
-				});
-			} catch (error) {
-				const busy = error instanceof SessionBusyError;
-				const message = busy ? error.message : "The response failed.";
-				if (!busy) console.error(error);
-				writes = writes.then(() =>
-					stream.writeSSE({
-						data: JSON.stringify({
-							type: "done",
-							stopReason: "error",
-							errorMessage: message,
-							usage: { inputTokens: 0, outputTokens: 0, costUsd: 0 },
-							sessionUsage: { inputTokens: 0, outputTokens: 0, costUsd: 0 },
-						}),
-					}),
-				);
-			}
-			await writes;
-		});
+		return streamRun(c, session, (onEvent) => session.send({ text, attachmentIds }, onEvent));
 	});
 
-	app.post("/api/sessions/:id/abort", (c) => {
-		const session = sessions.get(c.req.param("id"));
+	app.post("/api/sessions/:id/retry", async (c) => {
+		const session = await store.get(c.req.param("id"));
+		if (!session) return c.json({ error: "Session not found." }, 404);
+		const status = engine.status();
+		if (!status.ready) return c.json({ error: status.reason }, 503);
+		return streamRun(c, session, (onEvent) => session.retry(onEvent));
+	});
+
+	app.post("/api/sessions/:id/abort", async (c) => {
+		const session = await store.get(c.req.param("id"));
 		if (!session) return c.json({ error: "Session not found." }, 404);
 		session.abort();
 		return c.json({ ok: true });
