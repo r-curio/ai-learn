@@ -19,24 +19,24 @@ sessions/<id>/
 
 ## Three views of one log
 
-| View | Used by | Built in |
-|---|---|---|
-| The saved record | Reloading a session | `src/harness/log.ts` |
-| What the model sees | Each model request | `Session.load`, then Pi's message conversion |
-| What the learner sees | The chat UI | `src/harness/transcript.ts` |
+| View                  | Used by             | Built in                                     |
+| --------------------- | ------------------- | -------------------------------------------- |
+| The saved record      | Reloading a session | `src/harness/log.ts`                         |
+| What the model sees   | Each model request  | `Session.load`, then Pi's message conversion |
+| What the learner sees | The chat UI         | `src/harness/transcript.ts`                  |
 
 For example, a message with a PDF is one long block of text for the model, but the learner sees only what they typed and a file chip. One learner turn can also span several model calls, which the UI shows as a single reply.
 
 ## What happens when something goes wrong
 
-| Situation | Result |
-|---|---|
+| Situation                           | Result                                                                                                                 |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | App killed before or during a reply | The learner's message is kept. A partial reply is lost, because replies are saved when complete. The chat shows Retry. |
-| App killed while a tool runs | The tool gets an error result on reload and is never rerun automatically, since it may have partly finished. |
-| Crash during a write | The cut-off last line is trimmed on reload. |
-| Damage elsewhere in the log | The chat refuses to open and says why. It is never silently repaired. |
-| The model returns an error | The failure stays in the log and shows Retry. A retry marker hides it afterward, and Pi doesn't resend it. |
-| The learner presses Stop | The partial reply stays visible, marked as stopped. Pi doesn't send it to the model again. |
+| App killed while a tool runs        | The tool gets an error result on reload and is never rerun automatically, since it may have partly finished.           |
+| Crash during a write                | The cut-off last line is trimmed on reload.                                                                            |
+| Damage elsewhere in the log         | The chat refuses to open and says why. It is never silently repaired.                                                  |
+| The model returns an error          | The failure stays in the log and shows Retry. A retry marker hides it afterward, and Pi doesn't resend it.             |
+| The learner presses Stop            | The partial reply stays visible, marked as stopped. Pi doesn't send it to the model again.                             |
 
 ## Not built yet
 

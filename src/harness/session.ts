@@ -6,7 +6,15 @@ import { join } from "node:path";
 import type { RunEvent, SessionSummary, SessionView, UsageSummary } from "../shared/protocol.ts";
 import { AttachmentStore } from "./attachments.ts";
 import type { Engine } from "./engine.ts";
-import { fromStored, LOG_VERSION, LogWriter, readLog, toStored, type LogEntry, type LogHeader } from "./log.ts";
+import {
+	fromStored,
+	LOG_VERSION,
+	LogWriter,
+	readLog,
+	toStored,
+	type LogEntry,
+	type LogHeader,
+} from "./log.ts";
 import { createTools } from "./tools.ts";
 import { buildTranscript, INTERRUPTED_NOTICE, titleOf, usageOf } from "./transcript.ts";
 
@@ -32,15 +40,22 @@ function addUsage(total: UsageSummary, message: AssistantMessage): void {
 	total.costUsd += usage.cost.total;
 }
 
-const isFailedReply = (message: Message | undefined): boolean => message?.role === "assistant" && message.stopReason === "error";
+const isFailedReply = (message: Message | undefined): boolean =>
+	message?.role === "assistant" && message.stopReason === "error";
 
 /** Tool calls in the latest reply that never got a result, for example after a crash. */
 function unresolvedToolCalls(messages: Message[]): { id: string; name: string }[] {
 	const lastReply = messages.findLastIndex((message) => message.role === "assistant");
 	const reply = messages[lastReply];
 	if (reply?.role !== "assistant" || reply.stopReason !== "toolUse") return [];
-	const answered = new Set(messages.slice(lastReply + 1).flatMap((message) => (message.role === "toolResult" ? [message.toolCallId] : [])));
-	return reply.content.flatMap((part) => (part.type === "toolCall" && !answered.has(part.id) ? [{ id: part.id, name: part.name }] : []));
+	const answered = new Set(
+		messages
+			.slice(lastReply + 1)
+			.flatMap((message) => (message.role === "toolResult" ? [message.toolCallId] : [])),
+	);
+	return reply.content.flatMap((part) =>
+		part.type === "toolCall" && !answered.has(part.id) ? [{ id: part.id, name: part.name }] : [],
+	);
 }
 
 interface Restored {
@@ -105,7 +120,12 @@ export class Session {
 				role: "toolResult",
 				toolCallId: call.id,
 				toolName: call.name,
-				content: [{ type: "text", text: "The app closed before this tool finished, so there is no result." }],
+				content: [
+					{
+						type: "text",
+						text: "The app closed before this tool finished, so there is no result.",
+					},
+				],
 				isError: true,
 				timestamp: Date.now(),
 			};
@@ -117,13 +137,17 @@ export class Session {
 	}
 
 	private get messages(): Message[] {
-		return this.agent.state.messages.filter((message): message is Message => message.role !== ("system" as string));
+		return this.agent.state.messages.filter(
+			(message): message is Message => message.role !== ("system" as string),
+		);
 	}
 
 	/** A reply can be retried if it failed, or if the tail shows the app stopped partway through. */
 	get canRetry(): boolean {
 		const tail = this.messages.at(-1);
-		return !this.running && tail !== undefined && (tail.role !== "assistant" || isFailedReply(tail));
+		return (
+			!this.running && tail !== undefined && (tail.role !== "assistant" || isFailedReply(tail))
+		);
 	}
 
 	get hasContent(): boolean {
@@ -132,7 +156,13 @@ export class Session {
 
 	private async record(entry: LogEntry): Promise<void> {
 		if (this.entries.length === 0) {
-			const header: LogHeader = { type: "header", version: LOG_VERSION, id: this.id, createdAt: Date.now(), systemPrompt: this.systemPrompt };
+			const header: LogHeader = {
+				type: "header",
+				version: LOG_VERSION,
+				id: this.id,
+				createdAt: Date.now(),
+				systemPrompt: this.systemPrompt,
+			};
 			this.entries.push(header);
 			await this.log.append(header);
 		}
@@ -161,7 +191,13 @@ export class Session {
 		const tail = messages.at(-1);
 		if (canRetry && !isFailedReply(this.messages.at(-1))) {
 			if (tail?.role === "assistant") tail.notice = INTERRUPTED_NOTICE;
-			else messages.push({ id: "interrupted", role: "assistant", blocks: [], notice: INTERRUPTED_NOTICE });
+			else
+				messages.push({
+					id: "interrupted",
+					role: "assistant",
+					blocks: [],
+					notice: INTERRUPTED_NOTICE,
+				});
 		}
 		return { id: this.id, title: this.title(), messages, canRetry, usage: { ...this.usage } };
 	}
@@ -174,11 +210,16 @@ export class Session {
 			if (event.type === "message_update" && event.assistantMessageEvent.type === "text_delta") {
 				onEvent({ type: "text_delta", delta: event.assistantMessageEvent.delta });
 			} else if (event.type === "tool_execution_start") {
-				const label = this.agent.state.tools.find((tool) => tool.name === event.toolName)?.label ?? event.toolName;
+				const label =
+					this.agent.state.tools.find((tool) => tool.name === event.toolName)?.label ??
+					event.toolName;
 				onEvent({ type: "tool_start", id: event.toolCallId, name: event.toolName, label });
 			} else if (event.type === "tool_execution_end") {
 				onEvent({ type: "tool_end", id: event.toolCallId, isError: event.isError });
-			} else if (event.type === "message_end" && (event.message.role === "assistant" || event.message.role === "toolResult")) {
+			} else if (
+				event.type === "message_end" &&
+				(event.message.role === "assistant" || event.message.role === "toolResult")
+			) {
 				if (event.message.role === "assistant") {
 					last = event.message;
 					addUsage(runUsage, last);
@@ -186,7 +227,10 @@ export class Session {
 				}
 				// Pi waits for this before moving on, so each step is on disk before the next begins.
 				try {
-					await this.record({ type: "message", message: toStored(event.message, this.attachments) });
+					await this.record({
+						type: "message",
+						message: toStored(event.message, this.attachments),
+					});
 				} catch (error) {
 					writeFailure = `Couldn't save this session: ${(error as Error).message}`;
 					this.agent.abort();
@@ -215,7 +259,10 @@ export class Session {
 	}
 
 	/** Run one learner turn to completion. The message is saved before the model is called. */
-	async send(input: { text: string; attachmentIds: string[] }, onEvent: (event: RunEvent) => void): Promise<void> {
+	async send(
+		input: { text: string; attachmentIds: string[] },
+		onEvent: (event: RunEvent) => void,
+	): Promise<void> {
 		if (this.running) throw new SessionBusyError();
 		const content = [
 			...this.attachments.toContent(input.attachmentIds),
@@ -224,7 +271,11 @@ export class Session {
 		this.running = true;
 		const message: Message = { role: "user", content, timestamp: Date.now() };
 		try {
-			await this.record({ type: "message", message: toStored(message, this.attachments), display: input });
+			await this.record({
+				type: "message",
+				message: toStored(message, this.attachments),
+				display: input,
+			});
 		} catch (error) {
 			this.running = false;
 			throw error;
@@ -259,9 +310,15 @@ export class Session {
 }
 
 /** Read a saved summary, or rebuild it if a crash left it missing. */
-export async function readSummary(engine: Engine, dataDir: string, id: string): Promise<SessionSummary | undefined> {
+export async function readSummary(
+	engine: Engine,
+	dataDir: string,
+	id: string,
+): Promise<SessionSummary | undefined> {
 	try {
-		return JSON.parse(await readFile(join(dataDir, "sessions", id, "summary.json"), "utf8")) as SessionSummary;
+		return JSON.parse(
+			await readFile(join(dataDir, "sessions", id, "summary.json"), "utf8"),
+		) as SessionSummary;
 	} catch {
 		try {
 			const session = await Session.load(engine, dataDir, id);

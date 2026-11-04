@@ -1,4 +1,9 @@
-import type { AttachmentInfo, TranscriptBlock, TranscriptMessage, UsageSummary } from "../shared/protocol.ts";
+import type {
+	AttachmentInfo,
+	TranscriptBlock,
+	TranscriptMessage,
+	UsageSummary,
+} from "../shared/protocol.ts";
 import { noticeFor } from "../shared/protocol.ts";
 import type { LogEntry } from "./log.ts";
 import { TOOL_LABELS } from "./tools.ts";
@@ -56,7 +61,12 @@ export function buildTranscript(
 				if (part.type === "text" && part.text) {
 					current.blocks.push({ kind: "text", text: part.text });
 				} else if (part.type === "toolCall") {
-					const block = { kind: "tool" as const, id: part.id, label: TOOL_LABELS[part.name] ?? part.name, state: "running" as const };
+					const block = {
+						kind: "tool" as const,
+						id: part.id,
+						label: TOOL_LABELS[part.name] ?? part.name,
+						state: "running" as const,
+					};
 					current.blocks.push(block);
 					toolBlocks.set(part.id, block);
 				}
@@ -87,7 +97,10 @@ export function usageOf(entries: LogEntry[]): UsageSummary {
 	return total;
 }
 
-export function titleOf(entries: LogEntry[], attachmentInfo: (id: string) => AttachmentInfo | undefined): string {
+export function titleOf(
+	entries: LogEntry[],
+	attachmentInfo: (id: string) => AttachmentInfo | undefined,
+): string {
 	for (const entry of entries) {
 		if (entry.type !== "message" || entry.message.role !== "user") continue;
 		const text = entry.display?.text.trim().replace(/\s+/g, " ");

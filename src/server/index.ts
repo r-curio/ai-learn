@@ -26,15 +26,23 @@ export function chooseEngine(): Engine {
 /** Start the server on loopback only. Port 0 picks any free port. */
 export function startServer(options: StartOptions): Promise<RunningServer> {
 	const token = options.token ?? randomBytes(32).toString("hex");
-	const app = createApp({ engine: options.engine ?? chooseEngine(), dataDir: options.dataDir, token, webRoot: options.webRoot });
+	const app = createApp({
+		engine: options.engine ?? chooseEngine(),
+		dataDir: options.dataDir,
+		token,
+		webRoot: options.webRoot,
+	});
 	return new Promise((resolve, reject) => {
-		const server: ServerType = serve({ fetch: app.fetch, hostname: "127.0.0.1", port: options.port ?? 0 }, (info) => {
-			resolve({
-				port: (info).port,
-				token,
-				close: () => new Promise((done) => server.close(() => done())),
-			});
-		});
+		const server: ServerType = serve(
+			{ fetch: app.fetch, hostname: "127.0.0.1", port: options.port ?? 0 },
+			(info) => {
+				resolve({
+					port: info.port,
+					token,
+					close: () => new Promise((done) => server.close(() => done())),
+				});
+			},
+		);
 		server.once("error", reject);
 	});
 }

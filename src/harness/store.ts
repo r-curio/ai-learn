@@ -39,9 +39,13 @@ export class SessionStore {
 	async list(): Promise<SessionSummary[]> {
 		const ids = await readdir(join(this.dataDir, "sessions")).catch(() => [] as string[]);
 		const summaries = await Promise.all(
-			ids.filter((id) => SESSION_ID.test(id)).map((id) => readSummary(this.engine, this.dataDir, id)),
+			ids
+				.filter((id) => SESSION_ID.test(id))
+				.map((id) => readSummary(this.engine, this.dataDir, id)),
 		);
-		return summaries.filter((summary) => summary !== undefined).sort((a, b) => b.updatedAt - a.updatedAt);
+		return summaries
+			.filter((summary) => summary !== undefined)
+			.sort((a, b) => b.updatedAt - a.updatedAt);
 	}
 
 	async delete(id: string): Promise<boolean> {

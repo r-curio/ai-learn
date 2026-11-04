@@ -1,4 +1,11 @@
-import type { AssistantMessage, ImageContent, Message, TextContent, ToolResultMessage, UserMessage } from "@earendil-works/pi-ai";
+import type {
+	AssistantMessage,
+	ImageContent,
+	Message,
+	TextContent,
+	ToolResultMessage,
+	UserMessage,
+} from "@earendil-works/pi-ai";
 import { appendFile, mkdir, readFile, truncate } from "node:fs/promises";
 import { dirname } from "node:path";
 import type { AttachmentStore } from "./attachments.ts";
@@ -49,7 +56,11 @@ export type StoredMessage =
 export class SessionLogError extends Error {}
 
 export function toStored(message: Message, attachments: AttachmentStore): StoredMessage {
-	if ((message.role !== "user" && message.role !== "toolResult") || typeof message.content === "string") return message as StoredMessage;
+	if (
+		(message.role !== "user" && message.role !== "toolResult") ||
+		typeof message.content === "string"
+	)
+		return message as StoredMessage;
 	return {
 		...message,
 		content: message.content.map((part): StoredContent => {
@@ -61,13 +72,18 @@ export function toStored(message: Message, attachments: AttachmentStore): Stored
 }
 
 export function fromStored(stored: StoredMessage, attachments: AttachmentStore): Message {
-	if ((stored.role !== "user" && stored.role !== "toolResult") || typeof stored.content === "string") return stored as Message;
+	if (
+		(stored.role !== "user" && stored.role !== "toolResult") ||
+		typeof stored.content === "string"
+	)
+		return stored as Message;
 	return {
 		...stored,
-		content: (stored.content).map((part) => {
+		content: stored.content.map((part) => {
 			if (part.type !== "image" || !("attachmentId" in part)) return part;
 			const data = attachments.imageData(part.attachmentId);
-			if (data === undefined) throw new SessionLogError(`A saved image is missing: ${part.attachmentId}`);
+			if (data === undefined)
+				throw new SessionLogError(`A saved image is missing: ${part.attachmentId}`);
 			return { type: "image", data, mimeType: part.mimeType };
 		}),
 	};
@@ -93,7 +109,8 @@ export async function readLog(path: string): Promise<LogEntry[]> {
 		});
 	const header = entries[0];
 	if (header?.type !== "header") throw new SessionLogError("Session log has no header.");
-	if (header.version > LOG_VERSION) throw new SessionLogError("This session was saved by a newer version of ai-learn.");
+	if (header.version > LOG_VERSION)
+		throw new SessionLogError("This session was saved by a newer version of ai-learn.");
 	return entries;
 }
 

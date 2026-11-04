@@ -12,7 +12,9 @@ export interface Engine {
 
 export const DEFAULT_MODEL_ID = "claude-opus-5-5";
 
-export function createClaudeEngine(modelId = process.env.AI_LEARN_MODEL ?? DEFAULT_MODEL_ID): Engine {
+export function createClaudeEngine(
+	modelId = process.env.AI_LEARN_MODEL ?? DEFAULT_MODEL_ID,
+): Engine {
 	const models = createModels();
 	models.setProvider(anthropicProvider());
 	const model = models.getModel("anthropic", modelId);

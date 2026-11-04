@@ -1,7 +1,14 @@
 import assert from "node:assert/strict";
 import { readdir } from "node:fs/promises";
 import { test } from "node:test";
-import { AttachmentError, AttachmentStore, detectType, INLINE_TEXT_CHARS, MAX_IMAGE_BYTES, sanitizeName } from "../src/harness/attachments.ts";
+import {
+	AttachmentError,
+	AttachmentStore,
+	detectType,
+	INLINE_TEXT_CHARS,
+	MAX_IMAGE_BYTES,
+	sanitizeName,
+} from "../src/harness/attachments.ts";
 import { makePdf, PNG, tempDir } from "./helpers.ts";
 
 const encode = (text: string) => new TextEncoder().encode(text);
@@ -39,23 +46,39 @@ test("PDF text is extracted page by page", async () => {
 	const store = new AttachmentStore(await tempDir());
 	const info = await store.add("doc.pdf", makePdf("Mitochondria make energy"));
 	const [block] = store.toContent([info.id]);
-	assert.ok(block?.type === "text" && block.text.includes("[Page 1]") && block.text.includes("Mitochondria make energy"));
+	assert.ok(
+		block?.type === "text" &&
+			block.text.includes("[Page 1]") &&
+			block.text.includes("Mitochondria make energy"),
+	);
 });
 
 test("a PDF with no text is refused with a clear reason", async () => {
 	const store = new AttachmentStore(await tempDir());
-	await assert.rejects(store.add("scan.pdf", makePdf(" ")), (error: AttachmentError) => error.status === 422 && /Scanned/.test(error.message));
+	await assert.rejects(
+		store.add("scan.pdf", makePdf(" ")),
+		(error: AttachmentError) => error.status === 422 && /Scanned/.test(error.message),
+	);
 });
 
 test("a corrupt PDF is refused", async () => {
 	const store = new AttachmentStore(await tempDir());
-	await assert.rejects(store.add("bad.pdf", encode("%PDF-garbage")), (error: AttachmentError) => error.status === 422);
+	await assert.rejects(
+		store.add("bad.pdf", encode("%PDF-garbage")),
+		(error: AttachmentError) => error.status === 422,
+	);
 });
 
 test("unsupported, empty, and oversized files are refused", async () => {
 	const store = new AttachmentStore(await tempDir());
-	await assert.rejects(store.add("a.bin", new Uint8Array([1, 0])), (error: AttachmentError) => error.status === 415);
-	await assert.rejects(store.add("a.txt", new Uint8Array()), (error: AttachmentError) => error.status === 400);
+	await assert.rejects(
+		store.add("a.bin", new Uint8Array([1, 0])),
+		(error: AttachmentError) => error.status === 415,
+	);
+	await assert.rejects(
+		store.add("a.txt", new Uint8Array()),
+		(error: AttachmentError) => error.status === 400,
+	);
 	const big = new Uint8Array(MAX_IMAGE_BYTES + 1);
 	big.set(PNG);
 	await assert.rejects(store.add("big.png", big), (error: AttachmentError) => error.status === 413);
@@ -67,7 +90,11 @@ test("long text is cut off inline with a pointer, and the rest stays readable", 
 	const [block] = store.toContent([info.id]);
 	assert.ok(block?.type === "text" && block.text.includes(`offset ${INLINE_TEXT_CHARS}`));
 	const [rest] = store.read(info.id, INLINE_TEXT_CHARS);
-	assert.ok(rest?.type === "text" && rest.text.startsWith("THE END") && rest.text.includes("End of attachment"));
+	assert.ok(
+		rest?.type === "text" &&
+			rest.text.startsWith("THE END") &&
+			rest.text.includes("End of attachment"),
+	);
 });
 
 test("a file can't close its own attachment tag", async () => {

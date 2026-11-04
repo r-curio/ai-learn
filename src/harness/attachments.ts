@@ -35,14 +35,20 @@ function startsWith(bytes: Uint8Array, signature: number[], offset = 0): boolean
 }
 
 /** Identify a file by its contents. The name and browser-supplied type are not trusted. */
-export function detectType(bytes: Uint8Array): { kind: AttachmentKind; mimeType: string } | undefined {
+export function detectType(
+	bytes: Uint8Array,
+): { kind: AttachmentKind; mimeType: string } | undefined {
 	if (startsWith(bytes, [0x89, 0x50, 0x4e, 0x47])) return { kind: "image", mimeType: "image/png" };
 	if (startsWith(bytes, [0xff, 0xd8, 0xff])) return { kind: "image", mimeType: "image/jpeg" };
 	if (startsWith(bytes, [0x47, 0x49, 0x46, 0x38])) return { kind: "image", mimeType: "image/gif" };
-	if (startsWith(bytes, [0x52, 0x49, 0x46, 0x46]) && startsWith(bytes, [0x57, 0x45, 0x42, 0x50], 8)) {
+	if (
+		startsWith(bytes, [0x52, 0x49, 0x46, 0x46]) &&
+		startsWith(bytes, [0x57, 0x45, 0x42, 0x50], 8)
+	) {
 		return { kind: "image", mimeType: "image/webp" };
 	}
-	if (startsWith(bytes, [0x25, 0x50, 0x44, 0x46, 0x2d])) return { kind: "pdf", mimeType: "application/pdf" };
+	if (startsWith(bytes, [0x25, 0x50, 0x44, 0x46, 0x2d]))
+		return { kind: "pdf", mimeType: "application/pdf" };
 	if (bytes.includes(0)) return undefined;
 	try {
 		new TextDecoder("utf-8", { fatal: true }).decode(bytes);
@@ -56,24 +62,37 @@ export function sanitizeName(raw: string): string {
 	const base = raw.split(/[/\\]/).at(-1) ?? "";
 	// Control characters are exactly what this removes from names.
 	// eslint-disable-next-line no-control-regex
-	const clean = base.replace(/[\u0000-\u001f\u007f<>"&']/g, "").trim().slice(0, 120);
+	const clean = base
+		.replace(/[\u0000-\u001f\u007f<>"&']/g, "")
+		.trim()
+		.slice(0, 120);
 	return clean || "attachment";
 }
 
 async function extractPdfText(bytes: Uint8Array): Promise<string> {
 	const { getDocument, VerbosityLevel } = await import("pdfjs-dist/legacy/build/pdf.mjs");
 	// pdf.js takes ownership of the buffer it is given, so hand it a copy.
-	const task = getDocument({ data: bytes.slice(), verbosity: VerbosityLevel.ERRORS, disableFontFace: true });
+	const task = getDocument({
+		data: bytes.slice(),
+		verbosity: VerbosityLevel.ERRORS,
+		disableFontFace: true,
+	});
 	const document = await task.promise;
 	try {
 		if (document.numPages > MAX_PDF_PAGES) {
-			throw new AttachmentError(413, `This PDF has ${document.numPages} pages. The limit is ${MAX_PDF_PAGES}.`);
+			throw new AttachmentError(
+				413,
+				`This PDF has ${document.numPages} pages. The limit is ${MAX_PDF_PAGES}.`,
+			);
 		}
 		const pages: string[] = [];
 		for (let number = 1; number <= document.numPages; number++) {
 			const page = await document.getPage(number);
 			const content = await page.getTextContent();
-			const text = content.items.map((item) => ("str" in item ? item.str + (item.hasEOL ? "\n" : " ") : "")).join("").trim();
+			const text = content.items
+				.map((item) => ("str" in item ? item.str + (item.hasEOL ? "\n" : " ") : ""))
+				.join("")
+				.trim();
 			pages.push(`[Page ${number}]\n${text}`);
 			page.cleanup();
 		}
@@ -110,19 +129,28 @@ export class AttachmentStore {
 	async add(rawName: string, bytes: Uint8Array): Promise<AttachmentInfo> {
 		const name = sanitizeName(rawName);
 		if (bytes.length === 0) throw new AttachmentError(400, `${name} is empty.`);
-		if (bytes.length > MAX_FILE_BYTES) throw new AttachmentError(413, `${name} is over the 25 MB limit.`);
+		if (bytes.length > MAX_FILE_BYTES)
+			throw new AttachmentError(413, `${name} is over the 25 MB limit.`);
 		const type = detectType(bytes);
-		if (!type) throw new AttachmentError(415, `${name} isn't a supported file. Use an image, a PDF, or a text file.`);
+		if (!type)
+			throw new AttachmentError(
+				415,
+				`${name} isn't a supported file. Use an image, a PDF, or a text file.`,
+			);
 
 		const id = randomUUID();
 		const stored: Stored = { id, name, kind: type.kind, size: bytes.length };
 		if (type.kind === "image") {
-			if (bytes.length > MAX_IMAGE_BYTES) throw new AttachmentError(413, `${name} is over the 5 MB image limit.`);
+			if (bytes.length > MAX_IMAGE_BYTES)
+				throw new AttachmentError(413, `${name} is over the 5 MB image limit.`);
 			stored.image = { data: Buffer.from(bytes).toString("base64"), mimeType: type.mimeType };
 		} else if (type.kind === "pdf") {
 			const text = await this.readPdf(name, bytes);
 			if (!/\S/.test(text.replace(/\[Page \d+\]/g, ""))) {
-				throw new AttachmentError(422, `${name} has no readable text. Scanned PDFs aren't supported yet.`);
+				throw new AttachmentError(
+					422,
+					`${name} has no readable text. Scanned PDFs aren't supported yet.`,
+				);
 			}
 			stored.text = text;
 		} else {
@@ -199,10 +227,14 @@ export class AttachmentStore {
 	read(id: string, offset = 0, limit = INLINE_TEXT_CHARS): (TextContent | ImageContent)[] {
 		const item = this.items.get(id);
 		if (!item) throw new Error(`Unknown attachment: ${id}`);
-		if (item.image) return [{ type: "image", data: item.image.data, mimeType: item.image.mimeType }];
+		if (item.image)
+			return [{ type: "image", data: item.image.data, mimeType: item.image.mimeType }];
 		const text = item.text ?? "";
 		const end = Math.min(offset + limit, text.length);
-		const more = end < text.length ? `\n[Continues. Next offset: ${end}. Total: ${text.length} characters.]` : "\n[End of attachment.]";
+		const more =
+			end < text.length
+				? `\n[Continues. Next offset: ${end}. Total: ${text.length} characters.]`
+				: "\n[End of attachment.]";
 		return [{ type: "text", text: text.slice(offset, end) + more }];
 	}
 }
