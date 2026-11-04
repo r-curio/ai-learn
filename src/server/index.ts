@@ -1,6 +1,5 @@
 import { serve, type ServerType } from "@hono/node-server";
 import { randomBytes } from "node:crypto";
-import type { AddressInfo } from "node:net";
 import { createClaudeEngine, type Engine } from "../harness/engine.ts";
 import { createDemoEngine } from "../harness/fake-engine.ts";
 import { createApp } from "./app.ts";

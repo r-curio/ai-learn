@@ -1,4 +1,3 @@
-import type { StreamFn } from "@earendil-works/pi-agent-core";
 import {
 	createModels,
 	fauxAssistantMessage,
@@ -7,7 +6,6 @@ import {
 	type FauxProviderHandle,
 	type FauxResponseFactory,
 	type FauxResponseStep,
-	type Model,
 } from "@earendil-works/pi-ai";
 import type { Engine } from "./engine.ts";
 
