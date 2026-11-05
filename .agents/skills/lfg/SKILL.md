@@ -94,16 +94,16 @@ root="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
 
 First remove leftovers: for each worktree in `$root/.worktrees/` whose PR is merged, run `git -C "$root" worktree remove <path>`, which refuses if there are uncommitted changes. Ignored files are deleted without warning, so ask first if it has a `data/` folder with chats in it. Skip it and tell the owner if `git worktree list` shows another worktree nested inside it.
 
-Name the branch `<type>/<n>-<slug>`, like `feat/17-composer-web`, with the type `feat`, `fix`, `docs`, `refactor`, `test`, or `chore`. Reuse a clean worktree for the same issue. Run this as one command, and use the worktree's absolute path after it:
+Name the branch `<type>/<n>-<slug>`, like `feat/17-composer-web`, with the type `feat`, `fix`, `docs`, `refactor`, `test`, or `chore`. Reuse a clean worktree for the same issue. Run this as one command with a 5-minute timeout, and use the worktree's absolute path after it. If it fails, stop and look at why, because rerunning it hits the branch it already made:
 
 ```bash
 root="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
-git -C "$root" fetch origin main
-git -C "$root" worktree add --no-track -b <branch> "$root/.worktrees/<n>-<slug>" origin/main
-cd "$root/.worktrees/<n>-<slug>"
-ln -s ../../.env.local .env.local
-npm ci
-node node_modules/electron/install.js
+git -C "$root" fetch origin main &&
+  git -C "$root" worktree add --no-track -b <branch> "$root/.worktrees/<n>-<slug>" origin/main &&
+  cd "$root/.worktrees/<n>-<slug>" &&
+  ln -s ../../.env.local .env.local &&
+  npm ci &&
+  node node_modules/electron/install.js
 ```
 
 Use `npm ci`, not `npm install`, so the lockfile stays put. Electron downloads its binary in that separate last step, and the desktop app won't start without it. If another `/lfg` branch is open, compare your plan's files with `git diff --stat origin/main...<branch>`, and tell the owner about any overlap, since those PRs will conflict.
