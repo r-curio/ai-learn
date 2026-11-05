@@ -1,4 +1,5 @@
 import type { EngineStatus, UsageSummary } from "../shared/protocol.ts";
+import { Button } from "./components/Button.tsx";
 
 function formatCost(usage: UsageSummary): string {
 	const total = (usage.inputTokens + usage.outputTokens).toLocaleString();
@@ -14,16 +15,17 @@ interface TopBarProps {
 
 export function TopBar({ status, usage, sidebarOpen, onToggleSidebar }: TopBarProps) {
 	return (
-		<header className="topbar">
-			<button
-				type="button"
-				className="button-quiet sidebar-toggle"
+		<header className="flex min-h-[45px] items-center justify-end gap-4 border-b border-line px-5 py-[9px] text-[13px] max-md:justify-between max-md:px-4">
+			<Button
+				variant="quiet"
+				size="xs"
+				className="hidden max-md:block"
 				onClick={onToggleSidebar}
 				aria-expanded={sidebarOpen}
 			>
 				Chats
-			</button>
-			<span className="meta">
+			</Button>
+			<span className="text-right text-muted tabular-nums">
 				{status?.model}
 				{usage ? ` · ${formatCost(usage)}` : ""}
 			</span>

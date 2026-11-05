@@ -76,6 +76,16 @@ Files in a subfolder count toward that subfolder, not its parent. `tests/fixture
 
 `npm run check:deps` enforces these rules and blocks circular imports.
 
+## UI styling and components
+
+We follow the [Next.js guidance](https://nextjs.org/docs/app/getting-started/css) on CSS.
+
+- **Tailwind classes** are the default for styling. Colours come only from the tokens in `src/web/globals.css`, and the default palette is switched off.
+- **`src/web/globals.css`** is the only global stylesheet, imported once in `main.tsx`. Add to it only what applies to the whole app.
+- **CSS Modules** (`name.module.css`) are for what classes can't reach, like Markdown output.
+
+Put a component in `src/web/components/` when more than one feature could use it and it knows nothing about any feature. Everything else stays in its feature folder, like `chat/` or `composer/`.
+
 ## Tools
 
 Run everything CI runs with `npm run check`. Hooks install with `npm install`.
