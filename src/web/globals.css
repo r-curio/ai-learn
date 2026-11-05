@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
 /* The dark theme follows the system unless a light theme is forced, like the tokens below. */
 @custom-variant dark {
@@ -9,41 +10,60 @@
 	}
 }
 
-/* shadcn's names, so its components work unedited. `accent` and `muted` are pale backgrounds. */
+/* Radix marks open and closed with `data-state`, and shadcn's classes use these shorter names. */
+@custom-variant data-open (&:where([data-state="open"]));
+@custom-variant data-closed (&:where([data-state="closed"]));
+
+/* The M1 colours, under shadcn's names so its components work unedited. DESIGN.md lists each role. */
 :root {
-	--background: #faf9f6;
-	--foreground: #1d1c19;
+	--background: #f6f6f9;
+	--foreground: #23243a;
 	--card: #ffffff;
 	--card-foreground: var(--foreground);
-	--popover: var(--card);
+	--popover: #ffffff;
 	--popover-foreground: var(--foreground);
-	--primary: #1f5f4a;
+	--primary: #5b5fc7;
 	--primary-foreground: #ffffff;
-	--secondary: #eeece5;
+	--secondary: #e4e4ec;
 	--secondary-foreground: var(--foreground);
-	--muted: var(--secondary);
-	--muted-foreground: #6e6b63;
-	--accent: var(--secondary);
+	--muted: #ececf2;
+	--muted-foreground: #5e6078;
+	--accent: #e6e7f7;
 	--accent-foreground: var(--foreground);
-	--destructive: #a8321f;
-	--destructive-muted: #fbeeea;
-	--border: #e3e0d8;
+	--warning: #9a6400;
+	--destructive: #c9372c;
+	--destructive-muted: color-mix(in oklch, var(--destructive) 10%, transparent);
+	--border: #dedeea;
 	--input: var(--border);
 	--ring: var(--primary);
+	--rail: #ececf2;
+	--sidebar: #f0f0f5;
+	--sidebar-foreground: var(--foreground);
+	--sidebar-accent: var(--card);
+	--sidebar-accent-foreground: var(--foreground);
+	--sidebar-border: var(--border);
+	--sidebar-ring: var(--ring);
+	--shadow-popover-value: 0 4px 16px rgb(35 36 58 / 0.1);
 }
 
 @media (prefers-color-scheme: dark) {
 	:root:not([data-theme="light"]) {
-		--background: #171715;
-		--foreground: #ecebe6;
-		--card: #21211e;
-		--primary: #7cc7a9;
-		--primary-foreground: #10231c;
-		--secondary: #2a2a26;
-		--muted-foreground: #a3a097;
-		--destructive: #f09a86;
-		--destructive-muted: #3a211b;
-		--border: #363530;
+		--background: #1f2030;
+		--foreground: #e6e7f5;
+		--card: #2a2b40;
+		--popover: #191a28;
+		--primary: #c9ccf5;
+		--primary-foreground: #1f2030;
+		--secondary: #14151f;
+		--muted: #35375a;
+		--muted-foreground: #a3a5c0;
+		--accent: #35375a;
+		--warning: #f2b84b;
+		--destructive: #f2786d;
+		--border: #3a3c58;
+		--rail: #191a28;
+		--sidebar: #1c1d2c;
+		--shadow-popover-value: none;
 	}
 }
 
@@ -64,22 +84,103 @@
 	--color-muted-foreground: var(--muted-foreground);
 	--color-accent: var(--accent);
 	--color-accent-foreground: var(--accent-foreground);
+	--color-warning: var(--warning);
 	--color-destructive: var(--destructive);
 	--color-destructive-muted: var(--destructive-muted);
 	--color-border: var(--border);
 	--color-input: var(--input);
 	--color-ring: var(--ring);
+	--color-rail: var(--rail);
+	--color-sidebar: var(--sidebar);
+	--color-sidebar-foreground: var(--sidebar-foreground);
+	--color-sidebar-accent: var(--sidebar-accent);
+	--color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+	--color-sidebar-border: var(--sidebar-border);
+	--color-sidebar-ring: var(--sidebar-ring);
 
-	--font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+	--font-sans: "Inter Variable", system-ui, sans-serif;
+
+	--radius-xs: 5px;
+	--radius-sm: 6px;
+	--radius-md: 8px;
+	--radius-lg: 10px;
+	--radius-xl: 12px;
+	--radius-2xl: 16px;
+	--radius-3xl: 20px;
+
+	--shadow-popover: var(--shadow-popover-value);
 
 	--breakpoint-md: 721px;
+
+	--ease-fluid: cubic-bezier(0.16, 1, 0.3, 1);
+	--ease-exit: cubic-bezier(0.4, 0, 1, 1);
+
+	/* Damped springs sampled over 250ms, from the stiffness/damping/mass settings in DESIGN.md. */
+	--ease-spring-pop: linear(
+		0,
+		0.0915,
+		0.2683,
+		0.4492,
+		0.6032,
+		0.723,
+		0.8113,
+		0.8741,
+		0.9175,
+		0.9469,
+		0.9665,
+		0.9794,
+		0.9877,
+		0.9931,
+		0.9965,
+		0.9987,
+		1
+	);
+	--ease-spring-highlight: linear(
+		0,
+		0.1101,
+		0.2951,
+		0.4654,
+		0.6021,
+		0.7067,
+		0.7852,
+		0.8437,
+		0.8872,
+		0.9194,
+		0.9432,
+		0.9609,
+		0.9739,
+		0.9836,
+		0.9908,
+		0.9961,
+		1
+	);
+	--ease-spring-confirm: linear(
+		0,
+		0.0974,
+		0.2747,
+		0.4478,
+		0.5916,
+		0.7032,
+		0.7868,
+		0.8483,
+		0.893,
+		0.9254,
+		0.9487,
+		0.9655,
+		0.9775,
+		0.9862,
+		0.9924,
+		0.9968,
+		1
+	);
 }
 
 @layer base {
 	:root {
 		color-scheme: light dark;
 		font-size: 16px;
-		line-height: 1.55;
+		scrollbar-color: var(--border) transparent;
+		scrollbar-width: thin;
 	}
 
 	html,
@@ -91,14 +192,58 @@
 	body {
 		background: var(--background);
 		color: var(--foreground);
+		font-family: var(--font-sans);
+		font-size: 15px;
+		line-height: 24px;
+		font-synthesis: none;
+		-webkit-font-smoothing: antialiased;
+		-moz-osx-font-smoothing: grayscale;
+	}
+
+	::selection {
+		background: var(--accent);
+		color: var(--foreground);
 	}
 
 	button {
 		cursor: pointer;
+	}
+
+	/* Anything inside a draggable title bar area still has to take clicks. */
+	button,
+	a,
+	input,
+	textarea {
+		-webkit-app-region: no-drag;
 	}
 }
 
 /* The width the chat and the composer share, so they always line up. */
 @utility chat-column {
 	@apply mx-auto w-full max-w-[760px] px-5 max-md:px-4;
+}
+
+/* The app has no native title bar, so these areas move the window instead. */
+@utility app-drag {
+	-webkit-app-region: drag;
+}
+
+/* The press and colour response every button shares. See Motion in DESIGN.md. */
+@utility motion-press {
+	transition:
+		color 150ms ease-out,
+		background-color 150ms ease-out,
+		border-color 150ms ease-out,
+		opacity 150ms ease-out,
+		scale 250ms var(--ease-spring-highlight);
+}
+
+/* The sidebar and the space it holds open move together, so the chat glides with them. */
+@utility motion-surface {
+	transition-duration: 300ms;
+	transition-timing-function: var(--ease-fluid);
+
+	@media (prefers-reduced-motion: reduce) {
+		transition-duration: 0ms;
+	}
 }

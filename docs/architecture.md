@@ -42,6 +42,8 @@ Files and SQLite index       Model provider, through Pi
 
 Both modes keep session logs as plain files. The session index, a SQLite file beside them, serves the chat list and can always be rebuilt from them.
 
+Preferences live in `preferences.json` in the same folder. The desktop app's server gets a new port on each launch, and browser storage is tied to the port, so anything that must last between launches goes through the server.
+
 [How sessions are saved](sessions.md) covers the session log and crash recovery in detail.
 
 ## Security boundaries

@@ -88,6 +88,10 @@ _Avoid_: Provider, backend
 A scripted stand-in for a real model, used for tests and trying the app at no cost.
 _Avoid_: Mock, stub
 
+**Preferences**:
+Settings the learner chooses, like whether the sidebar is open, saved in the app's data folder.
+_Avoid_: Settings file, config
+
 ## Working on the repo
 
 **Proof**:

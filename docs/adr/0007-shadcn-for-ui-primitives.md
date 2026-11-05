@@ -12,4 +12,4 @@ The palette stays locked, so a new component that uses a Tailwind colour like `b
 
 Class conflicts are now resolved by `cn`, which replaces the rule in ADR 0006 that a component sets each property once per variant.
 
-shadcn's `sidebar` is 709 lines, over the 400-line limit, so the sidebar shell stays hand-built.
+shadcn's `sidebar` is 709 lines, over the 400-line limit, so the sidebar shell stays hand-built. ADR 0008 replaces this with a cut-down copy of shadcn's sidebar.

@@ -11,6 +11,7 @@ import type { Session } from "../harness/sessions/session.ts";
 import { SessionBusyError, SessionStateError } from "../harness/sessions/session.ts";
 import { SessionStore } from "../harness/sessions/store.ts";
 import type { RunEvent } from "../shared/protocol.ts";
+import { preferencesInput, readPreferences, writePreferences } from "./preferences.ts";
 import { SessionLogError } from "../harness/sessions/log.ts";
 
 export interface AppOptions {
@@ -94,6 +95,15 @@ export function createApp({ engine, dataDir, token, webRoot }: AppOptions): Hono
 	});
 
 	app.get("/api/status", (c) => c.json(engine.status()));
+
+	app.get("/api/preferences", async (c) => c.json(await readPreferences(dataDir)));
+
+	app.put("/api/preferences", async (c) => {
+		const parsed = preferencesInput.safeParse(await c.req.json().catch(() => undefined));
+		if (!parsed.success) return c.json({ error: "Invalid preferences." }, 400);
+		await writePreferences(dataDir, parsed.data);
+		return c.json(parsed.data);
+	});
 
 	app.get("/api/sessions", async (c) => c.json(await store.list()));
 

@@ -27,6 +27,11 @@ export type RunEvent =
 			sessionUsage: UsageSummary;
 	  };
 
+/** Settings the learner chooses, kept in the data folder so they survive a restart. */
+export interface Preferences {
+	sidebarOpen: boolean;
+}
+
 export interface EngineStatus {
 	ready: boolean;
 	model: string;
