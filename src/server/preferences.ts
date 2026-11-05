@@ -2,9 +2,16 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
-import type { Preferences } from "../shared/protocol.ts";
+import { EFFORTS, type Preferences } from "../shared/protocol.ts";
 
-export const preferencesInput = z.object({ sidebarOpen: z.boolean() });
+const savedPreferences = z.object({
+	sidebarOpen: z.boolean(),
+	model: z.object({ provider: z.string(), id: z.string() }).optional(),
+	effort: z.enum(EFFORTS).optional(),
+});
+
+/** Each setting saves on its own, so one change can't undo another. */
+export const preferencesInput = savedPreferences.partial();
 
 const DEFAULTS: Preferences = { sidebarOpen: true };
 const FILE_NAME = "preferences.json";
@@ -13,7 +20,7 @@ const FILE_NAME = "preferences.json";
 export async function readPreferences(dataDir: string): Promise<Preferences> {
 	try {
 		const raw: unknown = JSON.parse(await readFile(join(dataDir, FILE_NAME), "utf8"));
-		return preferencesInput.parse(raw);
+		return savedPreferences.parse(raw);
 	} catch {
 		return DEFAULTS;
 	}

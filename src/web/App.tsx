@@ -7,9 +7,7 @@ import { useFileDrop } from "./composer/useFileDrop.ts";
 import { useModelChoice } from "./composer/useModelChoice.ts";
 import { SidebarInset, SidebarProvider } from "./components/sidebar.tsx";
 import { ChatSidebar } from "./shell/ChatSidebar.tsx";
-import { ProvidersView } from "./settings/ProvidersView.tsx";
-import { useProviders } from "./settings/useProviders.ts";
-import { Rail, type RailView } from "./shell/Rail.tsx";
+import { Rail } from "./shell/Rail.tsx";
 import { TopBar } from "./shell/TopBar.tsx";
 import { useSidebarPreference } from "./shell/useSidebarPreference.ts";
 
@@ -18,9 +16,6 @@ export function App() {
 	const sidebar = useSidebarPreference();
 	const textArea = useRef<HTMLTextAreaElement>(null);
 	const files = useDrafts();
-	const [view, setView] = useState<RailView>("chat");
-	const providers = useProviders();
-	const modelChoice = useModelChoice(providers.connected);
 	const { clearDrafts, addFiles } = files;
 
 	const onChatChange = useCallback(() => {
@@ -30,6 +25,7 @@ export function App() {
 	const onReady = useCallback(() => textArea.current?.focus(), []);
 	const chat = useChat({ onChatChange, onReady });
 	const { sessionId, status, running } = chat;
+	const modelChoice = useModelChoice(status);
 	const setupNeeded = status?.ready === false;
 
 	const attach = useCallback(
@@ -44,7 +40,7 @@ export function App() {
 
 	function send() {
 		if (!canSend) return;
-		chat.send(text, files.attachments);
+		chat.send(text, files.attachments, modelChoice.selection);
 		setText("");
 		clearDrafts();
 	}
@@ -67,65 +63,53 @@ export function App() {
 			className="relative"
 			open={sidebar.open}
 			onOpenChange={onSidebarChange}
-			{...(view === "chat" ? dropHandlers : {})}
+			{...dropHandlers}
 		>
-			<Rail view={view} onViewChange={setView} />
-			{view === "chat" && (
-				<ChatSidebar
-					sessions={chat.sessions}
-					activeId={sessionId}
-					onNewChatScreen={chat.messages.length === 0}
-					disabled={running}
-					onNewChat={() => void chat.startNewChat()}
-					onOpen={(id) => void chat.openSession(id)}
-					onDelete={(summary) => void chat.removeSession(summary)}
-				/>
-			)}
+			<Rail />
+			<ChatSidebar
+				sessions={chat.sessions}
+				activeId={sessionId}
+				onNewChatScreen={chat.messages.length === 0}
+				disabled={running}
+				onNewChat={() => void chat.startNewChat()}
+				onOpen={(id) => void chat.openSession(id)}
+				onDelete={(summary) => void chat.removeSession(summary)}
+			/>
 			<SidebarInset>
-				{view === "settings" ? (
-					<ProvidersView
-						connected={providers.connected}
-						available={providers.available}
-						onConnect={providers.connect}
-						onDisconnect={providers.disconnect}
+				<>
+					<TopBar
+						title={chat.sessions.find((summary) => summary.id === sessionId)?.title}
+						usage={chat.usage}
 					/>
-				) : (
-					<>
-						<TopBar
-							title={chat.sessions.find((summary) => summary.id === sessionId)?.title}
-							usage={chat.usage}
-						/>
-						<ChatView
-							status={status}
-							error={chat.error}
-							sessionId={sessionId}
-							messages={chat.messages}
-							running={running}
-							canRetry={chat.canRetry}
-							onRetry={() => {
-								if (status?.ready && !running) chat.retry();
-							}}
-						/>
-						<Composer
-							text={text}
-							onTextChange={setText}
-							textArea={textArea}
-							isNewChat={chat.messages.length === 0}
-							drafts={files.drafts}
-							canAttach={Boolean(sessionId) && !setupNeeded}
-							canSend={canSend}
-							running={running}
-							providers={providers.connected}
-							modelChoice={modelChoice}
-							onAddProvider={() => setView("settings")}
-							dimmed={setupNeeded}
-							onAddFiles={attach}
-							onRemoveDraft={files.removeDraft}
-							onSend={send}
-							onStop={chat.stop}
-						/>
-					</>
-				)}
+					<ChatView
+						status={status}
+						error={chat.error}
+						sessionId={sessionId}
+						messages={chat.messages}
+						running={running}
+						canRetry={chat.canRetry}
+						onRetry={() => {
+							if (status?.ready && !running) chat.retry(modelChoice.selection);
+						}}
+					/>
+					<Composer
+						text={text}
+						onTextChange={setText}
+						textArea={textArea}
+						isNewChat={chat.messages.length === 0}
+						drafts={files.drafts}
+						canAttach={Boolean(sessionId) && !setupNeeded}
+						canSend={canSend}
+						running={running}
+						providers={status?.providers ?? []}
+						modelChoice={modelChoice}
+						dimmed={setupNeeded}
+						onAddFiles={attach}
+						onRemoveDraft={files.removeDraft}
+						onSend={send}
+						onStop={chat.stop}
+					/>
+				</>
 			</SidebarInset>
 			{dragging && !setupNeeded && (
 				<div

@@ -2,26 +2,21 @@ import { cn } from "cn";
 import { CircleDot, House, MessageSquare, Share2, type LucideIcon } from "lucide-react";
 import { Button } from "../components/button.tsx";
 
-export type RailView = "chat" | "settings";
-
 function RailItem({
 	icon: Icon,
 	label,
 	active = false,
-	onClick,
 }: {
 	icon: LucideIcon;
 	label: string;
 	active?: boolean;
-	onClick?: () => void;
 }) {
 	return (
 		<Button
 			variant="ghost"
 			size="icon"
-			// Home and graphs have nowhere to go yet, so they're inert but keep their full colour.
-			disabled={!onClick}
-			onClick={active ? undefined : onClick}
+			// Only chat has somewhere to go so far. The rest are inert, but keep their full colour.
+			disabled={!active}
 			aria-label={label}
 			aria-current={active ? "page" : undefined}
 			className={cn(
@@ -35,13 +30,7 @@ function RailItem({
 }
 
 /** Always visible, and sits above the sidebar so the sidebar can slide away beneath it. */
-export function Rail({
-	view,
-	onViewChange,
-}: {
-	view: RailView;
-	onViewChange: (view: RailView) => void;
-}) {
+export function Rail() {
 	return (
 		<nav
 			aria-label="Sections"
@@ -50,20 +39,10 @@ export function Rail({
 			{/* The window's controls sit here on macOS. */}
 			<div className="h-11 w-full flex-none app-drag" />
 			<RailItem icon={House} label="Home" />
-			<RailItem
-				icon={MessageSquare}
-				label="Chats"
-				active={view === "chat"}
-				onClick={() => onViewChange("chat")}
-			/>
+			<RailItem icon={MessageSquare} label="Chats" active />
 			<RailItem icon={Share2} label="Graphs" />
 			<div className="flex-1" />
-			<RailItem
-				icon={CircleDot}
-				label="Settings"
-				active={view === "settings"}
-				onClick={() => onViewChange("settings")}
-			/>
+			<RailItem icon={CircleDot} label="Settings" />
 		</nav>
 	);
 }

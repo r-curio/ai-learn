@@ -1,9 +1,9 @@
 import { cn } from "cn";
 import type { ClipboardEvent, KeyboardEvent, RefObject } from "react";
+import type { ProviderOption } from "../../shared/protocol.ts";
 import { Textarea } from "../components/textarea.tsx";
 import { ComposerControls } from "./ComposerControls.tsx";
 import { DraftChip } from "./DraftChip.tsx";
-import type { ProviderOption } from "../settings/useProviders.ts";
 import type { Draft } from "./useDrafts.ts";
 import type { ModelChoice } from "./useModelChoice.ts";
 
@@ -21,7 +21,6 @@ interface ComposerProps {
 	running: boolean;
 	providers: ProviderOption[];
 	modelChoice: ModelChoice;
-	onAddProvider: () => void;
 	/** The app can't reply yet, so the composer dims and takes no input. */
 	dimmed: boolean;
 	onAddFiles: (files: File[]) => void;
@@ -32,7 +31,7 @@ interface ComposerProps {
 
 export function Composer(props: ComposerProps) {
 	const { text, onTextChange, textArea, isNewChat, drafts, canAttach, canSend, running } = props;
-	const { providers, modelChoice, onAddProvider, dimmed, onAddFiles, onRemoveDraft } = props;
+	const { providers, modelChoice, dimmed, onAddFiles, onRemoveDraft } = props;
 	const { onSend, onStop } = props;
 
 	function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
@@ -86,7 +85,6 @@ export function Composer(props: ComposerProps) {
 					providers={providers}
 					modelChoice={modelChoice}
 					menusDisabled={dimmed}
-					onAddProvider={onAddProvider}
 					onAddFiles={onAddFiles}
 					onStop={onStop}
 				/>

@@ -2,15 +2,15 @@ import { cn } from "cn";
 import { ChevronDown } from "lucide-react";
 import { Slider } from "radix-ui";
 import type { RefObject } from "react";
+import { EFFORTS, type Effort } from "../../shared/protocol.ts";
 import { Button } from "../components/button.tsx";
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "../components/popover.tsx";
 import { COMPOSER_MENU, MENU_TRIGGER } from "./ModelPicker.tsx";
-import type { Effort } from "../settings/useProviders.ts";
-import { ALL_EFFORTS, EFFORT_LABELS, type ModelChoice } from "./useModelChoice.ts";
+import { EFFORT_LABELS, type ModelChoice } from "./useModelChoice.ts";
 
 const KNOB_WIDTH = 62;
 const TRACK_PADDING = 3;
-const LAST_STOP = ALL_EFFORTS.length - 1;
+const LAST_STOP = EFFORTS.length - 1;
 
 /** Where a stop's centre sits, keeping in step with the knob, which stays inside the track. */
 function stopCentre(index: number) {
@@ -29,19 +29,19 @@ function trailWidth(index: number) {
  * would land straight back on Low.
  */
 function allowedStop(index: number, from: number, allowed: Effort[]) {
-	const stops = allowed.map((level) => ALL_EFFORTS.indexOf(level));
+	const stops = allowed.map((level) => EFFORTS.indexOf(level));
 	const stop =
 		index > from
 			? (stops.find((other) => other >= index) ?? stops.at(-1))
 			: (stops.findLast((other) => other <= index) ?? stops[0]);
-	return stop === undefined ? undefined : ALL_EFFORTS[stop];
+	return stop === undefined ? undefined : EFFORTS[stop];
 }
 
 /** A slider that only rests on named levels. The knob carries the current level's name. */
 function EffortSlider({ choice }: { choice: ModelChoice }) {
 	const { model, effort, setEffort } = choice;
 	if (!model || !effort) return null;
-	const value = ALL_EFFORTS.indexOf(effort);
+	const value = EFFORTS.indexOf(effort);
 
 	return (
 		<div className="relative rounded-full bg-secondary p-[3px]">
@@ -61,7 +61,7 @@ function EffortSlider({ choice }: { choice: ModelChoice }) {
 				}}
 				className="relative flex h-[34px] w-full touch-none items-center select-none motion-safe:[&>span:has([role=slider])]:transition-[left] motion-safe:[&>span:has([role=slider])]:duration-250 motion-safe:[&>span:has([role=slider])]:ease-spring-highlight"
 			>
-				{ALL_EFFORTS.map((level, index) => (
+				{EFFORTS.map((level, index) => (
 					<span
 						key={level}
 						aria-hidden="true"

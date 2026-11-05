@@ -1,5 +1,6 @@
 import { Check, ChevronDown } from "lucide-react";
 import { useState, type RefObject } from "react";
+import type { ModelOption, ProviderOption } from "../../shared/protocol.ts";
 import { Badge } from "../components/badge.tsx";
 import { Button } from "../components/button.tsx";
 import {
@@ -17,7 +18,6 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "../components/tooltip.tsx";
-import type { ModelOption, ProviderOption } from "../settings/useProviders.ts";
 import type { ModelChoice } from "./useModelChoice.ts";
 
 export const COMPOSER_MENU = { side: "top", align: "end", sideOffset: 6, alignOffset: -4 } as const;
@@ -136,17 +136,10 @@ interface ModelPickerProps {
 	/** The row the menu lines up with, so it stays put whichever button opened it. */
 	anchor: RefObject<HTMLDivElement | null>;
 	disabled: boolean;
-	onAddProvider: () => void;
 }
 
 /** Floats over the composer, and lists the models of every connected provider. */
-export function ModelPicker({
-	providers,
-	choice,
-	anchor,
-	disabled,
-	onAddProvider,
-}: ModelPickerProps) {
+export function ModelPicker({ providers, choice, anchor, disabled }: ModelPickerProps) {
 	const [open, setOpen] = useState(false);
 	const { model, chooseModel } = choice;
 
@@ -179,22 +172,9 @@ export function ModelPicker({
 					</TooltipProvider>
 				) : (
 					<p className="flex h-[72px] items-center justify-center text-[13px] leading-4 text-muted-foreground">
-						Add a provider to choose a model
+						No providers are connected
 					</p>
 				)}
-				<div className="flex h-10 items-center border-t border-border px-1.5">
-					<Button
-						variant="ghost"
-						size="xs"
-						className="h-7 px-2 font-medium text-primary hover:text-primary"
-						onClick={() => {
-							setOpen(false);
-							onAddProvider();
-						}}
-					>
-						Add provider
-					</Button>
-				</div>
 			</PopoverContent>
 		</Popover>
 	);

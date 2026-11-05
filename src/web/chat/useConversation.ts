@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import {
 	noticeFor,
 	type AttachmentInfo,
+	type ModelSelection,
 	type RunEvent,
 	type SessionView,
 	type TranscriptMessage,
@@ -70,7 +71,7 @@ export function useConversation(onRunEnd: () => void) {
 		}
 	}
 
-	function send(text: string, attachments: AttachmentInfo[]) {
+	function send(text: string, attachments: AttachmentInfo[], model?: ModelSelection) {
 		const replyId = makeKey();
 		const blocks: TranscriptMessage["blocks"] = text.trim() ? [{ kind: "text", text }] : [];
 		setMessages((current) => [
@@ -78,11 +79,11 @@ export function useConversation(onRunEnd: () => void) {
 			{ id: makeKey(), role: "user", blocks, attachments },
 			{ id: replyId, role: "assistant", blocks: [] },
 		]);
-		const body = { text, attachmentIds: attachments.map((attachment) => attachment.id) };
+		const body = { text, attachmentIds: attachments.map((attachment) => attachment.id), model };
 		void follow(replyId, (onEvent) => sendMessage(sessionId!, body, onEvent));
 	}
 
-	function retry() {
+	function retry(model?: ModelSelection) {
 		const tail = messages.at(-1);
 		const replyId = tail?.role === "assistant" ? tail.id : makeKey();
 		setMessages((current) => {
@@ -99,7 +100,7 @@ export function useConversation(onRunEnd: () => void) {
 					]
 				: [...current, { id: replyId, role: "assistant", blocks: [] }];
 		});
-		void follow(replyId, (onEvent) => retryRun(sessionId!, onEvent));
+		void follow(replyId, (onEvent) => retryRun(sessionId!, model, onEvent));
 	}
 
 	const stop = () => {

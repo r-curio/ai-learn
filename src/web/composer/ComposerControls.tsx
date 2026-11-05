@@ -1,8 +1,8 @@
 import { ArrowUp, Plus } from "lucide-react";
 import { useRef } from "react";
+import type { ProviderOption } from "../../shared/protocol.ts";
 import { Button } from "../components/button.tsx";
 import { IconButton } from "../components/IconButton.tsx";
-import type { ProviderOption } from "../settings/useProviders.ts";
 import { EffortMenu } from "./EffortMenu.tsx";
 import { ModelPicker } from "./ModelPicker.tsx";
 import type { ModelChoice } from "./useModelChoice.ts";
@@ -15,7 +15,6 @@ interface ComposerControlsProps {
 	modelChoice: ModelChoice;
 	/** The app can't reply yet, so there's nothing to choose for. */
 	menusDisabled: boolean;
-	onAddProvider: () => void;
 	onAddFiles: (files: File[]) => void;
 	onStop: () => void;
 }
@@ -23,7 +22,7 @@ interface ComposerControlsProps {
 /** The row under the message box: Attach on the left, then the menus and Send or Stop on the right. */
 export function ComposerControls(props: ComposerControlsProps) {
 	const { canAttach, canSend, running, providers, modelChoice, menusDisabled } = props;
-	const { onAddProvider, onAddFiles, onStop } = props;
+	const { onAddFiles, onStop } = props;
 	const fileInput = useRef<HTMLInputElement>(null);
 	const row = useRef<HTMLDivElement>(null);
 
@@ -54,7 +53,6 @@ export function ComposerControls(props: ComposerControlsProps) {
 					choice={modelChoice}
 					anchor={row}
 					disabled={menusDisabled}
-					onAddProvider={onAddProvider}
 				/>
 				<EffortMenu choice={modelChoice} anchor={row} disabled={menusDisabled} />
 				{running ? (

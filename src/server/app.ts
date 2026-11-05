@@ -10,7 +10,7 @@ import type { Engine } from "../harness/engine.ts";
 import type { Session } from "../harness/sessions/session.ts";
 import { SessionBusyError, SessionStateError } from "../harness/sessions/session.ts";
 import { SessionStore } from "../harness/sessions/store.ts";
-import type { RunEvent } from "../shared/protocol.ts";
+import { EFFORTS, type RunEvent } from "../shared/protocol.ts";
 import { preferencesInput, readPreferences, writePreferences } from "./preferences.ts";
 import { SessionLogError } from "../harness/sessions/log.ts";
 
@@ -23,10 +23,19 @@ export interface AppOptions {
 	webRoot?: string;
 }
 
+const modelSelection = z
+	.object({ provider: z.string(), id: z.string(), effort: z.enum(EFFORTS).optional() })
+	.optional();
+
 const messageInput = z.object({
 	text: z.string().max(200_000),
 	attachmentIds: z.array(z.string()).max(20).default([]),
+	model: modelSelection,
 });
+
+const retryInput = z.object({ model: modelSelection });
+
+const UNAVAILABLE_MODEL = "That model or effort isn't available.";
 
 const CSP =
 	"default-src 'self'; img-src 'self' blob: data:; style-src 'self' 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'";
@@ -94,15 +103,16 @@ export function createApp({ engine, dataDir, token, webRoot }: AppOptions): Hono
 		await next();
 	});
 
-	app.get("/api/status", (c) => c.json(engine.status()));
+	app.get("/api/status", async (c) => c.json(await engine.status()));
 
 	app.get("/api/preferences", async (c) => c.json(await readPreferences(dataDir)));
 
 	app.put("/api/preferences", async (c) => {
 		const parsed = preferencesInput.safeParse(await c.req.json().catch(() => undefined));
 		if (!parsed.success) return c.json({ error: "Invalid preferences." }, 400);
-		await writePreferences(dataDir, parsed.data);
-		return c.json(parsed.data);
+		const preferences = { ...(await readPreferences(dataDir)), ...parsed.data };
+		await writePreferences(dataDir, preferences);
+		return c.json(preferences);
 	});
 
 	app.get("/api/sessions", async (c) => c.json(await store.list()));
@@ -157,26 +167,36 @@ export function createApp({ engine, dataDir, token, webRoot }: AppOptions): Hono
 	app.post("/api/sessions/:id/messages", async (c) => {
 		const session = await store.get(c.req.param("id"));
 		if (!session) return c.json({ error: "Session not found." }, 404);
-		const status = engine.status();
+		const status = await engine.status();
 		if (!status.ready) return c.json({ error: status.reason }, 503);
 
 		const parsed = messageInput.safeParse(await c.req.json().catch(() => undefined));
 		if (!parsed.success) return c.json({ error: "Invalid message." }, 400);
-		const { text, attachmentIds } = parsed.data;
+		const { text, attachmentIds, model } = parsed.data;
 		if (!text.trim() && attachmentIds.length === 0)
 			return c.json({ error: "Message is empty." }, 400);
 		const unknown = attachmentIds.find((id) => !session.attachments.has(id));
 		if (unknown) return c.json({ error: "Unknown attachment." }, 400);
+		const choice = model && (await engine.resolve(model));
+		if (model && !choice) return c.json({ error: UNAVAILABLE_MODEL }, 400);
 
-		return streamRun(c, session, (onEvent) => session.send({ text, attachmentIds }, onEvent));
+		return streamRun(c, session, (onEvent) =>
+			session.send({ text, attachmentIds }, onEvent, choice),
+		);
 	});
 
 	app.post("/api/sessions/:id/retry", async (c) => {
 		const session = await store.get(c.req.param("id"));
 		if (!session) return c.json({ error: "Session not found." }, 404);
-		const status = engine.status();
+		const status = await engine.status();
 		if (!status.ready) return c.json({ error: status.reason }, 503);
-		return streamRun(c, session, (onEvent) => session.retry(onEvent));
+		// A body is optional here, since a retry can stay on the model already in use.
+		const parsed = retryInput.safeParse(await c.req.json().catch(() => ({})));
+		if (!parsed.success) return c.json({ error: "Invalid retry." }, 400);
+		const { model } = parsed.data;
+		const choice = model && (await engine.resolve(model));
+		if (model && !choice) return c.json({ error: UNAVAILABLE_MODEL }, 400);
+		return streamRun(c, session, (onEvent) => session.retry(onEvent, choice));
 	});
 
 	app.post("/api/sessions/:id/abort", async (c) => {
