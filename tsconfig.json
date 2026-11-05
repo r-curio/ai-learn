@@ -10,7 +10,10 @@
 		"noUncheckedIndexedAccess": true,
 		"skipLibCheck": true,
 		"jsx": "react-jsx",
-		"types": ["node", "vite/client"]
+		"types": ["node", "vite/client"],
+		"paths": {
+			"@/*": ["./src/web/*"]
+		}
 	},
 	"include": ["src", "tests", "vite.config.ts"]
 }

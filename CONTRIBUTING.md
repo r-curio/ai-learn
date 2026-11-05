@@ -86,6 +86,12 @@ We follow the [Next.js guidance](https://nextjs.org/docs/app/getting-started/css
 
 Put a component in `src/web/components/` when more than one feature could use it and it knows nothing about any feature. Everything else stays in its feature folder, like `chat/` or `composer/`.
 
+Use a [shadcn/ui](https://ui.shadcn.com) primitive when one fits, and add it with `npx shadcn add <name>`. Those files keep shadcn's lowercase names, like `button.tsx`, and our own components are PascalCase, like `Notice.tsx`. After adding one:
+
+- Swap any Tailwind palette colour, like `bg-white`, for a token. The palette is off, so these render with no colour and no error.
+- Don't re-add a component that's already here, since that overwrites our edits to it. `cn` from the `cn` package merges classes.
+- Pin any new dependency to an exact version.
+
 ## Tools
 
 Run everything CI runs with `npm run check`. Hooks install with `npm install`.

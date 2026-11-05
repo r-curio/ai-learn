@@ -1,13 +1,17 @@
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { TranscriptBlock, TranscriptMessage } from "../../shared/protocol.ts";
-import { Button } from "../components/Button.tsx";
+import { Button } from "../components/button.tsx";
 import { Notice } from "../components/Notice.tsx";
 import styles from "./prose.module.css";
 import { SavedImage } from "./SavedImage.tsx";
 import { SentFile } from "./SentFile.tsx";
 
-const toolTone = { running: "text-muted", done: "text-muted", failed: "text-danger" };
+const toolTone = {
+	running: "text-muted-foreground",
+	done: "text-muted-foreground",
+	failed: "text-destructive",
+};
 
 function BlockView({ block, role }: { block: TranscriptBlock; role: TranscriptMessage["role"] }) {
 	if (block.kind === "tool") {
@@ -41,7 +45,7 @@ export function MessageView({
 		<article
 			className={
 				message.role === "user"
-					? "max-w-[82%] self-end rounded-[14px] bg-user-bg px-3.5 py-2.5 max-md:max-w-[92%]"
+					? "max-w-[82%] self-end rounded-[14px] bg-muted px-3.5 py-2.5 max-md:max-w-[92%]"
 					: undefined
 			}
 		>
@@ -69,7 +73,7 @@ export function MessageView({
 				<Notice error={message.failed}>
 					{message.notice}
 					{onRetry && (
-						<Button variant="inline" size="inline" onClick={onRetry}>
+						<Button variant="link" size="inline" onClick={onRetry}>
 							Retry
 						</Button>
 					)}

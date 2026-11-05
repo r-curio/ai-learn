@@ -90,7 +90,7 @@ export function App() {
 			</div>
 			{dragging && (
 				<div
-					className="pointer-events-none absolute inset-2.5 grid place-items-center rounded-[14px] border-2 border-dashed border-accent bg-bg/88 font-semibold"
+					className="pointer-events-none absolute inset-2.5 grid place-items-center rounded-[14px] border-2 border-dashed border-primary bg-background/88 font-semibold"
 					aria-hidden="true"
 				>
 					Drop files to attach

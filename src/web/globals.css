@@ -1,40 +1,78 @@
 @import "tailwindcss";
 
+/* The dark theme follows the system unless a light theme is forced, like the tokens below. */
+@custom-variant dark {
+	@media (prefers-color-scheme: dark) {
+		&:where(:root:not([data-theme="light"]) *) {
+			@slot;
+		}
+	}
+}
+
+/* shadcn's names, so its components work unedited. `accent` and `muted` are pale backgrounds. */
+:root {
+	--background: #faf9f6;
+	--foreground: #1d1c19;
+	--card: #ffffff;
+	--card-foreground: var(--foreground);
+	--popover: var(--card);
+	--popover-foreground: var(--foreground);
+	--primary: #1f5f4a;
+	--primary-foreground: #ffffff;
+	--secondary: #eeece5;
+	--secondary-foreground: var(--foreground);
+	--muted: var(--secondary);
+	--muted-foreground: #6e6b63;
+	--accent: var(--secondary);
+	--accent-foreground: var(--foreground);
+	--destructive: #a8321f;
+	--destructive-muted: #fbeeea;
+	--border: #e3e0d8;
+	--input: var(--border);
+	--ring: var(--primary);
+}
+
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme="light"]) {
+		--background: #171715;
+		--foreground: #ecebe6;
+		--card: #21211e;
+		--primary: #7cc7a9;
+		--primary-foreground: #10231c;
+		--secondary: #2a2a26;
+		--muted-foreground: #a3a097;
+		--destructive: #f09a86;
+		--destructive-muted: #3a211b;
+		--border: #363530;
+	}
+}
+
 /* Only the tokens below exist, so a colour outside the design can't slip in. */
-@theme static {
+@theme inline {
 	--color-*: initial;
-	--color-bg: #faf9f6;
-	--color-surface: #ffffff;
-	--color-ink: #1d1c19;
-	--color-muted: #6e6b63;
-	--color-line: #e3e0d8;
-	--color-accent: #1f5f4a;
-	--color-accent-ink: #ffffff;
-	--color-user-bg: #eeece5;
-	--color-danger: #a8321f;
-	--color-danger-bg: #fbeeea;
+	--color-background: var(--background);
+	--color-foreground: var(--foreground);
+	--color-card: var(--card);
+	--color-card-foreground: var(--card-foreground);
+	--color-popover: var(--popover);
+	--color-popover-foreground: var(--popover-foreground);
+	--color-primary: var(--primary);
+	--color-primary-foreground: var(--primary-foreground);
+	--color-secondary: var(--secondary);
+	--color-secondary-foreground: var(--secondary-foreground);
+	--color-muted: var(--muted);
+	--color-muted-foreground: var(--muted-foreground);
+	--color-accent: var(--accent);
+	--color-accent-foreground: var(--accent-foreground);
+	--color-destructive: var(--destructive);
+	--color-destructive-muted: var(--destructive-muted);
+	--color-border: var(--border);
+	--color-input: var(--input);
+	--color-ring: var(--ring);
 
 	--font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 
-	--breakpoint-*: initial;
 	--breakpoint-md: 721px;
-}
-
-@layer theme {
-	@media (prefers-color-scheme: dark) {
-		:root:not([data-theme="light"]) {
-			--color-bg: #171715;
-			--color-surface: #21211e;
-			--color-ink: #ecebe6;
-			--color-muted: #a3a097;
-			--color-line: #363530;
-			--color-accent: #7cc7a9;
-			--color-accent-ink: #10231c;
-			--color-user-bg: #2a2a26;
-			--color-danger: #f09a86;
-			--color-danger-bg: #3a211b;
-		}
-	}
 }
 
 @layer base {
@@ -51,22 +89,12 @@
 	}
 
 	body {
-		background: var(--color-bg);
-		color: var(--color-ink);
+		background: var(--background);
+		color: var(--foreground);
 	}
 
 	button {
 		cursor: pointer;
-	}
-
-	button:disabled {
-		cursor: default;
-		opacity: 0.45;
-	}
-
-	button:focus-visible {
-		outline: 2px solid var(--color-accent);
-		outline-offset: 2px;
 	}
 }
 
