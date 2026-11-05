@@ -1,3 +1,4 @@
+import { IconButton } from "../components/IconButton.tsx";
 import type { Draft } from "./useDrafts.ts";
 
 function formatSize(bytes: number): string {
@@ -7,33 +8,36 @@ function formatSize(bytes: number): string {
 }
 
 export function DraftChip({ draft, onRemove }: { draft: Draft; onRemove: () => void }) {
+	const failed = draft.state === "failed";
 	return (
-		<li className={`chip chip-${draft.state}`} title={draft.error}>
+		<li
+			className={`flex max-w-[280px] items-center gap-[9px] rounded-[10px] border bg-surface py-1.5 pr-1.5 pl-[7px] ${failed ? "border-danger" : "border-line"}`}
+			title={draft.error}
+		>
 			{draft.preview ? (
-				<img src={draft.preview} alt="" />
+				<img className="size-[34px] flex-none rounded-md object-cover" src={draft.preview} alt="" />
 			) : (
-				<span className="chip-type">
+				<span className="grid size-[34px] flex-none place-items-center rounded-md bg-user-bg text-[10px] font-semibold text-muted uppercase">
 					{draft.file.name.split(".").at(-1)?.slice(0, 4) || "file"}
 				</span>
 			)}
-			<span className="chip-text">
-				<span className="chip-name">{draft.file.name}</span>
-				<span className="chip-meta">
+			<span className="flex min-w-0 flex-col leading-[1.3]">
+				<span className="truncate text-[13px]">{draft.file.name}</span>
+				<span className={`text-[12px] wrap-anywhere ${failed ? "text-danger" : "text-muted"}`}>
 					{draft.state === "uploading"
 						? "Reading…"
-						: draft.state === "failed"
+						: failed
 							? draft.error
 							: formatSize(draft.file.size)}
 				</span>
 			</span>
-			<button
-				type="button"
-				className="chip-remove"
+			<IconButton
+				className="px-[7px] text-[16px]"
 				onClick={onRemove}
 				aria-label={`Remove ${draft.file.name}`}
 			>
 				×
-			</button>
+			</IconButton>
 		</li>
 	);
 }

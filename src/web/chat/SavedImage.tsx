@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { AttachmentInfo } from "../../shared/protocol.ts";
 import { fetchImageUrl } from "../api.ts";
+import { SentFile } from "./SentFile.tsx";
 
 export function SavedImage({
 	sessionId,
@@ -26,10 +27,10 @@ export function SavedImage({
 			if (created) URL.revokeObjectURL(created);
 		};
 	}, [sessionId, attachment.id]);
-	if (failed) return <span className="sent-file">{attachment.name}</span>;
+	if (failed) return <SentFile name={attachment.name} />;
 	return url ? (
-		<img src={url} alt={attachment.name} />
+		<img className="block max-h-[180px] max-w-[220px] rounded-lg" src={url} alt={attachment.name} />
 	) : (
-		<span className="image-placeholder" aria-label={attachment.name} />
+		<span className="block h-[90px] w-[120px] rounded-lg bg-line" aria-label={attachment.name} />
 	);
 }

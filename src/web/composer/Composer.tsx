@@ -1,5 +1,5 @@
 import { useRef, type ClipboardEvent, type KeyboardEvent, type RefObject } from "react";
-import "./composer.css";
+import { Button } from "../components/Button.tsx";
 import { DraftChip } from "./DraftChip.tsx";
 import type { Draft } from "./useDrafts.ts";
 
@@ -39,22 +39,23 @@ export function Composer(props: ComposerProps) {
 
 	return (
 		<form
-			className="composer column"
+			className="chat-column pt-1.5 pb-[18px]"
 			onSubmit={(event) => {
 				event.preventDefault();
 				onSend();
 			}}
 		>
 			{drafts.length > 0 && (
-				<ul className="chips">
+				<ul className="mb-2 flex flex-wrap gap-2">
 					{drafts.map((draft) => (
 						<DraftChip draft={draft} key={draft.key} onRemove={() => onRemoveDraft(draft.key)} />
 					))}
 				</ul>
 			)}
-			<div className="composer-box">
+			<div className="rounded-[14px] border border-line bg-surface px-3 pt-2.5 pb-2 focus-within:border-muted">
 				<textarea
 					ref={textArea}
+					className="block field-sizing-content max-h-[200px] w-full resize-none bg-transparent p-0.5 outline-0 placeholder:text-muted"
 					aria-label="Message"
 					rows={2}
 					placeholder="Message ai-learn"
@@ -64,15 +65,10 @@ export function Composer(props: ComposerProps) {
 					onPaste={onPaste}
 					autoFocus
 				/>
-				<div className="composer-actions">
-					<button
-						type="button"
-						className="button-quiet"
-						disabled={!canAttach}
-						onClick={() => fileInput.current?.click()}
-					>
+				<div className="mt-1.5 flex items-center justify-between">
+					<Button variant="quiet" disabled={!canAttach} onClick={() => fileInput.current?.click()}>
 						Attach
-					</button>
+					</Button>
 					<input
 						ref={fileInput}
 						type="file"
@@ -84,13 +80,13 @@ export function Composer(props: ComposerProps) {
 						}}
 					/>
 					{running ? (
-						<button type="button" className="button-primary" onClick={onStop}>
+						<Button variant="primary" onClick={onStop}>
 							Stop
-						</button>
+						</Button>
 					) : (
-						<button type="submit" className="button-primary" disabled={!canSend}>
+						<Button variant="primary" type="submit" disabled={!canSend}>
 							Send
-						</button>
+						</Button>
 					)}
 				</div>
 			</div>

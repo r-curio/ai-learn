@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { EngineStatus, TranscriptMessage } from "../../shared/protocol.ts";
-import "./chat.css";
+import { Notice } from "../components/Notice.tsx";
 import { MessageView } from "./MessageView.tsx";
 
 interface ChatViewProps {
@@ -23,22 +23,24 @@ export function ChatView(props: ChatViewProps) {
 	}, [messages]);
 
 	return (
-		<div className="scroller" ref={scroller}>
-			<main className="column" aria-live="polite">
-				{error && <p className="notice notice-error">{error}</p>}
+		<div className="flex-1 overflow-y-auto" ref={scroller}>
+			<main className="chat-column flex min-h-full flex-col gap-[22px] py-7" aria-live="polite">
+				{error && <Notice error>{error}</Notice>}
 				{status && !status.ready && (
-					<div className="setup">
-						<h2>Add your API key to start</h2>
-						<p>
-							{status.reason} Add it to <code>.env.local</code> in the project folder, then restart
-							the app.
+					<div className="rounded-[10px] border border-line bg-surface px-5 py-[18px]">
+						<h2 className="mb-1.5 text-[17px] font-bold">Add your API key to start</h2>
+						<p className="text-muted">
+							{status.reason} Add it to <code className="[all:revert]">.env.local</code> in the
+							project folder, then restart the app.
 						</p>
 					</div>
 				)}
 				{messages.length === 0 && status?.ready && (
-					<div className="empty">
-						<h1>What do you want to understand?</h1>
-						<p>Ask a question, or add images, PDFs, and text files.</p>
+					<div className="my-auto pb-[8vh]">
+						<h1 className="mb-1.5 text-[28px] font-semibold tracking-[-0.015em]">
+							What do you want to understand?
+						</h1>
+						<p className="text-muted">Ask a question, or add images, PDFs, and text files.</p>
 					</div>
 				)}
 				{sessionId &&
@@ -50,7 +52,9 @@ export function ChatView(props: ChatViewProps) {
 							onRetry={canRetry && !running && index === messages.length - 1 ? onRetry : undefined}
 						/>
 					))}
-				{running && messages.at(-1)?.blocks.length === 0 && <p className="thinking">Thinking…</p>}
+				{running && messages.at(-1)?.blocks.length === 0 && (
+					<p className="text-[14px] text-muted">Thinking…</p>
+				)}
 			</main>
 		</div>
 	);

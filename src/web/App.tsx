@@ -40,8 +40,9 @@ export function App() {
 	}
 
 	return (
-		<div className={`app${sidebarOpen ? " sidebar-open" : ""}`} {...dropHandlers}>
+		<div className="relative flex h-full" {...dropHandlers}>
 			<Sidebar
+				open={sidebarOpen}
 				sessions={chat.sessions}
 				activeId={sessionId}
 				disabled={running}
@@ -55,7 +56,7 @@ export function App() {
 				}}
 				onDelete={(summary) => void chat.removeSession(summary)}
 			/>
-			<div className="workspace">
+			<div className="flex min-w-0 flex-1 flex-col">
 				<TopBar
 					status={status}
 					usage={chat.usage}
@@ -88,7 +89,10 @@ export function App() {
 				/>
 			</div>
 			{dragging && (
-				<div className="drop-overlay" aria-hidden="true">
+				<div
+					className="pointer-events-none absolute inset-2.5 grid place-items-center rounded-[14px] border-2 border-dashed border-accent bg-bg/88 font-semibold"
+					aria-hidden="true"
+				>
 					Drop files to attach
 				</div>
 			)}
