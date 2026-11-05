@@ -15,6 +15,7 @@ interface ComposerControlsProps {
 	modelChoice: ModelChoice;
 	/** The app can't reply yet, so there's nothing to choose for. */
 	menusDisabled: boolean;
+	onAddProvider: () => void;
 	onAddFiles: (files: File[]) => void;
 	onStop: () => void;
 }
@@ -22,7 +23,7 @@ interface ComposerControlsProps {
 /** The row under the message box: Attach on the left, then the menus and Send or Stop on the right. */
 export function ComposerControls(props: ComposerControlsProps) {
 	const { canAttach, canSend, running, providers, modelChoice, menusDisabled } = props;
-	const { onAddFiles, onStop } = props;
+	const { onAddProvider, onAddFiles, onStop } = props;
 	const fileInput = useRef<HTMLInputElement>(null);
 	const row = useRef<HTMLDivElement>(null);
 
@@ -53,6 +54,7 @@ export function ComposerControls(props: ComposerControlsProps) {
 					choice={modelChoice}
 					anchor={row}
 					disabled={menusDisabled}
+					onAddProvider={onAddProvider}
 				/>
 				<EffortMenu choice={modelChoice} anchor={row} disabled={menusDisabled} />
 				{running ? (

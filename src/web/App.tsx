@@ -7,7 +7,9 @@ import { useFileDrop } from "./composer/useFileDrop.ts";
 import { useModelChoice } from "./composer/useModelChoice.ts";
 import { SidebarInset, SidebarProvider } from "./components/sidebar.tsx";
 import { ChatSidebar } from "./shell/ChatSidebar.tsx";
-import { Rail } from "./shell/Rail.tsx";
+import { ProvidersView } from "./settings/ProvidersView.tsx";
+import { useProviders } from "./settings/useProviders.ts";
+import { Rail, type RailView } from "./shell/Rail.tsx";
 import { TopBar } from "./shell/TopBar.tsx";
 import { useSidebarPreference } from "./shell/useSidebarPreference.ts";
 
@@ -16,6 +18,7 @@ export function App() {
 	const sidebar = useSidebarPreference();
 	const textArea = useRef<HTMLTextAreaElement>(null);
 	const files = useDrafts();
+	const [view, setView] = useState<RailView>("chat");
 	const { clearDrafts, addFiles } = files;
 
 	const onChatChange = useCallback(() => {
@@ -27,6 +30,7 @@ export function App() {
 	const { sessionId, status, running } = chat;
 	const modelChoice = useModelChoice(status, onReady);
 	const hasModel = Boolean(modelChoice.selection);
+	const providers = useProviders(status);
 	const setupNeeded = status?.ready === false;
 
 	const attach = useCallback(
@@ -71,56 +75,68 @@ export function App() {
 			className="relative"
 			open={sidebar.open}
 			onOpenChange={onSidebarChange}
-			{...dropHandlers}
+			{...(view === "chat" ? dropHandlers : {})}
 		>
-			<Rail />
-			<ChatSidebar
-				sessions={chat.sessions}
-				activeId={sessionId}
-				onNewChatScreen={chat.messages.length === 0}
-				disabled={running}
-				onNewChat={() => void chat.startNewChat()}
-				onOpen={(id) => void chat.openSession(id)}
-				onDelete={(summary) => void chat.removeSession(summary)}
-			/>
+			<Rail view={view} onViewChange={setView} />
+			{view === "chat" && (
+				<ChatSidebar
+					sessions={chat.sessions}
+					activeId={sessionId}
+					onNewChatScreen={chat.messages.length === 0}
+					disabled={running}
+					onNewChat={() => void chat.startNewChat()}
+					onOpen={(id) => void chat.openSession(id)}
+					onDelete={(summary) => void chat.removeSession(summary)}
+				/>
+			)}
 			<SidebarInset>
-				<>
-					<TopBar
-						title={chat.sessions.find((summary) => summary.id === sessionId)?.title}
-						usage={chat.usage}
+				{view === "settings" ? (
+					<ProvidersView
+						connected={providers.connected}
+						available={providers.available}
+						onConnect={providers.connect}
+						onDisconnect={providers.disconnect}
 					/>
-					<ChatView
-						status={status}
-						error={chat.error}
-						sessionId={sessionId}
-						messages={chat.messages}
-						running={running}
-						canRetry={chat.canRetry}
-						onRetry={() => {
-							if (!status?.ready || running) return;
-							if (modelChoice.selection) chat.retry(modelChoice.selection);
-							else modelChoice.setPickerOpen(true);
-						}}
-					/>
-					<Composer
-						text={text}
-						onTextChange={setText}
-						textArea={textArea}
-						isNewChat={chat.messages.length === 0}
-						drafts={files.drafts}
-						canAttach={Boolean(sessionId) && !setupNeeded && hasModel}
-						canSend={canSend}
-						running={running}
-						providers={status?.providers ?? []}
-						modelChoice={modelChoice}
-						dimmed={setupNeeded}
-						needsModel={!setupNeeded && !hasModel}
-						onAddFiles={attach}
-						onRemoveDraft={files.removeDraft}
-						onSend={send}
-						onStop={chat.stop}
-					/>
-				</>
+				) : (
+					<>
+						<TopBar
+							title={chat.sessions.find((summary) => summary.id === sessionId)?.title}
+							usage={chat.usage}
+						/>
+						<ChatView
+							status={status}
+							error={chat.error}
+							sessionId={sessionId}
+							messages={chat.messages}
+							running={running}
+							canRetry={chat.canRetry}
+							onRetry={() => {
+								if (!status?.ready || running) return;
+								if (modelChoice.selection) chat.retry(modelChoice.selection);
+								else modelChoice.setPickerOpen(true);
+							}}
+						/>
+						<Composer
+							text={text}
+							onTextChange={setText}
+							textArea={textArea}
+							isNewChat={chat.messages.length === 0}
+							drafts={files.drafts}
+							canAttach={Boolean(sessionId) && !setupNeeded && hasModel}
+							canSend={canSend}
+							running={running}
+							providers={status?.providers ?? []}
+							modelChoice={modelChoice}
+							onAddProvider={() => setView("settings")}
+							dimmed={setupNeeded}
+							needsModel={!setupNeeded && !hasModel}
+							onAddFiles={attach}
+							onRemoveDraft={files.removeDraft}
+							onSend={send}
+							onStop={chat.stop}
+						/>
+					</>
+				)}
 			</SidebarInset>
 			{dragging && !setupNeeded && (
 				<div
