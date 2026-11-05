@@ -4,7 +4,7 @@ A local-first AI learning app. It's an Electron app with a local server and an a
 
 ## Before changing code
 
-- Every change ships through an issue, a branch, and a pull request. The owner merges.
+- Every change ships through an issue, a branch, and a pull request. The owner merges. `/lfg <issue>` runs those steps.
 - Read `CONTRIBUTING.md` before opening a PR or adding files, folders, or tests. It holds the size limits, import rules, proof requirements, and testing policy.
 - Read `docs/sessions.md` before changing how sessions are saved or replayed.
 - Read `docs/architecture.md` before changing how the layers connect.
@@ -19,6 +19,8 @@ A local-first AI learning app. It's an Electron app with a local server and an a
 - **Subfolders:** create one when 3 or more files share a concept, named after that concept. Aim for up to 8 files in a folder, and over 15 is blocked. Aim for 2 levels below `src/`, and 4 is blocked.
 
 `CONTRIBUTING.md` holds the full rules.
+
+Skills live in `.agents/skills/`, and `.claude/skills` links to that folder.
 
 ## Rules with no tooling behind them
 

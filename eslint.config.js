@@ -5,7 +5,7 @@ import globals from "globals";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-	{ ignores: ["dist/", "data/", ".playwright-mcp/"] },
+	{ ignores: ["dist/", "data/", ".playwright-mcp/", ".worktrees/"] },
 	js.configs.recommended,
 	{
 		files: ["**/*.{ts,tsx}"],

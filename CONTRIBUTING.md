@@ -3,10 +3,12 @@
 ## How work happens
 
 1. **Start with an issue** that says what's being done and what "done" looks like.
-2. **Create a branch** for one concern, named like `feat/split-app` or `fix/pdf-upload`.
+2. **Create a branch** for one concern, named with its issue number, like `feat/17-composer-web` or `fix/42-pdf-upload`.
 3. **Open a PR** using the template. Aim for under about 400 changed lines. Formatting-only commits don't count.
 4. **Post proof** as a PR comment.
 5. **The owner merges** with a squash once checks pass and the change is reviewed.
+
+`/lfg <issue>` runs these steps in a Claude Code or Codex session, stopping at a PR for the owner. `/lfg next` picks the next issue that can start, and `/lfg check <issue>` reports without changing anything. Each issue gets its own worktree in `.worktrees/`, so several can run at once. Run the desktop app there with `--user-data-dir`, because without it the app opens your real chats and allows only one copy.
 
 ## Proof
 
