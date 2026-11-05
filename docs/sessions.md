@@ -1,6 +1,6 @@
 # How sessions are saved
 
-Each chat is a folder under the data directory:
+Each chat is a folder under the data directory, beside a shared `session-index.sqlite`:
 
 ```text
 sessions/<id>/
@@ -8,6 +8,8 @@ sessions/<id>/
   summary.json      title and date for the sidebar, can be rebuilt from the log
   attachments/      uploaded files, with a .json metadata file for each
 ```
+
+The index copies each `summary.json` so the chat list doesn't read every folder. It's refreshed from the folders once per launch, and it's rebuilt if it's missing or damaged, so nothing may be stored only there.
 
 ## The rules
 

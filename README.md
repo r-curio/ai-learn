@@ -47,13 +47,13 @@ Your files and the app's data stay on your computer, but your messages and attac
 
 ## How it's organized
 
-| Path           | What it does                                                                 |
-| -------------- | ---------------------------------------------------------------------------- |
-| `src/harness/` | The agent harness: model engine, sessions, saved log, tools, and attachments |
-| `src/server/`  | Local HTTP server that streams events to the UI                              |
-| `src/web/`     | React chat UI                                                                |
-| `src/shared/`  | Types shared by the server and UI                                            |
-| `electron/`    | Desktop shell                                                                |
+| Path           | What it does                                                                        |
+| -------------- | ----------------------------------------------------------------------------------- |
+| `src/harness/` | The agent harness: model engine, sessions, saved log, index, tools, and attachments |
+| `src/server/`  | Local HTTP server that streams events to the UI                                     |
+| `src/web/`     | React chat UI                                                                       |
+| `src/shared/`  | Types shared by the server and UI                                                   |
+| `electron/`    | Desktop shell                                                                       |
 
 It's built on [Pi](https://github.com/earendil-works/pi) for the agent loop and model access.
 
