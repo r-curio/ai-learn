@@ -10,7 +10,7 @@ const savedPreferences = z.object({
 	effort: z.enum(EFFORTS).optional(),
 });
 
-/** Each setting saves on its own, so one change can't undo another. */
+/** Each setting saves on its own, without needing the others. */
 export const preferencesInput = savedPreferences.partial();
 
 const DEFAULTS: Preferences = { sidebarOpen: true };

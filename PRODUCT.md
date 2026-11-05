@@ -27,7 +27,7 @@ This is the product's direction, not its current behaviour. The teaching engine 
 - A learner chats with the tutor in saved sessions, which the UI calls chats, and can reopen and continue them.
 - Attachments are added with a button, by drag and drop, or by pasting.
 - Replies stream in and can be stopped. Failed and interrupted replies can be retried.
-- Running on a real model bills the learner's own Anthropic API key, so token and cost totals are shown.
+- Running on a real model bills the learner's own provider API key, so token and cost totals are shown.
 
 ## Capabilities and Constraints
 
@@ -37,7 +37,7 @@ This is the product's direction, not its current behaviour. The teaching engine 
 
 **Constraints:**
 
-- Files and app data stay on the learner's computer, but messages and attachments go to Anthropic to generate replies. Never describe the app as fully private or offline.
+- Files and app data stay on the learner's computer, but messages and attachments go to the provider of the chosen model to generate replies. Never describe the app as fully private or offline.
 - The desktop shell must work on macOS, Windows, and Linux, including window controls and keyboard shortcuts. Anything drawn for one system, such as space for the macOS traffic lights, needs an equivalent on the others.
 - Images must be 5 MB or smaller, and scanned PDFs without a text layer aren't supported.
 - Use the terms in `GLOSSARY.md`, such as learner, tutor, reply, and attachment. The UI says "chat" where the code says "session".
