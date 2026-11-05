@@ -24,12 +24,13 @@ export function App() {
 	const onReady = useCallback(() => textArea.current?.focus(), []);
 	const chat = useChat({ onChatChange, onReady });
 	const { sessionId, status, running } = chat;
+	const setupNeeded = status?.ready === false;
 
 	const attach = useCallback(
 		(dropped: File[]) => {
-			if (sessionId) addFiles(sessionId, dropped);
+			if (sessionId && !setupNeeded) addFiles(sessionId, dropped);
 		},
-		[addFiles, sessionId],
+		[addFiles, sessionId, setupNeeded],
 	);
 	const { dragging, dropHandlers } = useFileDrop(attach);
 	const hasContent = Boolean(text.trim() || files.attachments.length > 0);
@@ -94,16 +95,17 @@ export function App() {
 					textArea={textArea}
 					isNewChat={chat.messages.length === 0}
 					drafts={files.drafts}
-					canAttach={Boolean(sessionId)}
+					canAttach={Boolean(sessionId) && !setupNeeded}
 					canSend={canSend}
 					running={running}
+					dimmed={setupNeeded}
 					onAddFiles={attach}
 					onRemoveDraft={files.removeDraft}
 					onSend={send}
 					onStop={chat.stop}
 				/>
 			</SidebarInset>
-			{dragging && (
+			{dragging && !setupNeeded && (
 				<div
 					className="pointer-events-none absolute inset-2.5 grid place-items-center rounded-[14px] border-2 border-dashed border-primary bg-background/88 font-semibold"
 					aria-hidden="true"

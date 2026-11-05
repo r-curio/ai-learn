@@ -17,13 +17,11 @@ const buttonVariants = cva(
 					"hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground",
 				destructive:
 					"bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
-				link: "underline",
 			},
 			size: {
 				default: "gap-1.5 px-[13px] py-[5px] text-[14px]",
 				sm: "gap-1 px-[9px] py-[3px] text-[13px]",
 				xs: "gap-1 px-[9px] py-[2px] text-[13px]",
-				inline: "pl-2",
 				icon: "py-0.5 leading-none",
 				"icon-sm": "size-7",
 			},

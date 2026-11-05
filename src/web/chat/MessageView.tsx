@@ -16,7 +16,7 @@ const toolTone = {
 function BlockView({ block, role }: { block: TranscriptBlock; role: TranscriptMessage["role"] }) {
 	if (block.kind === "tool") {
 		return (
-			<p className={`my-1.5 text-[13px] ${toolTone[block.state]}`}>
+			<p className={`text-[13px] leading-[18px] ${toolTone[block.state]}`}>
 				{block.label}
 				{block.state === "running" ? "…" : block.state === "failed" ? " failed" : ""}
 			</p>
@@ -89,16 +89,18 @@ export function MessageView({
 	return (
 		<article
 			className={
-				learner
-					? "flex max-w-[82%] flex-col items-end gap-2 self-end max-md:max-w-[92%]"
-					: undefined
+				learner ? "flex max-w-[min(440px,92%)] flex-col items-end gap-2 self-end" : undefined
 			}
 		>
 			{message.attachments && message.attachments.length > 0 && (
 				<SentAttachments attachments={message.attachments} sessionId={sessionId} />
 			)}
 			{hasBody && (
-				<div className={learner ? "rounded-[14px] bg-muted px-3.5 py-2.5" : undefined}>
+				<div
+					className={
+						learner ? "rounded-2xl bg-accent px-4 py-2.5 leading-[23px]" : "flex flex-col gap-3"
+					}
+				>
 					{message.blocks.map((block, index) => (
 						<BlockView
 							block={block}
@@ -107,13 +109,21 @@ export function MessageView({
 						/>
 					))}
 					{message.notice && (
-						<Notice error={message.failed}>
+						<Notice
+							error={message.failed}
+							action={
+								onRetry && (
+									<Button
+										variant="outline"
+										className="h-7 px-2.5 py-0 text-[13px] leading-[18px] font-medium text-foreground"
+										onClick={onRetry}
+									>
+										Retry
+									</Button>
+								)
+							}
+						>
 							{message.notice}
-							{onRetry && (
-								<Button variant="link" size="inline" onClick={onRetry}>
-									Retry
-								</Button>
-							)}
 						</Notice>
 					)}
 				</div>

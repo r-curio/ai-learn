@@ -248,7 +248,7 @@ A cool, indigo-tinted neutral family with one indigo accent. Amber and red appea
 
 ### Hierarchy
 
-- **Display** (500, 32px/40px, -0.02em): the new chat heading, only.
+- **Display** (500, 32px/40px, -0.02em): the new chat and setup headings, only.
 - **Question** (500, 17px/25px): the tutor's question in the answer card.
 - **Brand** (600, 16px/20px, -0.02em): the "ai-learn" name beside the logo.
 - **Body** (400, 15px/24px): replies and learner messages, which use a 23px line height in the bubble. Keep the composer text at this size too.
@@ -261,7 +261,7 @@ A cool, indigo-tinted neutral family with one indigo accent. Amber and red appea
 
 **The Two Weights Rule.** Use 400 for reading and 500 for emphasis. The brand name is the only 600.
 
-**The Single Display Rule.** The display size appears only on the new chat screen.
+**The Single Display Rule.** The display size appears only on the new chat and setup screens.
 
 ## Layout
 
@@ -306,7 +306,7 @@ Quiet and precise: controls sit still until they're needed, then respond clearly
 | Answer choices                   | `radio-group` with `item`        |
 | How sure are you?                | `slider`                         |
 | Space key hint                   | `kbd`                            |
-| Failed reply and setup notices   | `alert`, `card`                  |
+| Reply and app notices            | `alert`, drawn plain             |
 | Activity trace and subagent rows | `collapsible`                    |
 
 ### Icons
@@ -422,7 +422,7 @@ The product's signature component, which replaces the composer while a question 
 - **Don't** add global CSS, per-feature stylesheets, or inline styles. CSS Modules are only for what classes can't reach, like Markdown output.
 - **Don't** use Tailwind palette colours like `bg-white`, because they render with no colour and no error.
 - **Don't** add a second accent, gradients, or shadows on cards and buttons.
-- **Don't** use type smaller than 12px, or a second typeface in the interface.
+- **Don't** use type smaller than 12px, or a second typeface in the interface. Monospace is only for code, and for key and file names.
 - **Don't** signal a warning with colour alone.
 - **Don't** draw fake window controls.
 - **Don't** use bounces, off-screen slides, staggered list entrances, or idle and scroll-triggered animation.
