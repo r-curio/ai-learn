@@ -1,5 +1,6 @@
 import { useRef, type ClipboardEvent, type KeyboardEvent, type RefObject } from "react";
-import { Button } from "../components/Button.tsx";
+import { Button } from "../components/button.tsx";
+import { Textarea } from "../components/textarea.tsx";
 import { DraftChip } from "./DraftChip.tsx";
 import type { Draft } from "./useDrafts.ts";
 
@@ -52,10 +53,10 @@ export function Composer(props: ComposerProps) {
 					))}
 				</ul>
 			)}
-			<div className="rounded-[14px] border border-line bg-surface px-3 pt-2.5 pb-2 focus-within:border-muted">
-				<textarea
+			<div className="rounded-[14px] border border-border bg-card px-3 pt-2.5 pb-2 focus-within:border-muted-foreground">
+				<Textarea
 					ref={textArea}
-					className="block field-sizing-content max-h-[200px] w-full resize-none bg-transparent p-0.5 outline-0 placeholder:text-muted"
+					className="block max-h-[200px] min-h-0 resize-none rounded-none border-0 p-0.5 text-[16px] transition-none focus-visible:ring-0"
 					aria-label="Message"
 					rows={2}
 					placeholder="Message ai-learn"
@@ -66,7 +67,11 @@ export function Composer(props: ComposerProps) {
 					autoFocus
 				/>
 				<div className="mt-1.5 flex items-center justify-between">
-					<Button variant="quiet" disabled={!canAttach} onClick={() => fileInput.current?.click()}>
+					<Button
+						variant="outline"
+						disabled={!canAttach}
+						onClick={() => fileInput.current?.click()}
+					>
 						Attach
 					</Button>
 					<input
@@ -80,11 +85,11 @@ export function Composer(props: ComposerProps) {
 						}}
 					/>
 					{running ? (
-						<Button variant="primary" onClick={onStop}>
+						<Button variant="default" onClick={onStop}>
 							Stop
 						</Button>
 					) : (
-						<Button variant="primary" type="submit" disabled={!canSend}>
+						<Button variant="default" type="submit" disabled={!canSend}>
 							Send
 						</Button>
 					)}

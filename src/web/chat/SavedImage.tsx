@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { AttachmentInfo } from "../../shared/protocol.ts";
 import { fetchImageUrl } from "../api.ts";
+import { Skeleton } from "../components/skeleton.tsx";
 import { SentFile } from "./SentFile.tsx";
 
 export function SavedImage({
@@ -31,6 +32,10 @@ export function SavedImage({
 	return url ? (
 		<img className="block max-h-[180px] max-w-[220px] rounded-lg" src={url} alt={attachment.name} />
 	) : (
-		<span className="block h-[90px] w-[120px] rounded-lg bg-line" aria-label={attachment.name} />
+		<Skeleton
+			role="img"
+			className="h-[90px] w-[120px] rounded-lg bg-border"
+			aria-label={attachment.name}
+		/>
 	);
 }
