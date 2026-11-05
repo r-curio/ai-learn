@@ -1,6 +1,7 @@
 import type {
 	AttachmentInfo,
 	EngineStatus,
+	Preferences,
 	RunEvent,
 	SessionSummary,
 	SessionView,
@@ -42,6 +43,18 @@ async function request(path: string, init: RequestInit = {}): Promise<Response> 
 
 export async function getStatus(): Promise<EngineStatus> {
 	return (await request("/api/status")).json() as Promise<EngineStatus>;
+}
+
+export async function getPreferences(): Promise<Preferences> {
+	return (await request("/api/preferences")).json() as Promise<Preferences>;
+}
+
+export async function savePreferences(preferences: Preferences): Promise<void> {
+	await request("/api/preferences", {
+		method: "PUT",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(preferences),
+	});
 }
 
 export async function createSession(): Promise<string> {

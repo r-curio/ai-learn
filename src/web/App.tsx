@@ -4,12 +4,15 @@ import { useChat } from "./chat/useChat.ts";
 import { Composer } from "./composer/Composer.tsx";
 import { useDrafts } from "./composer/useDrafts.ts";
 import { useFileDrop } from "./composer/useFileDrop.ts";
-import { Sidebar } from "./Sidebar.tsx";
-import { TopBar } from "./TopBar.tsx";
+import { SidebarInset, SidebarProvider } from "./components/sidebar.tsx";
+import { ChatSidebar } from "./shell/ChatSidebar.tsx";
+import { Rail } from "./shell/Rail.tsx";
+import { TopBar } from "./shell/TopBar.tsx";
+import { useSidebarPreference } from "./shell/useSidebarPreference.ts";
 
 export function App() {
 	const [text, setText] = useState("");
-	const [sidebarOpen, setSidebarOpen] = useState(false);
+	const sidebar = useSidebarPreference();
 	const textArea = useRef<HTMLTextAreaElement>(null);
 	const files = useDrafts();
 	const { clearDrafts, addFiles } = files;
@@ -39,29 +42,40 @@ export function App() {
 		clearDrafts();
 	}
 
+	const { setOpen: saveSidebarOpen } = sidebar;
+	const onSidebarChange = useCallback(
+		(open: boolean) => {
+			saveSidebarOpen(open);
+			// The button just pressed may have moved off-screen, so keep the keyboard somewhere useful.
+			textArea.current?.focus();
+		},
+		[saveSidebarOpen],
+	);
+
+	// Wait for the saved setting, so a collapsed sidebar doesn't flash open at launch.
+	if (sidebar.open === undefined) return null;
+
 	return (
-		<div className="relative flex h-full" {...dropHandlers}>
-			<Sidebar
-				open={sidebarOpen}
+		<SidebarProvider
+			className="relative"
+			open={sidebar.open}
+			onOpenChange={onSidebarChange}
+			{...dropHandlers}
+		>
+			<Rail />
+			<ChatSidebar
 				sessions={chat.sessions}
 				activeId={sessionId}
+				onNewChatScreen={chat.messages.length === 0}
 				disabled={running}
-				onNewChat={() => {
-					setSidebarOpen(false);
-					void chat.startNewChat();
-				}}
-				onOpen={(id) => {
-					setSidebarOpen(false);
-					void chat.openSession(id);
-				}}
+				onNewChat={() => void chat.startNewChat()}
+				onOpen={(id) => void chat.openSession(id)}
 				onDelete={(summary) => void chat.removeSession(summary)}
 			/>
-			<div className="flex min-w-0 flex-1 flex-col">
+			<SidebarInset>
 				<TopBar
-					status={status}
+					title={chat.sessions.find((summary) => summary.id === sessionId)?.title}
 					usage={chat.usage}
-					sidebarOpen={sidebarOpen}
-					onToggleSidebar={() => setSidebarOpen((open) => !open)}
 				/>
 				<ChatView
 					status={status}
@@ -87,7 +101,7 @@ export function App() {
 					onSend={send}
 					onStop={chat.stop}
 				/>
-			</div>
+			</SidebarInset>
 			{dragging && (
 				<div
 					className="pointer-events-none absolute inset-2.5 grid place-items-center rounded-[14px] border-2 border-dashed border-primary bg-background/88 font-semibold"
@@ -96,6 +110,6 @@ export function App() {
 					Drop files to attach
 				</div>
 			)}
-		</div>
+		</SidebarProvider>
 	);
 }

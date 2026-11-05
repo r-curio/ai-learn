@@ -1,0 +1,689 @@
+{
+	"schemaVersion": 2,
+	"generatedAt": "2026-11-05T05:09:06.964Z",
+	"title": "Design System: ai-learn",
+	"extensions": {
+		"colorMeta": {
+			"background": {
+				"role": "neutral",
+				"displayName": "Paper Mist",
+				"canonical": "#F6F6F9",
+				"tonalRamp": [
+					"#0b0b0d",
+					"#252527",
+					"#424244",
+					"#616163",
+					"#828285",
+					"#a5a5a7",
+					"#c9c9cc",
+					"#eeeef1"
+				]
+			},
+			"background-dark": {
+				"role": "neutral",
+				"displayName": "Paper Mist (dark)",
+				"canonical": "#1F2030",
+				"tonalRamp": [
+					"#090918",
+					"#222334",
+					"#3f4052",
+					"#5e6072",
+					"#7f8195",
+					"#a1a3b8",
+					"#c5c7dd",
+					"#eaedff"
+				]
+			},
+			"foreground": {
+				"role": "neutral",
+				"displayName": "Ink Indigo",
+				"canonical": "#23243A",
+				"tonalRamp": [
+					"#09081c",
+					"#222338",
+					"#3e4057",
+					"#5d5f78",
+					"#7e809b",
+					"#a0a3bf",
+					"#c4c7e4",
+					"#e9ecff"
+				]
+			},
+			"foreground-dark": {
+				"role": "neutral",
+				"displayName": "Ink Indigo (dark)",
+				"canonical": "#E6E7F5",
+				"tonalRamp": [
+					"#0a0a13",
+					"#23242e",
+					"#40414c",
+					"#5f606c",
+					"#80818e",
+					"#a3a4b1",
+					"#c7c8d5",
+					"#ecedfb"
+				]
+			},
+			"card": {
+				"role": "neutral",
+				"displayName": "Clean Sheet",
+				"canonical": "#FFFFFF",
+				"tonalRamp": [
+					"#0b0b0b",
+					"#252525",
+					"#424242",
+					"#616161",
+					"#828282",
+					"#a5a5a5",
+					"#c9c9c9",
+					"#eeeeee"
+				]
+			},
+			"card-dark": {
+				"role": "neutral",
+				"displayName": "Clean Sheet (dark)",
+				"canonical": "#2A2B40",
+				"tonalRamp": [
+					"#09091b",
+					"#222337",
+					"#3e4056",
+					"#5d5f77",
+					"#7e8099",
+					"#a1a3bd",
+					"#c4c7e2",
+					"#eaecff"
+				]
+			},
+			"popover": {
+				"role": "neutral",
+				"displayName": "Deep Popover",
+				"canonical": "#FFFFFF",
+				"tonalRamp": [
+					"#0b0b0b",
+					"#252525",
+					"#424242",
+					"#616161",
+					"#828282",
+					"#a5a5a5",
+					"#c9c9c9",
+					"#eeeeee"
+				]
+			},
+			"popover-dark": {
+				"role": "neutral",
+				"displayName": "Deep Popover (dark)",
+				"canonical": "#191A28",
+				"tonalRamp": [
+					"#090a16",
+					"#222432",
+					"#3f4151",
+					"#5e6071",
+					"#7f8193",
+					"#a1a3b6",
+					"#c5c8db",
+					"#ebedff"
+				]
+			},
+			"primary": {
+				"role": "primary",
+				"displayName": "Study Indigo",
+				"canonical": "#5B5FC7",
+				"tonalRamp": [
+					"#0f004b",
+					"#1d036f",
+					"#342f93",
+					"#5052b8",
+					"#6e75df",
+					"#8f98ff",
+					"#b2bdff",
+					"#d6e3ff"
+				]
+			},
+			"primary-dark": {
+				"role": "primary",
+				"displayName": "Study Indigo (dark)",
+				"canonical": "#C9CCF5",
+				"tonalRamp": [
+					"#090622",
+					"#212140",
+					"#3d3e60",
+					"#5c5d81",
+					"#7c7fa4",
+					"#9fa1c9",
+					"#c2c5ee",
+					"#e8ebff"
+				]
+			},
+			"primary-foreground": {
+				"role": "primary",
+				"displayName": "Primary Foreground",
+				"canonical": "#FFFFFF",
+				"tonalRamp": [
+					"#0b0b0b",
+					"#252525",
+					"#424242",
+					"#616161",
+					"#828282",
+					"#a5a5a5",
+					"#c9c9c9",
+					"#eeeeee"
+				]
+			},
+			"primary-foreground-dark": {
+				"role": "primary",
+				"displayName": "Primary Foreground (dark)",
+				"canonical": "#1F2030",
+				"tonalRamp": [
+					"#090918",
+					"#222334",
+					"#3f4052",
+					"#5e6072",
+					"#7f8195",
+					"#a1a3b8",
+					"#c5c7dd",
+					"#eaedff"
+				]
+			},
+			"secondary": {
+				"role": "neutral",
+				"displayName": "Track Grey",
+				"canonical": "#E4E4EC",
+				"tonalRamp": [
+					"#0b0b10",
+					"#24242a",
+					"#414148",
+					"#606067",
+					"#818189",
+					"#a4a4ac",
+					"#c8c8d0",
+					"#eeeef6"
+				]
+			},
+			"secondary-dark": {
+				"role": "neutral",
+				"displayName": "Track Grey (dark)",
+				"canonical": "#14151F",
+				"tonalRamp": [
+					"#090a14",
+					"#23242f",
+					"#40414d",
+					"#5f606d",
+					"#80818f",
+					"#a2a4b2",
+					"#c6c8d6",
+					"#ebedfc"
+				]
+			},
+			"muted": {
+				"role": "neutral",
+				"displayName": "Quiet Chip",
+				"canonical": "#ECECF2",
+				"tonalRamp": [
+					"#0b0b0e",
+					"#252529",
+					"#414146",
+					"#616166",
+					"#828287",
+					"#a4a4aa",
+					"#c8c8ce",
+					"#eeeef4"
+				]
+			},
+			"muted-dark": {
+				"role": "neutral",
+				"displayName": "Quiet Chip (dark)",
+				"canonical": "#35375A",
+				"tonalRamp": [
+					"#080623",
+					"#202142",
+					"#3c3e62",
+					"#5a5d83",
+					"#7b7fa7",
+					"#9da1cb",
+					"#c1c5f1",
+					"#e6ebff"
+				]
+			},
+			"muted-foreground": {
+				"role": "neutral",
+				"displayName": "Slate Violet",
+				"canonical": "#5E6078",
+				"tonalRamp": [
+					"#09091b",
+					"#222337",
+					"#3e4056",
+					"#5d5f77",
+					"#7e8099",
+					"#a0a3bd",
+					"#c4c7e2",
+					"#e9ecff"
+				]
+			},
+			"muted-foreground-dark": {
+				"role": "neutral",
+				"displayName": "Slate Violet (dark)",
+				"canonical": "#A3A5C0",
+				"tonalRamp": [
+					"#09081b",
+					"#222338",
+					"#3e4056",
+					"#5d5f77",
+					"#7e809a",
+					"#a1a3bd",
+					"#c4c7e3",
+					"#eaecff"
+				]
+			},
+			"accent": {
+				"role": "neutral",
+				"displayName": "Lavender Wash",
+				"canonical": "#E6E7F7",
+				"tonalRamp": [
+					"#0a0a14",
+					"#23242f",
+					"#40414d",
+					"#5f606d",
+					"#80818f",
+					"#a3a4b3",
+					"#c7c8d7",
+					"#ecedfd"
+				]
+			},
+			"accent-dark": {
+				"role": "neutral",
+				"displayName": "Lavender Wash (dark)",
+				"canonical": "#35375A",
+				"tonalRamp": [
+					"#080623",
+					"#202142",
+					"#3c3e62",
+					"#5a5d83",
+					"#7b7fa7",
+					"#9da1cb",
+					"#c1c5f1",
+					"#e6ebff"
+				]
+			},
+			"border": {
+				"role": "neutral",
+				"displayName": "Hairline",
+				"canonical": "#DEDEEA",
+				"tonalRamp": [
+					"#0a0a12",
+					"#24242d",
+					"#41414a",
+					"#60606a",
+					"#81818c",
+					"#a4a4af",
+					"#c8c8d4",
+					"#ededf9"
+				]
+			},
+			"border-dark": {
+				"role": "neutral",
+				"displayName": "Hairline (dark)",
+				"canonical": "#3A3C58",
+				"tonalRamp": [
+					"#08071f",
+					"#21223c",
+					"#3d3f5b",
+					"#5c5e7d",
+					"#7c809f",
+					"#9fa2c3",
+					"#c3c6e9",
+					"#e8ecff"
+				]
+			},
+			"sidebar": {
+				"role": "neutral",
+				"displayName": "Sidebar Shade",
+				"canonical": "#F0F0F5",
+				"tonalRamp": [
+					"#0b0b0e",
+					"#252528",
+					"#414145",
+					"#616165",
+					"#828286",
+					"#a4a4a9",
+					"#c8c8cd",
+					"#eeeef3"
+				]
+			},
+			"sidebar-dark": {
+				"role": "neutral",
+				"displayName": "Sidebar Shade (dark)",
+				"canonical": "#1C1D2C",
+				"tonalRamp": [
+					"#090917",
+					"#222333",
+					"#3f4051",
+					"#5e6072",
+					"#7f8194",
+					"#a1a3b7",
+					"#c5c7dc",
+					"#eaedff"
+				]
+			},
+			"rail": {
+				"role": "neutral",
+				"displayName": "Rail Shade",
+				"canonical": "#ECECF2",
+				"tonalRamp": [
+					"#0b0b0e",
+					"#252529",
+					"#414146",
+					"#616166",
+					"#828287",
+					"#a4a4aa",
+					"#c8c8ce",
+					"#eeeef4"
+				]
+			},
+			"rail-dark": {
+				"role": "neutral",
+				"displayName": "Rail Shade (dark)",
+				"canonical": "#191A28",
+				"tonalRamp": [
+					"#090a16",
+					"#222432",
+					"#3f4151",
+					"#5e6071",
+					"#7f8193",
+					"#a1a3b6",
+					"#c5c8db",
+					"#ebedff"
+				]
+			},
+			"warning": {
+				"role": "status",
+				"displayName": "Lamp Amber",
+				"canonical": "#9A6400",
+				"tonalRamp": [
+					"#250000",
+					"#451400",
+					"#663400",
+					"#895400",
+					"#ad7522",
+					"#d2984a",
+					"#f8bd6f",
+					"#ffe294"
+				]
+			},
+			"warning-dark": {
+				"role": "status",
+				"displayName": "Lamp Amber (dark)",
+				"canonical": "#F2B84B",
+				"tonalRamp": [
+					"#250000",
+					"#461300",
+					"#673400",
+					"#895500",
+					"#ad7600",
+					"#d29a23",
+					"#f8be52",
+					"#ffe47a"
+				]
+			},
+			"destructive": {
+				"role": "status",
+				"displayName": "Signal Red",
+				"canonical": "#C9372C",
+				"tonalRamp": [
+					"#3c0000",
+					"#630000",
+					"#8b0000",
+					"#b21d16",
+					"#db493c",
+					"#ff6f5e",
+					"#ff9481",
+					"#ffbaa5"
+				]
+			},
+			"destructive-dark": {
+				"role": "status",
+				"displayName": "Signal Red (dark)",
+				"canonical": "#F2786D",
+				"tonalRamp": [
+					"#350000",
+					"#5a0000",
+					"#80030b",
+					"#a6332e",
+					"#ce574e",
+					"#f67b70",
+					"#ffa093",
+					"#ffc5b7"
+				]
+			}
+		},
+		"typographyMeta": {
+			"display": {
+				"displayName": "Display",
+				"purpose": "The new chat heading, only."
+			},
+			"question": {
+				"displayName": "Question",
+				"purpose": "The tutor's question in the answer card."
+			},
+			"brand": {
+				"displayName": "Brand",
+				"purpose": "The ai-learn name beside the logo."
+			},
+			"body": {
+				"displayName": "Body",
+				"purpose": "Replies and learner messages."
+			},
+			"title": {
+				"displayName": "Title",
+				"purpose": "Chat title, active row, and popover headings."
+			},
+			"label": {
+				"displayName": "Label",
+				"purpose": "Inactive rows, answer choices, and search."
+			},
+			"caption": {
+				"displayName": "Caption",
+				"purpose": "Context, model, effort, and notices."
+			},
+			"micro": {
+				"displayName": "Micro",
+				"purpose": "Usage and slider end labels."
+			}
+		},
+		"shadows": [
+			{
+				"name": "light-popover",
+				"value": "0 4px 16px rgb(35 36 58 / 0.1)",
+				"purpose": "Floating panels in light mode only."
+			}
+		],
+		"motion": [
+			{
+				"name": "fast",
+				"value": "150ms ease-out",
+				"purpose": "Colour and hover."
+			},
+			{
+				"name": "base",
+				"value": "200ms cubic-bezier(0.16, 1, 0.3, 1)",
+				"purpose": "Reveals: popovers, menus, tab panels, notices, the answer card."
+			},
+			{
+				"name": "slow",
+				"value": "300ms cubic-bezier(0.16, 1, 0.3, 1)",
+				"purpose": "Large surfaces: the sidebar collapsing, and the PDF and background panes."
+			},
+			{
+				"name": "exit",
+				"value": "120ms cubic-bezier(0.4, 0, 1, 1)",
+				"purpose": "Anything leaving."
+			},
+			{
+				"name": "spring-pop",
+				"value": "spring 620/38/0.6, 250ms",
+				"purpose": "Popups opening from their trigger."
+			},
+			{
+				"name": "spring-highlight",
+				"value": "spring 700/46/0.5, 250ms",
+				"purpose": "Press, tab indicators, and selections."
+			},
+			{
+				"name": "spring-confirm",
+				"value": "spring 520/34/0.45, 250ms",
+				"purpose": "A check or success icon arriving."
+			}
+		],
+		"breakpoints": []
+	},
+	"components": [
+		{
+			"name": "Primary Button",
+			"kind": "button",
+			"refersTo": "button-primary",
+			"description": "Submit answer: the main action in the answer card.",
+			"html": "<button class=\"ds-btn-primary\">Submit answer</button>",
+			"css": ".ds-btn-primary { font-family: Inter, system-ui, sans-serif; background: #5B5FC7; color: #FFFFFF; height: 40px; padding: 0 14px; border: 0; border-radius: 10px; font-size: 14px; font-weight: 500; line-height: 18px; cursor: pointer; } .ds-btn-primary:hover { background: color-mix(in oklch, #5B5FC7 80%, transparent); } .ds-btn-primary:focus-visible { outline: 2px solid #5B5FC7; outline-offset: 2px; }"
+		},
+		{
+			"name": "Outline Button",
+			"kind": "button",
+			"refersTo": "button-outline",
+			"description": "Retry, I don't know, and other secondary actions.",
+			"html": "<button class=\"ds-btn-outline\">I don't know</button>",
+			"css": ".ds-btn-outline { font-family: Inter, system-ui, sans-serif; background: transparent; color: #23243A; height: 38px; padding: 0 10px; border: 1px solid #DEDEEA; border-radius: 10px; font-size: 14px; line-height: 18px; cursor: pointer; } .ds-btn-outline:hover { background: #ECECF2; } .ds-btn-outline:focus-visible { outline: 2px solid #5B5FC7; outline-offset: 2px; }"
+		},
+		{
+			"name": "Send Button",
+			"kind": "button",
+			"refersTo": "button-send",
+			"description": "The round Send button in the composer.",
+			"html": "<button class=\"ds-btn-send\" aria-label=\"Send\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 20 20\"><path d=\"M10 16V4M5 9l5-5 5 5\" fill=\"none\" stroke=\"#FFFFFF\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg></button>",
+			"css": ".ds-btn-send { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 0; border-radius: 9999px; background: #5B5FC7; cursor: pointer; } .ds-btn-send:focus-visible { outline: 2px solid #5B5FC7; outline-offset: 2px; } .ds-btn-send:disabled { opacity: 0.45; }"
+		},
+		{
+			"name": "Search Input",
+			"kind": "input",
+			"refersTo": "input-search",
+			"description": "The search field in the sidebar.",
+			"html": "<input class=\"ds-input-search\" placeholder=\"Search chats\" aria-label=\"Search chats\" />",
+			"css": ".ds-input-search { font-family: Inter, system-ui, sans-serif; height: 34px; width: 232px; padding: 0 10px; color: #23243A; background: transparent; border: 1px solid #DEDEEA; border-radius: 8px; font-size: 14px; line-height: 18px; } .ds-input-search::placeholder { color: #5E6078; } .ds-input-search:focus-visible { outline: 2px solid #5B5FC7; outline-offset: 2px; }"
+		},
+		{
+			"name": "Segmented Control",
+			"kind": "nav",
+			"refersTo": "tabs-list",
+			"description": "The All, Learning, and Practice filter.",
+			"html": "<div class=\"ds-tabs\"><button class=\"ds-tab ds-tab-active\">All</button><button class=\"ds-tab\">Learning</button><button class=\"ds-tab\">Practice</button></div>",
+			"css": ".ds-tabs { font-family: Inter, system-ui, sans-serif; display: flex; gap: 2px; width: 252px; height: 32px; padding: 3px; background: #E4E4EC; border-radius: 8px; } .ds-tab { flex: 1; border: 0; background: transparent; color: #5E6078; border-radius: 6px; font-size: 13px; line-height: 16px; cursor: pointer; } .ds-tab-active { background: #FFFFFF; color: #23243A; font-weight: 500; } .ds-tab:focus-visible { outline: 2px solid #5B5FC7; outline-offset: 1px; }"
+		},
+		{
+			"name": "Chat Row",
+			"kind": "nav",
+			"refersTo": "chat-row-active",
+			"description": "A chat in the sidebar, active and inactive.",
+			"html": "<div class=\"ds-rows\"><a class=\"ds-row ds-row-active\" href=\"#\">Why attention needs three vectors</a><a class=\"ds-row\" href=\"#\">Backprop by hand</a></div>",
+			"css": ".ds-rows { font-family: Inter, system-ui, sans-serif; display: flex; flex-direction: column; gap: 2px; width: 252px; padding: 10px; background: #F0F0F5; } .ds-row { display: flex; align-items: center; height: 36px; padding: 0 10px; border-radius: 8px; color: #5E6078; font-size: 14px; line-height: 18px; text-decoration: none; } .ds-row:hover { background: #ECECF2; } .ds-row-active { background: #FFFFFF; color: #23243A; font-weight: 500; }"
+		},
+		{
+			"name": "Learner Message",
+			"kind": "custom",
+			"refersTo": "learner-message",
+			"description": "The learner's message bubble, aligned right.",
+			"html": "<div class=\"ds-learner\">Why does attention need query, key and value vectors?</div>",
+			"css": ".ds-learner { font-family: Inter, system-ui, sans-serif; max-width: 440px; padding: 10px 16px; background: #E6E7F7; color: #23243A; border-radius: 16px; font-size: 15px; line-height: 23px; }"
+		},
+		{
+			"name": "Answer Choice",
+			"kind": "custom",
+			"refersTo": "answer-choice-selected",
+			"description": "A choice in the answer card, unselected and selected.",
+			"html": "<div class=\"ds-choices\"><label class=\"ds-choice\"><span class=\"ds-chip\">A</span>The key</label><label class=\"ds-choice ds-choice-on\"><span class=\"ds-chip ds-chip-on\">B</span>The query</label></div>",
+			"css": ".ds-choices { font-family: Inter, system-ui, sans-serif; display: flex; flex-direction: column; gap: 6px; width: 400px; } .ds-choice { display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 10px; border: 1px solid #DEDEEA; border-radius: 10px; color: #23243A; font-size: 14px; line-height: 18px; cursor: pointer; } .ds-choice:hover { background: #ECECF2; } .ds-choice-on { background: #E6E7F7; border: 1.5px solid #5B5FC7; } .ds-chip { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 6px; background: #ECECF2; color: #5E6078; font-size: 12px; font-weight: 500; } .ds-chip-on { background: #5B5FC7; color: #FFFFFF; }"
+		}
+	],
+	"narrative": {
+		"northStar": "The Quiet Study",
+		"overview": "ai-learn is a calm room built for thinking. Cool indigo-grey surfaces sit close together in tone, so the shell recedes and the words of the conversation carry the screen. Text is plain and set for reading, and nothing competes with it.\n\nThe interface earns attention only when the tutor needs something from the learner. Indigo marks where the learner is and what they can do next. When the tutor asks a question, the answer card takes the composer's place and becomes the largest object on the screen.\n\nLight and dark are equal themes, drawn frame for frame, and the dark theme is a deep indigo night rather than an inverted light theme. Density is calm but practical: small controls, generous space around the conversation.",
+		"keyCharacteristics": [
+			"One indigo accent on layered cool neutrals",
+			"Surfaces separated by tone, with few lines and almost no shadow",
+			"Inter at a few steady sizes, with medium weight for emphasis",
+			"Soft corners that grow with the size of the object",
+			"Every control is a shadcn component styled with Tailwind",
+			"Fluid, damped motion that answers every interaction and never overshoots"
+		],
+		"rules": [
+			{
+				"name": "The One Accent Rule",
+				"body": "Indigo is the only accent. It marks the current place or the next action, never decoration.",
+				"section": "colors"
+			},
+			{
+				"name": "The Earned Alarm Rule",
+				"body": "Amber and red appear only when something needs the learner's attention, and always with words, never colour alone.",
+				"section": "colors"
+			},
+			{
+				"name": "The Token Rule",
+				"body": "Colours come only from `src/web/globals.css`, and Tailwind's default palette stays off. Add a new token here and in the frames first. shadcn's `sidebar-*` tokens map onto these: `sidebar` to Sidebar Shade, `sidebar-accent` to Clean Sheet, and the rest to their matching tokens.",
+				"section": "colors"
+			},
+			{
+				"name": "The Two Weights Rule",
+				"body": "Use 400 for reading and 500 for emphasis. The brand name is the only 600.",
+				"section": "typography"
+			},
+			{
+				"name": "The Single Display Rule",
+				"body": "The display size appears only on the new chat screen.",
+				"section": "typography"
+			},
+			{
+				"name": "The Flat-By-Default Rule",
+				"body": "The only shadow in the system belongs to floating panels. Cards and buttons never have one.",
+				"section": "elevation"
+			},
+			{
+				"name": "The Answers Input Rule",
+				"body": "Motion responds to what the learner just did. Only spinners, skeletons, and the tutor's activity indicator move on their own, because they report that work is under way.",
+				"section": "components"
+			},
+			{
+				"name": "The No Overshoot Rule",
+				"body": "Springs are critically damped or close to it (damping ratio 0.95 or higher), so nothing bounces.",
+				"section": "components"
+			},
+			{
+				"name": "The Small Moves Rule",
+				"body": "Animate opacity, colour, and small transforms. Only the sidebar, panes, and collapsible sections may animate size.",
+				"section": "components"
+			},
+			{
+				"name": "The Reduced Motion Rule",
+				"body": "When the system asks for reduced motion, transforms and scaling turn off, while opacity and colour stay.",
+				"section": "components"
+			}
+		],
+		"dos": [
+			"**Do** use a shadcn component for every control, and add one with `npx shadcn add` when it's missing.",
+			"**Do** style with Tailwind classes and tokens from `src/web/globals.css`.",
+			"**Do** build each new screen in both light and dark, checking it against its M1 frame.",
+			"**Do** separate surfaces by tone first, and add a line only where an edge is needed.",
+			"**Do** use the operating system's real window controls on macOS, Windows, and Linux.",
+			"**Do** give every interactive component the fluid response in Motion, built into the component itself.",
+			"**Do** check each animation with the system's reduced motion setting on.",
+			"**Do** read a screen's M1 frame in Paper for exact values, because this file holds the system rather than every state."
+		],
+		"donts": [
+			"**Don't** hand-build a control that shadcn provides.",
+			"**Don't** add global CSS, per-feature stylesheets, or inline styles. CSS Modules are only for what classes can't reach, like Markdown output.",
+			"**Don't** use Tailwind palette colours like `bg-white`, because they render with no colour and no error.",
+			"**Don't** add a second accent, gradients, or shadows on cards and buttons.",
+			"**Don't** use type smaller than 12px, or a second typeface in the interface.",
+			"**Don't** signal a warning with colour alone.",
+			"**Don't** draw fake window controls.",
+			"**Don't** use bounces, off-screen slides, staggered list entrances, or idle and scroll-triggered animation.",
+			"**Don't** slow down typing or dragging with a transition on what the learner is directly controlling."
+		]
+	}
+}
