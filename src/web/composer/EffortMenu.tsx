@@ -8,12 +8,19 @@ import { COMPOSER_MENU, MENU_TRIGGER } from "./ModelPicker.tsx";
 import type { Effort } from "../settings/useProviders.ts";
 import { ALL_EFFORTS, EFFORT_LABELS, type ModelChoice } from "./useModelChoice.ts";
 
-const KNOB_WIDTH = 64;
+const KNOB_WIDTH = 62;
+const TRACK_PADDING = 3;
 const LAST_STOP = ALL_EFFORTS.length - 1;
 
 /** Where a stop's centre sits, keeping in step with the knob, which stays inside the track. */
 function stopCentre(index: number) {
 	return `calc(${KNOB_WIDTH / 2}px + (100% - ${KNOB_WIDTH}px) * ${index / LAST_STOP})`;
+}
+
+/** The knob's right edge plus the track's padding, which is exactly the full width at the last stop. */
+function trailWidth(index: number) {
+	const travel = `(100% - ${KNOB_WIDTH + 2 * TRACK_PADDING}px) * ${index / LAST_STOP}`;
+	return `calc(${KNOB_WIDTH + 2 * TRACK_PADDING}px + ${travel})`;
 }
 
 /**
@@ -35,17 +42,14 @@ function EffortSlider({ choice }: { choice: ModelChoice }) {
 	const { model, effort, setEffort } = choice;
 	if (!model || !effort) return null;
 	const value = ALL_EFFORTS.indexOf(effort);
-	const limited = model.efforts.length < ALL_EFFORTS.length;
 
 	return (
 		<div className="relative rounded-full bg-secondary p-[3px]">
-			{/* Lines up with the knob's centre. A limited model has no trail, since its scale skips levels. */}
-			{!limited && value > 0 && (
-				<div
-					className="absolute inset-y-0 left-0 rounded-full bg-primary motion-safe:transition-[width] motion-safe:duration-250 motion-safe:ease-spring-highlight"
-					style={{ width: `calc(3px + ${stopCentre(value).replace("100%", "(100% - 6px)")})` }}
-				/>
-			)}
+			{/* Runs from the left edge through the knob, so Max fills the whole bar. */}
+			<div
+				className="absolute inset-y-0 left-0 rounded-full bg-primary motion-safe:transition-[width] motion-safe:duration-250 motion-safe:ease-spring-highlight"
+				style={{ width: trailWidth(value) }}
+			/>
 			<Slider.Root
 				min={0}
 				max={LAST_STOP}
@@ -65,7 +69,7 @@ function EffortSlider({ choice }: { choice: ModelChoice }) {
 						className={cn(
 							"pointer-events-none absolute -translate-x-1/2 text-[12px] leading-4 whitespace-nowrap text-muted-foreground",
 							!model.efforts.includes(level) && "opacity-45",
-							!limited && index < value && "text-primary-foreground",
+							index < value && "text-primary-foreground",
 						)}
 					>
 						{EFFORT_LABELS[level]}
@@ -106,7 +110,7 @@ export function EffortMenu({ choice, anchor, disabled }: EffortMenuProps) {
 					<ChevronDown className="size-3 text-muted-foreground" strokeWidth={2.8} />
 				</Button>
 			</PopoverTrigger>
-			<PopoverContent {...COMPOSER_MENU} className="w-[320px] p-2.5">
+			<PopoverContent {...COMPOSER_MENU} className="w-[340px] p-2.5">
 				<EffortSlider choice={choice} />
 			</PopoverContent>
 		</Popover>
