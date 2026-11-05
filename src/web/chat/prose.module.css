@@ -19,6 +19,24 @@
 	margin-bottom: 0;
 }
 
+.prose :is(p, ul, ol, pre, table, blockquote, h1, h2, h3, h4, h5, h6) {
+	margin-block: 12px;
+}
+
+/* Replies use the app's two weights, and a heading never outgrows the question size. */
+.prose :is(h1, h2, h3, h4, h5, h6, strong, b, th) {
+	font-weight: 500;
+}
+
+.prose :is(h1, h2) {
+	font-size: 17px;
+	line-height: 25px;
+}
+
+.prose :is(h3, h4, h5, h6) {
+	font-size: 15px;
+}
+
 .prose pre {
 	background: var(--card);
 	border: 1px solid var(--border);

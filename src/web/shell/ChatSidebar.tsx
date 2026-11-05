@@ -105,7 +105,7 @@ export function ChatSidebar({
 					))}
 				</SidebarMenu>
 				{sessions.length === 0 && (
-					<p className="px-2.5 py-1 text-[13px] leading-4 text-muted-foreground">
+					<p className="px-2.5 text-[14px] leading-[18px] text-muted-foreground">
 						Your chats will appear here.
 					</p>
 				)}

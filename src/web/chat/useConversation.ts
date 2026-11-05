@@ -15,6 +15,12 @@ const makeKey = () => `local-${++nextKey}`;
 
 type StartRun = (onEvent: (event: RunEvent) => void) => Promise<void>;
 
+/** A retry replaces what the failed attempt wrote, so the new reply doesn't stream onto the end of it. */
+function withoutFailedText(blocks: TranscriptMessage["blocks"]): TranscriptMessage["blocks"] {
+	const end = blocks.findLastIndex((block) => block.kind !== "text") + 1;
+	return blocks.slice(0, end);
+}
+
 /** The open chat: its messages, and sending to it. `onRunEnd` fires after each reply finishes. */
 export function useConversation(onRunEnd: () => void) {
 	const [sessionId, setSessionId] = useState<string>();
@@ -82,7 +88,15 @@ export function useConversation(onRunEnd: () => void) {
 		setMessages((current) => {
 			const last = current.at(-1);
 			return last?.role === "assistant"
-				? [...current.slice(0, -1), { ...last, notice: undefined, failed: undefined }]
+				? [
+						...current.slice(0, -1),
+						{
+							...last,
+							blocks: last.failed ? withoutFailedText(last.blocks) : last.blocks,
+							notice: undefined,
+							failed: undefined,
+						},
+					]
 				: [...current, { id: replyId, role: "assistant", blocks: [] }];
 		});
 		void follow(replyId, (onEvent) => retryRun(sessionId!, onEvent));

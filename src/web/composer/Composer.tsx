@@ -1,8 +1,12 @@
+import { cn } from "cn";
 import type { ClipboardEvent, KeyboardEvent, RefObject } from "react";
 import { Textarea } from "../components/textarea.tsx";
 import { ComposerControls } from "./ComposerControls.tsx";
 import { DraftChip } from "./DraftChip.tsx";
 import type { Draft } from "./useDrafts.ts";
+
+const CARD =
+	"rounded-3xl border border-border bg-card pt-3.5 pr-3 pb-3 pl-[18px] focus-within:border-muted-foreground";
 
 interface ComposerProps {
 	text: string;
@@ -13,6 +17,8 @@ interface ComposerProps {
 	canAttach: boolean;
 	canSend: boolean;
 	running: boolean;
+	/** The app can't reply yet, so the composer dims and takes no input. */
+	dimmed: boolean;
 	onAddFiles: (files: File[]) => void;
 	onRemoveDraft: (key: string) => void;
 	onSend: () => void;
@@ -21,7 +27,7 @@ interface ComposerProps {
 
 export function Composer(props: ComposerProps) {
 	const { text, onTextChange, textArea, isNewChat, drafts, canAttach, canSend, running } = props;
-	const { onAddFiles, onRemoveDraft, onSend, onStop } = props;
+	const { dimmed, onAddFiles, onRemoveDraft, onSend, onStop } = props;
 
 	function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
 		if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
@@ -46,7 +52,7 @@ export function Composer(props: ComposerProps) {
 				onSend();
 			}}
 		>
-			<div className="rounded-3xl border border-border bg-card pt-3.5 pr-3 pb-3 pl-[18px] focus-within:border-muted-foreground">
+			<div className={cn(CARD, dimmed && "opacity-50")}>
 				{drafts.length > 0 && (
 					<ul className="mb-3 flex [scrollbar-width:none] gap-2 overflow-x-auto">
 						{drafts.map((draft) => (
@@ -56,9 +62,10 @@ export function Composer(props: ComposerProps) {
 				)}
 				<Textarea
 					ref={textArea}
-					className="block max-h-[200px] min-h-0 resize-none rounded-none border-0 p-0 text-[15px] leading-[18px] transition-none focus-visible:ring-0"
+					className="block max-h-[200px] min-h-0 resize-none rounded-none border-0 p-0 text-[15px] leading-[18px] transition-none focus-visible:ring-0 disabled:bg-transparent disabled:opacity-100"
 					aria-label="Message"
 					rows={1}
+					disabled={dimmed}
 					placeholder={isNewChat ? "Ask the tutor anything" : "Reply to the tutor"}
 					value={text}
 					onChange={(event) => onTextChange(event.target.value)}
