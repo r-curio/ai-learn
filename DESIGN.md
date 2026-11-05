@@ -301,7 +301,9 @@ Quiet and precise: controls sit still until they're needed, then respond clearly
 | Buttons, Send, Stop, and Retry   | `button`                         |
 | Search and reasoning fields      | `input`, `textarea`              |
 | All/Learning/Practice            | `tabs`                           |
-| Model and Effort menus           | `dropdown-menu`                  |
+| Model picker                     | `popover` with `command`         |
+| Model price                      | `tooltip`                        |
+| Effort menu                      | `popover` with Radix `Slider`    |
 | Context details                  | `popover`                        |
 | Answer choices                   | `radio-group` with `item`        |
 | How sure are you?                | `slider`                         |
@@ -394,6 +396,13 @@ The product's signature component, which replaces the composer while a question 
 - **Choices:** 38px rows with a 22px letter chip. Selected rows use Lavender Wash, a 1.5px indigo border, and an indigo chip.
 - **Slider:** a 4px track and a 16px handle. Issue #25 covers its unset and "Not needed" states.
 - **Steadiness:** the card's top edge doesn't move between states, except when the reasoning text grows.
+
+### Model and Effort menus
+
+Both float over the composer rather than above it, with their bottom edge 6px over the controls row. The [Model picker variants](https://app.paper.design/file/01M6K667H87BCQPSD9R4ZWSTST/p-8-0) page replaces frames 04 and 05.
+
+- **Model picker:** 300px wide, with search, models grouped under their provider, and Add provider at the bottom. Each 36px row has the name, a context badge, and a check slot. The exact price shows in a tooltip on hover or arrow-key focus.
+- **Effort slider:** a 40px Track Grey pill holding the five level names. A Clean Sheet knob carries the current name, with an indigo trail behind it. It rests only on named levels, and always shows all five. Levels a model doesn't allow are dimmed and skipped, and that model has no trail. This is separate from the answer card's 4px confidence slider.
 
 ### Context meter
 

@@ -3,6 +3,7 @@ import type { ClipboardEvent, KeyboardEvent, RefObject } from "react";
 import { Textarea } from "../components/textarea.tsx";
 import { ComposerControls } from "./ComposerControls.tsx";
 import { DraftChip } from "./DraftChip.tsx";
+import type { ProviderOption } from "../settings/useProviders.ts";
 import type { Draft } from "./useDrafts.ts";
 import type { ModelChoice } from "./useModelChoice.ts";
 
@@ -18,7 +19,9 @@ interface ComposerProps {
 	canAttach: boolean;
 	canSend: boolean;
 	running: boolean;
+	providers: ProviderOption[];
 	modelChoice: ModelChoice;
+	onAddProvider: () => void;
 	/** The app can't reply yet, so the composer dims and takes no input. */
 	dimmed: boolean;
 	onAddFiles: (files: File[]) => void;
@@ -29,7 +32,8 @@ interface ComposerProps {
 
 export function Composer(props: ComposerProps) {
 	const { text, onTextChange, textArea, isNewChat, drafts, canAttach, canSend, running } = props;
-	const { modelChoice, dimmed, onAddFiles, onRemoveDraft, onSend, onStop } = props;
+	const { providers, modelChoice, onAddProvider, dimmed, onAddFiles, onRemoveDraft } = props;
+	const { onSend, onStop } = props;
 
 	function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
 		if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
@@ -54,7 +58,7 @@ export function Composer(props: ComposerProps) {
 				onSend();
 			}}
 		>
-			<div data-slot="composer" className={cn(CARD, dimmed && "opacity-50")}>
+			<div className={cn(CARD, dimmed && "opacity-50")}>
 				{drafts.length > 0 && (
 					<ul className="mb-3 flex [scrollbar-width:none] gap-2 overflow-x-auto">
 						{drafts.map((draft) => (
@@ -79,8 +83,10 @@ export function Composer(props: ComposerProps) {
 					canAttach={canAttach}
 					canSend={canSend}
 					running={running}
+					providers={providers}
 					modelChoice={modelChoice}
 					menusDisabled={dimmed}
+					onAddProvider={onAddProvider}
 					onAddFiles={onAddFiles}
 					onStop={onStop}
 				/>

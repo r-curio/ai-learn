@@ -2,27 +2,33 @@ import { ArrowUp, Plus } from "lucide-react";
 import { useRef } from "react";
 import { Button } from "../components/button.tsx";
 import { IconButton } from "../components/IconButton.tsx";
-import { ModelMenus } from "./ModelMenus.tsx";
+import type { ProviderOption } from "../settings/useProviders.ts";
+import { EffortMenu } from "./EffortMenu.tsx";
+import { ModelPicker } from "./ModelPicker.tsx";
 import type { ModelChoice } from "./useModelChoice.ts";
 
 interface ComposerControlsProps {
 	canAttach: boolean;
 	canSend: boolean;
 	running: boolean;
+	providers: ProviderOption[];
 	modelChoice: ModelChoice;
 	/** The app can't reply yet, so there's nothing to choose for. */
 	menusDisabled: boolean;
+	onAddProvider: () => void;
 	onAddFiles: (files: File[]) => void;
 	onStop: () => void;
 }
 
 /** The row under the message box: Attach on the left, then the menus and Send or Stop on the right. */
 export function ComposerControls(props: ComposerControlsProps) {
-	const { canAttach, canSend, running, modelChoice, menusDisabled, onAddFiles, onStop } = props;
+	const { canAttach, canSend, running, providers, modelChoice, menusDisabled } = props;
+	const { onAddProvider, onAddFiles, onStop } = props;
 	const fileInput = useRef<HTMLInputElement>(null);
+	const row = useRef<HTMLDivElement>(null);
 
 	return (
-		<div className="mt-[22px] flex items-center justify-between">
+		<div ref={row} className="mt-[22px] flex items-center justify-between">
 			<IconButton
 				aria-label="Attach files"
 				// The plus sits centred in its hover shape, and the margin keeps it lined up with the text.
@@ -43,7 +49,14 @@ export function ComposerControls(props: ComposerControlsProps) {
 				}}
 			/>
 			<div className="flex items-center gap-1">
-				<ModelMenus choice={modelChoice} disabled={menusDisabled} />
+				<ModelPicker
+					providers={providers}
+					choice={modelChoice}
+					anchor={row}
+					disabled={menusDisabled}
+					onAddProvider={onAddProvider}
+				/>
+				<EffortMenu choice={modelChoice} anchor={row} disabled={menusDisabled} />
 				{running ? (
 					<Button
 						size="icon"
