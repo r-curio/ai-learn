@@ -64,7 +64,7 @@ export function engineFromModels(
 						ready: false,
 						defaultModel,
 						providers,
-						reason: "No provider key is set. Add one, like ANTHROPIC_API_KEY, to .env.local.",
+						reason: "No provider key is set, such as ANTHROPIC_API_KEY.",
 					};
 		},
 	};
