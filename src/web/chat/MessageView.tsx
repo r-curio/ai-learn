@@ -1,11 +1,11 @@
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import type { TranscriptBlock, TranscriptMessage } from "../../shared/protocol.ts";
+import type { AttachmentInfo, TranscriptBlock, TranscriptMessage } from "../../shared/protocol.ts";
 import { Button } from "../components/button.tsx";
 import { Notice } from "../components/Notice.tsx";
 import styles from "./prose.module.css";
 import { SavedImage } from "./SavedImage.tsx";
-import { SentFile } from "./SentFile.tsx";
+import { isDocument, SentDocument, SentFile } from "./SentFile.tsx";
 
 const toolTone = {
 	running: "text-muted-foreground",
@@ -32,6 +32,49 @@ function BlockView({ block, role }: { block: TranscriptBlock; role: TranscriptMe
 	return <p className="wrap-anywhere whitespace-pre-wrap">{block.text}</p>;
 }
 
+function SentAttachments({
+	attachments,
+	sessionId,
+}: {
+	attachments: AttachmentInfo[];
+	sessionId: string;
+}) {
+	const images = attachments.filter(({ kind }) => kind === "image");
+	const documents = attachments.filter((item) => item.kind !== "image" && isDocument(item));
+	const files = attachments.filter((item) => item.kind !== "image" && !isDocument(item));
+	return (
+		<div className="flex max-w-full flex-col items-end gap-2">
+			{images.length > 0 && (
+				<ul className="flex flex-wrap justify-end gap-2">
+					{images.map((attachment) => (
+						<li key={attachment.id}>
+							<SavedImage sessionId={sessionId} attachment={attachment} />
+						</li>
+					))}
+				</ul>
+			)}
+			{documents.length > 0 && (
+				<ul className="flex flex-col items-end gap-2">
+					{documents.map((attachment) => (
+						<li key={attachment.id}>
+							<SentDocument attachment={attachment} />
+						</li>
+					))}
+				</ul>
+			)}
+			{files.length > 0 && (
+				<ul className="flex flex-wrap justify-end gap-2">
+					{files.map((attachment) => (
+						<li key={attachment.id}>
+							<SentFile name={attachment.name} />
+						</li>
+					))}
+				</ul>
+			)}
+		</div>
+	);
+}
+
 export function MessageView({
 	message,
 	sessionId,
@@ -41,43 +84,39 @@ export function MessageView({
 	sessionId: string;
 	onRetry?: () => void;
 }) {
+	const learner = message.role === "user";
+	const hasBody = message.blocks.length > 0 || Boolean(message.notice);
 	return (
 		<article
 			className={
-				message.role === "user"
-					? "max-w-[82%] self-end rounded-[14px] bg-muted px-3.5 py-2.5 max-md:max-w-[92%]"
+				learner
+					? "flex max-w-[82%] flex-col items-end gap-2 self-end max-md:max-w-[92%]"
 					: undefined
 			}
 		>
 			{message.attachments && message.attachments.length > 0 && (
-				<ul className="flex flex-wrap gap-2 not-last:mb-2">
-					{message.attachments.map((attachment) => (
-						<li key={attachment.id}>
-							{attachment.kind === "image" ? (
-								<SavedImage sessionId={sessionId} attachment={attachment} />
-							) : (
-								<SentFile name={attachment.name} />
-							)}
-						</li>
-					))}
-				</ul>
+				<SentAttachments attachments={message.attachments} sessionId={sessionId} />
 			)}
-			{message.blocks.map((block, index) => (
-				<BlockView
-					block={block}
-					role={message.role}
-					key={block.kind === "tool" ? block.id : index}
-				/>
-			))}
-			{message.notice && (
-				<Notice error={message.failed}>
-					{message.notice}
-					{onRetry && (
-						<Button variant="link" size="inline" onClick={onRetry}>
-							Retry
-						</Button>
+			{hasBody && (
+				<div className={learner ? "rounded-[14px] bg-muted px-3.5 py-2.5" : undefined}>
+					{message.blocks.map((block, index) => (
+						<BlockView
+							block={block}
+							role={message.role}
+							key={block.kind === "tool" ? block.id : index}
+						/>
+					))}
+					{message.notice && (
+						<Notice error={message.failed}>
+							{message.notice}
+							{onRetry && (
+								<Button variant="link" size="inline" onClick={onRetry}>
+									Retry
+								</Button>
+							)}
+						</Notice>
 					)}
-				</Notice>
+				</div>
 			)}
 		</article>
 	);

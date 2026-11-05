@@ -220,7 +220,7 @@
 
 /* The width the chat and the composer share, so they always line up. */
 @utility chat-column {
-	@apply mx-auto w-full max-w-[760px] px-5 max-md:px-4;
+	@apply mx-auto w-full max-w-[720px] px-5 max-md:px-4;
 }
 
 /* The app has no native title bar, so these areas move the window instead. */

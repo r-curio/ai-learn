@@ -92,6 +92,7 @@ export function App() {
 					text={text}
 					onTextChange={setText}
 					textArea={textArea}
+					isNewChat={chat.messages.length === 0}
 					drafts={files.drafts}
 					canAttach={Boolean(sessionId)}
 					canSend={canSend}

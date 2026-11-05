@@ -30,12 +30,12 @@ export function SavedImage({
 	}, [sessionId, attachment.id]);
 	if (failed) return <SentFile name={attachment.name} />;
 	return url ? (
-		<img className="block max-h-[180px] max-w-[220px] rounded-lg" src={url} alt={attachment.name} />
-	) : (
-		<Skeleton
-			role="img"
-			className="h-[90px] w-[120px] rounded-lg bg-border"
-			aria-label={attachment.name}
+		<img
+			className="block size-20 rounded-xl border border-border object-cover"
+			src={url}
+			alt={attachment.name}
 		/>
+	) : (
+		<Skeleton role="img" className="size-20 rounded-xl bg-border" aria-label={attachment.name} />
 	);
 }
