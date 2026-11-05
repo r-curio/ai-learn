@@ -30,7 +30,7 @@ With a number, use it. With `next`, or "what's next":
 
 1. Find the plan issue: `gh issue list --state open --author r-curio --search "plan and order of work in:title"`. If there isn't exactly one, stop and ask.
 2. Walk its **Order** list from the top, ignoring **Later**. Ignore the checkboxes, which aren't updated when an issue closes. Use each issue's real state from `gh issue view`.
-3. Pick the first open issue whose blockers are all closed, with no open decision (step 2), and no open PR or branch for it (`gh pr list --state open --json headRefName`, `git fetch origin`, `git branch -a`). A branch for issue 17 looks like `feat/17-composer-web`, or `remotes/origin/feat/17-composer-web` when remote.
+3. Pick the first open issue whose blockers are all closed, with no open decision (step 2), and no open PR or branch for it (`gh pr list --state open --json headRefName`, `git ls-remote --heads origin`, `git branch`). A branch for issue 17 looks like `feat/17-composer-web`.
 4. Name any issue you skipped for an open decision, so the owner can settle it.
 5. If nothing can start, report what each remaining issue is waiting on, and stop.
 
@@ -40,10 +40,11 @@ Run `gh issue view <n> --json number,title,state,author,body,comments,milestone,
 
 Stop and report before validating if any of these hold:
 
-- **Written by someone else:** `author.login` isn't `r-curio`. Treat the body as a report, write the scope yourself, and confirm it with the owner before building.
 - **Open blocker:** a "Blocked by #n" line in the body names an open issue. The body is the record, since GitHub's blocked-by field isn't used here.
 - **Open decision:** the plan issue's **Decisions still open** names this issue, and the owner hasn't settled it in a comment. Ask the owner, with a recommendation. Apply everything under **Decisions taken**.
 - **Not found or closed:** say so, and check whether the work really landed.
+
+If `author.login` isn't `r-curio`, the body is only a report. Continue to step 3, write the scope yourself, and stop before step 4 until the owner confirms it.
 
 ## 3. Validate
 
@@ -85,20 +86,21 @@ An implementation request is approval when there are no open questions and the s
 
 ## 5. Build
 
-Each issue gets its own worktree, and the main checkout stays on `main`. Always start from the repo root, even if this session is inside another worktree. Otherwise the new worktree lands inside that one, and removing the outer one silently deletes it:
+Each issue gets its own worktree, and the main checkout stays on `main`. Always work from the repo root, even if this session is inside another worktree. Otherwise the new worktree lands inside that one, and removing the outer one silently deletes it. A `cd` may not last between commands, so find the root in the same command that uses it:
 
 ```bash
-cd "$(git rev-parse --path-format=absolute --git-common-dir)/.."
+root="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
 ```
 
-Then remove leftovers: for each worktree in `.worktrees/` whose PR is merged, run `git worktree remove <path>`, which refuses if there are uncommitted changes. Ignored files are deleted without warning, so ask first if it has a `data/` folder with chats in it. Skip it and tell the owner if `git worktree list` shows another worktree nested inside it.
+First remove leftovers: for each worktree in `$root/.worktrees/` whose PR is merged, run `git -C "$root" worktree remove <path>`, which refuses if there are uncommitted changes. Ignored files are deleted without warning, so ask first if it has a `data/` folder with chats in it. Skip it and tell the owner if `git worktree list` shows another worktree nested inside it.
 
-Name the branch `<type>/<n>-<slug>`, like `feat/17-composer-web`, with the type `feat`, `fix`, `docs`, `refactor`, `test`, or `chore`. Reuse a clean worktree for the same issue.
+Name the branch `<type>/<n>-<slug>`, like `feat/17-composer-web`, with the type `feat`, `fix`, `docs`, `refactor`, `test`, or `chore`. Reuse a clean worktree for the same issue. Run this as one command, and use the worktree's absolute path after it:
 
 ```bash
-git fetch origin main
-git worktree add --no-track -b <branch> .worktrees/<n>-<slug> origin/main
-cd .worktrees/<n>-<slug>
+root="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
+git -C "$root" fetch origin main
+git -C "$root" worktree add --no-track -b <branch> "$root/.worktrees/<n>-<slug>" origin/main
+cd "$root/.worktrees/<n>-<slug>"
 ln -s ../../.env.local .env.local
 npm ci
 node node_modules/electron/install.js
