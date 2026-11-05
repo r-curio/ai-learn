@@ -42,6 +42,8 @@ interface Restored {
 export class Session {
 	readonly id: string;
 	readonly attachments: AttachmentStore;
+	/** Called after each saved summary, so the session index can stay current. */
+	onSummary?: (summary: SessionSummary) => void;
 	private readonly dir: string;
 	private readonly log: LogWriter;
 	private readonly agent: Agent;
@@ -129,8 +131,10 @@ export class Session {
 	/** The sidebar reads this small file instead of opening every log. It can always be rebuilt. */
 	private async writeSummary(): Promise<void> {
 		const path = join(this.dir, "summary.json");
-		await writeFile(`${path}.tmp`, JSON.stringify(this.summary()));
+		const summary = this.summary();
+		await writeFile(`${path}.tmp`, JSON.stringify(summary));
 		await rename(`${path}.tmp`, path);
+		this.onSummary?.(summary);
 	}
 
 	summary(): SessionSummary {

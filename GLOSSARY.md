@@ -42,6 +42,10 @@ _Avoid_: History, chat log
 The permanent, append-only record of a session, from which everything else can be rebuilt.
 _Avoid_: Transcript, history
 
+**Session index**:
+A SQLite file that copies session summaries for fast lookups. It can always be rebuilt from the session folders, so nothing is stored only there.
+_Avoid_: Database, session store
+
 ## How a reply can end
 
 **Stopped reply**:

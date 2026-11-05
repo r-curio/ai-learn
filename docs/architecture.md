@@ -20,7 +20,7 @@ Harness (src/harness/)
   sessions, attachments, tools, and the engine
         │                         │
         ▼                         ▼
-Files in the data folder     Model provider, through Pi
+Files and SQLite index       Model provider, through Pi
 ```
 
 `src/shared/` holds the event and view types used by both the server and the UI. `CONTRIBUTING.md` lists which folders may import which, and `npm run check:deps` enforces it.
@@ -39,6 +39,8 @@ Files in the data folder     Model provider, through Pi
 | ---------------- | --------------------------------------- | ----------------- |
 | Desktop app      | Electron's user data folder for the app | `npm run desktop` |
 | Browser dev mode | `data/` in the repo, which git ignores  | `npm run dev`     |
+
+Both modes keep session logs as plain files. The session index, a SQLite file beside them, serves the chat list and can always be rebuilt from them.
 
 [How sessions are saved](sessions.md) covers the session log and crash recovery in detail.
 

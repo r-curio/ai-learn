@@ -4,7 +4,7 @@ Each session is a JSONL file that's only ever added to, with model replies store
 
 ## Considered options
 
-- **SQLite:** it has better querying and handles concurrent access, but it isn't readable without tools, and nothing we do today needs queries. A single app instance writes each log.
+- **SQLite:** it has better querying and handles concurrent access, but it isn't readable without tools, and nothing we do today needs queries. A single app instance writes each log. [ADR 0005](0005-sqlite-as-a-rebuildable-session-index.md) later added SQLite as an index beside the logs, which stay the source of truth.
 - **`pi-durable`:** see [ADR 0001](0001-pi-for-the-agent-loop.md).
 
 [How sessions are saved](../sessions.md) has the rules and failure cases.
