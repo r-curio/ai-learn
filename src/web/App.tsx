@@ -4,6 +4,7 @@ import { useChat } from "./chat/useChat.ts";
 import { Composer } from "./composer/Composer.tsx";
 import { useDrafts } from "./composer/useDrafts.ts";
 import { useFileDrop } from "./composer/useFileDrop.ts";
+import { useModelChoice } from "./composer/useModelChoice.ts";
 import { SidebarInset, SidebarProvider } from "./components/sidebar.tsx";
 import { ChatSidebar } from "./shell/ChatSidebar.tsx";
 import { Rail } from "./shell/Rail.tsx";
@@ -15,6 +16,7 @@ export function App() {
 	const sidebar = useSidebarPreference();
 	const textArea = useRef<HTMLTextAreaElement>(null);
 	const files = useDrafts();
+	const modelChoice = useModelChoice();
 	const { clearDrafts, addFiles } = files;
 
 	const onChatChange = useCallback(() => {
@@ -98,6 +100,7 @@ export function App() {
 					canAttach={Boolean(sessionId) && !setupNeeded}
 					canSend={canSend}
 					running={running}
+					modelChoice={modelChoice}
 					dimmed={setupNeeded}
 					onAddFiles={attach}
 					onRemoveDraft={files.removeDraft}

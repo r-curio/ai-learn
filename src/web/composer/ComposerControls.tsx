@@ -2,18 +2,23 @@ import { ArrowUp, Plus } from "lucide-react";
 import { useRef } from "react";
 import { Button } from "../components/button.tsx";
 import { IconButton } from "../components/IconButton.tsx";
+import { ModelMenus } from "./ModelMenus.tsx";
+import type { ModelChoice } from "./useModelChoice.ts";
 
 interface ComposerControlsProps {
 	canAttach: boolean;
 	canSend: boolean;
 	running: boolean;
+	modelChoice: ModelChoice;
+	/** The app can't reply yet, so there's nothing to choose for. */
+	menusDisabled: boolean;
 	onAddFiles: (files: File[]) => void;
 	onStop: () => void;
 }
 
-/** The row under the message box: Attach on the left, Send or Stop on the right. */
+/** The row under the message box: Attach on the left, then the menus and Send or Stop on the right. */
 export function ComposerControls(props: ComposerControlsProps) {
-	const { canAttach, canSend, running, onAddFiles, onStop } = props;
+	const { canAttach, canSend, running, modelChoice, menusDisabled, onAddFiles, onStop } = props;
 	const fileInput = useRef<HTMLInputElement>(null);
 
 	return (
@@ -37,26 +42,29 @@ export function ComposerControls(props: ComposerControlsProps) {
 					event.target.value = "";
 				}}
 			/>
-			{running ? (
-				<Button
-					size="icon"
-					aria-label="Stop reply"
-					className="size-8 rounded-full p-0"
-					onClick={onStop}
-				>
-					<span className="size-2.5 rounded-[2px] bg-primary-foreground" />
-				</Button>
-			) : (
-				<Button
-					size="icon"
-					type="submit"
-					aria-label="Send message"
-					className="size-8 rounded-full p-0"
-					disabled={!canSend}
-				>
-					<ArrowUp className="size-[18px]" strokeWidth={1.8} />
-				</Button>
-			)}
+			<div className="flex items-center gap-1">
+				<ModelMenus choice={modelChoice} disabled={menusDisabled} />
+				{running ? (
+					<Button
+						size="icon"
+						aria-label="Stop reply"
+						className="size-8 rounded-full p-0"
+						onClick={onStop}
+					>
+						<span className="size-2.5 rounded-[2px] bg-primary-foreground" />
+					</Button>
+				) : (
+					<Button
+						size="icon"
+						type="submit"
+						aria-label="Send message"
+						className="size-8 rounded-full p-0"
+						disabled={!canSend}
+					>
+						<ArrowUp className="size-[18px]" strokeWidth={1.8} />
+					</Button>
+				)}
+			</div>
 		</div>
 	);
 }
