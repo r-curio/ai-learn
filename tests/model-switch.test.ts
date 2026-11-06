@@ -174,7 +174,8 @@ test("retrying can move a failed reply onto another model", async () => {
 	const model = { provider: "faux", id: "fake-model-deep", effort: "max" };
 	const unchosen = await app.request(`${BASE}/api/sessions/${id}/retry`, {
 		method: "POST",
-		headers: auth,
+		headers: json,
+		body: "{}",
 	});
 	assert.equal(unchosen.status, 400);
 	const retry = await app.request(`${BASE}/api/sessions/${id}/retry`, {

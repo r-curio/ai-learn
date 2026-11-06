@@ -157,7 +157,11 @@ export function ModelPicker({ providers, choice, anchor, disabled }: ModelPicker
 					<ChevronDown className="size-3 text-muted-foreground" strokeWidth={2.8} />
 				</Button>
 			</PopoverTrigger>
-			<PopoverContent {...COMPOSER_MENU} className="w-[300px] overflow-hidden">
+			<PopoverContent
+				{...COMPOSER_MENU}
+				className="w-[300px] overflow-hidden"
+				onCloseAutoFocus={choice.onPickerCloseFocus}
+			>
 				{providers.length > 0 ? (
 					<TooltipProvider>
 						<ModelList

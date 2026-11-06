@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
 	EFFORTS,
 	type Effort,
@@ -36,10 +36,11 @@ function warnNotSaved(cause: Error) {
  * back to Medium afterward. No model is picked for the learner: until they choose one, and again
  * if a saved model's key is gone, there's nothing to send with.
  */
-export function useModelChoice(status: EngineStatus | undefined) {
+export function useModelChoice(status: EngineStatus | undefined, focusMessage: () => void) {
 	const [chosen, setChosen] = useState<ModelRef>();
 	const [wantedEffort, setWantedEffort] = useState<Effort>("medium");
 	const [pickerOpen, setPickerOpen] = useState(false);
+	const openedBySend = useRef(false);
 
 	useEffect(() => {
 		getPreferences()
@@ -62,6 +63,22 @@ export function useModelChoice(status: EngineStatus | undefined) {
 		savePreferences({ effort }).catch(warnNotSaved);
 	}, []);
 
+	const openPickerForSend = useCallback(() => {
+		openedBySend.current = true;
+		setPickerOpen(true);
+	}, []);
+
+	/** After a send opened the picker, the next Enter should send, so go back to the message. */
+	const onPickerCloseFocus = useCallback(
+		(event: Event) => {
+			if (!openedBySend.current) return;
+			openedBySend.current = false;
+			event.preventDefault();
+			focusMessage();
+		},
+		[focusMessage],
+	);
+
 	const models = status?.providers.flatMap((provider) => provider.models) ?? [];
 	const model: ModelOption | undefined = models.find(
 		({ provider, id }) => provider === chosen?.provider && id === chosen.id,
@@ -73,7 +90,17 @@ export function useModelChoice(status: EngineStatus | undefined) {
 		effort,
 	};
 
-	return { model, effort, selection, setEffort, chooseModel, pickerOpen, setPickerOpen };
+	return {
+		model,
+		effort,
+		selection,
+		setEffort,
+		chooseModel,
+		pickerOpen,
+		setPickerOpen,
+		openPickerForSend,
+		onPickerCloseFocus,
+	};
 }
 
 export type ModelChoice = ReturnType<typeof useModelChoice>;

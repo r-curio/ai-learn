@@ -25,7 +25,7 @@ export function App() {
 	const onReady = useCallback(() => textArea.current?.focus(), []);
 	const chat = useChat({ onChatChange, onReady });
 	const { sessionId, status, running } = chat;
-	const modelChoice = useModelChoice(status);
+	const modelChoice = useModelChoice(status, onReady);
 	const setupNeeded = status?.ready === false;
 
 	const attach = useCallback(
@@ -41,7 +41,7 @@ export function App() {
 	function send() {
 		if (!canSend) return;
 		// The message stays in the box while the learner picks, so nothing they typed is lost.
-		if (!modelChoice.selection) return modelChoice.setPickerOpen(true);
+		if (!modelChoice.selection) return modelChoice.openPickerForSend();
 		chat.send(text, files.attachments, modelChoice.selection);
 		setText("");
 		clearDrafts();
