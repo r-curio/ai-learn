@@ -2,6 +2,8 @@ import {
 	createModels,
 	fauxAssistantMessage,
 	fauxProvider,
+	fauxText,
+	fauxThinking,
 	fauxToolCall,
 	type FauxProviderHandle,
 	type FauxResponseFactory,
@@ -33,6 +35,9 @@ export function createScriptedEngine(
 	return { faux, ...engineFromModels(models) };
 }
 
+const FAKE_REASONING =
+	"Working out what the learner is really asking. A short answer first, then an example should help, since it's easier to see than to describe.";
+
 const LONG_PARAGRAPH =
 	"This is a long **fake model** reply, so there's time to stop it or close the app part way through. It says the same thing a few times.";
 
@@ -40,6 +45,7 @@ const LONG_PARAGRAPH =
 function createForcedReplies() {
 	let failedLastTime = false;
 	return (text: string) => {
+		if (text.includes("fake:plain")) return fauxAssistantMessage("**Fake model** plain reply.");
 		if (text.includes("fake:long"))
 			return fauxAssistantMessage(Array(16).fill(LONG_PARAGRAPH).join("\n\n"));
 		if (text.includes("fake:length"))
@@ -75,12 +81,18 @@ export function createDemoEngine(): Engine {
 		const images = parts.filter((part) => part.type === "image").length;
 		const id = text.match(/<attachment id="([^"]+)" name="[^"]*" kind="(?:text|pdf)"/)?.[1];
 		if (id && /\bread\b/i.test(text))
-			return fauxAssistantMessage(fauxToolCall("read_attachment", { id }), {
-				stopReason: "toolUse",
-			});
-		return fauxAssistantMessage(
-			`**Fake model** reply. I received ${images} image(s) and ${text.length} characters of text.`,
-		);
+			return fauxAssistantMessage(
+				[fauxThinking(FAKE_REASONING), fauxToolCall("read_attachment", { id })],
+				{
+					stopReason: "toolUse",
+				},
+			);
+		return fauxAssistantMessage([
+			fauxThinking(FAKE_REASONING),
+			fauxText(
+				`**Fake model** reply. I received ${images} image(s) and ${text.length} characters of text.`,
+			),
+		]);
 	};
 	const engine = createScriptedEngine([], 60);
 	return {

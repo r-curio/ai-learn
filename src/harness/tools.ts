@@ -13,13 +13,23 @@ const readAttachmentInput = z.object({
 	limit: z.number().int().min(1).max(100_000).optional().describe("Maximum characters to return."),
 });
 
-export const TOOL_LABELS: Record<string, string> = { read_attachment: "Read attachment" };
+/** What the Activity trace calls a tool call, while it runs and once it's finished. */
+export function toolLabels(
+	name: string,
+	args: unknown,
+	attachmentName: (id: string) => string | undefined,
+): { label: string; runningLabel: string } {
+	if (name !== "read_attachment") return { label: name, runningLabel: name };
+	const id = (args as { id?: unknown } | undefined)?.id;
+	const target = (typeof id === "string" && attachmentName(id)) || "attachment";
+	return { label: `Read ${target}`, runningLabel: `Reading ${target}` };
+}
 
 export function createTools(attachments: AttachmentStore): AgentTool[] {
 	return [
 		{
 			name: "read_attachment",
-			label: TOOL_LABELS.read_attachment!,
+			label: "Read attachment",
 			description:
 				"Read an attachment the learner uploaded in this session, including parts cut off in their message.",
 			parameters: z.toJSONSchema(readAttachmentInput),

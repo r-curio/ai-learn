@@ -38,6 +38,10 @@ _Avoid_: Response, answer, completion
 A session as the learner sees it, with one reply per turn.
 _Avoid_: History, chat log
 
+**Activity**:
+The block above a reply showing the tutor's reasoning summary and tool trace. It's open during the work, and collapses to "Worked for 24s" when the reply starts.
+_Avoid_: Thinking block, steps
+
 **Session log**:
 The permanent, append-only record of a session, from which everything else can be rebuilt.
 _Avoid_: Transcript, history

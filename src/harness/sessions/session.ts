@@ -13,7 +13,7 @@ import {
 	messagesFromLog,
 	unresolvedToolCalls,
 } from "./recovery.ts";
-import { createTools } from "../tools.ts";
+import { createTools, toolLabels } from "../tools.ts";
 import {
 	addUsage,
 	buildTranscript,
@@ -175,30 +175,53 @@ export class Session {
 		const runUsage = emptyUsage();
 		let last: AssistantMessage | undefined;
 		let writeFailure: string | undefined;
+		const startedAt = performance.now();
+		let workedMs: number | undefined;
 		const unsubscribe = this.agent.subscribe(async (event: AgentEvent) => {
 			if (event.type === "message_update" && event.assistantMessageEvent.type === "text_delta") {
+				if (workedMs === undefined) {
+					workedMs = Math.round(performance.now() - startedAt);
+					onEvent({ type: "reply_start", workedMs });
+				}
 				onEvent({ type: "text_delta", delta: event.assistantMessageEvent.delta });
+			} else if (
+				event.type === "message_update" &&
+				event.assistantMessageEvent.type === "thinking_delta"
+			) {
+				onEvent({ type: "reasoning_delta", delta: event.assistantMessageEvent.delta });
 			} else if (event.type === "tool_execution_start") {
-				const label =
-					this.agent.state.tools.find((tool) => tool.name === event.toolName)?.label ??
-					event.toolName;
-				onEvent({ type: "tool_start", id: event.toolCallId, name: event.toolName, label });
+				const labels = toolLabels(
+					event.toolName,
+					event.args,
+					(id) => this.attachments.info(id)?.name,
+				);
+				onEvent({ type: "tool_start", id: event.toolCallId, name: event.toolName, ...labels });
 			} else if (event.type === "tool_execution_end") {
-				onEvent({ type: "tool_end", id: event.toolCallId, isError: event.isError });
+				onEvent({
+					type: "tool_end",
+					id: event.toolCallId,
+					isError: event.isError,
+					durationMs: event.durationMs,
+				});
 			} else if (
 				event.type === "message_end" &&
 				(event.message.role === "assistant" || event.message.role === "toolResult")
 			) {
+				const isReply = event.message.role === "assistant";
 				if (event.message.role === "assistant") {
 					last = event.message;
 					addUsage(runUsage, last);
 					addUsage(this.usage, last);
 				}
+				const worked = isReply && workedMs !== undefined ? { workedMs } : {};
+				// Text before a tool call isn't the end of the work, so the next step measures again.
+				if (isReply) workedMs = undefined;
 				// Pi waits for this before moving on, so each step is on disk before the next begins.
 				try {
 					await this.record({
 						type: "message",
 						message: toStored(event.message, this.attachments),
+						...worked,
 					});
 				} catch (error) {
 					writeFailure = `Couldn't save this session: ${(error as Error).message}`;

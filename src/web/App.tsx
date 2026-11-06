@@ -110,6 +110,7 @@ export function App() {
 							sessionId={sessionId}
 							messages={chat.messages}
 							running={running}
+							runStartedAt={chat.runStartedAt}
 							canRetry={chat.canRetry}
 							onRetry={() => {
 								if (!status?.ready || running) return;
