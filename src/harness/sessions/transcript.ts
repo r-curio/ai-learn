@@ -1,6 +1,8 @@
 import type { AssistantMessage } from "@earendil-works/pi-ai";
 import type {
 	AttachmentInfo,
+	ContextUsage,
+	ModelRef,
 	TranscriptBlock,
 	TranscriptMessage,
 	UsageSummary,
@@ -9,7 +11,7 @@ import { noticeFor } from "../../shared/protocol.ts";
 import type { LogEntry } from "./log.ts";
 import { toolLabels } from "../tools.ts";
 
-export const INTERRUPTED_NOTICE = "The app closed before this reply finished.";
+const INTERRUPTED_NOTICE = "The app closed before this reply finished.";
 
 type ToolBlock = Extract<TranscriptBlock, { kind: "tool" }>;
 
@@ -120,6 +122,14 @@ export function buildTranscript(
 	return messages;
 }
 
+/** Say the app stopped partway, on the unfinished reply or in place of one that never started. */
+export function markInterrupted(messages: TranscriptMessage[]): void {
+	const tail = messages.at(-1);
+	if (tail?.role === "assistant") tail.notice = INTERRUPTED_NOTICE;
+	else
+		messages.push({ id: "interrupted", role: "assistant", blocks: [], notice: INTERRUPTED_NOTICE });
+}
+
 /** The words the learner can see in a chat. Attachments aren't read, so their contents aren't included. */
 export function searchTextOf(entries: LogEntry[]): string {
 	return buildTranscript(entries, () => undefined)
@@ -128,9 +138,28 @@ export function searchTextOf(entries: LogEntry[]): string {
 		.join("\n");
 }
 
+/** Everything sent to the model on one call, including what the provider served from its cache. */
+const inputSize = ({ usage }: AssistantMessage) => usage.input + usage.cacheRead + usage.cacheWrite;
+
+/** The chat's size so far. A failed or stopped call can report nothing, so it's skipped. */
+export function contextOf(
+	entries: LogEntry[],
+	limitOf: (model: ModelRef) => number | undefined,
+): ContextUsage | undefined {
+	for (const entry of entries.toReversed()) {
+		if (entry.type !== "message" || entry.message.role !== "assistant") continue;
+		const tokens = inputSize(entry.message);
+		if (tokens > 0) {
+			const { provider, model: id } = entry.message;
+			return { tokens, limit: limitOf({ provider, id }) };
+		}
+	}
+	return undefined;
+}
+
 export function addUsage(total: UsageSummary, message: AssistantMessage): void {
 	const { usage } = message;
-	total.inputTokens += usage.input + usage.cacheRead + usage.cacheWrite;
+	total.inputTokens += inputSize(message);
 	total.outputTokens += usage.output;
 	total.costUsd += usage.cost.total;
 }

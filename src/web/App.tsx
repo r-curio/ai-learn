@@ -151,6 +151,8 @@ export function App() {
 								running={running}
 								providers={status?.providers ?? []}
 								modelChoice={modelChoice}
+								context={chat.context}
+								onNewChat={() => void chat.startNewChat()}
 								onAddProvider={() => setView("settings")}
 								dimmed={setupNeeded}
 								needsModel={!setupNeeded && !hasModel}

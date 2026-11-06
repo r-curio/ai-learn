@@ -3,6 +3,7 @@ import {
 	noticeFor,
 	type AttachmentInfo,
 	type ChatType,
+	type ContextUsage,
 	type ModelSelection,
 	type RunEvent,
 	type SessionView,
@@ -36,6 +37,7 @@ export function useConversation(onRunEnd: () => void) {
 	const [messages, setMessages] = useState<TranscriptMessage[]>([]);
 	const [canRetry, setCanRetry] = useState(false);
 	const [usage, setUsage] = useState<UsageSummary>();
+	const [context, setContext] = useState<ContextUsage>();
 	const [running, setRunning] = useState(false);
 	const [runStartedAt, setRunStartedAt] = useState(0);
 
@@ -44,6 +46,7 @@ export function useConversation(onRunEnd: () => void) {
 		setMessages(view.messages);
 		setCanRetry(view.canRetry);
 		setUsage(view.usage);
+		setContext(view.context);
 	}, []);
 
 	const showEmpty = useCallback((id: string) => {
@@ -51,6 +54,7 @@ export function useConversation(onRunEnd: () => void) {
 		setMessages([]);
 		setCanRetry(false);
 		setUsage(undefined);
+		setContext(undefined);
 	}, []);
 
 	const update = (id: string, change: (message: TranscriptMessage) => TranscriptMessage) =>
@@ -65,6 +69,7 @@ export function useConversation(onRunEnd: () => void) {
 			await startRun((event) => {
 				if (event.type === "done") {
 					setUsage(event.sessionUsage);
+					if (event.context) setContext(event.context);
 					const ending = noticeFor(event.stopReason, event.errorMessage);
 					if (ending) update(replyId, (message) => ({ ...message, ...ending }));
 				} else {
@@ -134,6 +139,7 @@ export function useConversation(onRunEnd: () => void) {
 		messages,
 		canRetry,
 		usage,
+		context,
 		running,
 		runStartedAt,
 		showView,

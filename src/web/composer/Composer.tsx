@@ -1,6 +1,6 @@
 import { cn } from "cn";
-import type { ClipboardEvent, KeyboardEvent, RefObject } from "react";
-import type { ProviderOption } from "../../shared/protocol.ts";
+import { useRef, type ClipboardEvent, type KeyboardEvent, type RefObject } from "react";
+import type { ContextUsage, ProviderOption } from "../../shared/protocol.ts";
 import { Textarea } from "../components/textarea.tsx";
 import { ComposerControls } from "./ComposerControls.tsx";
 import { DraftChip } from "./DraftChip.tsx";
@@ -8,7 +8,7 @@ import type { Draft } from "./useDrafts.ts";
 import type { ModelChoice } from "./useModelChoice.ts";
 
 const CARD =
-	"rounded-3xl border border-border bg-card pt-3.5 pr-3 pb-3 pl-[18px] focus-within:border-muted-foreground";
+	"@container rounded-3xl border border-border bg-card pt-3.5 pr-3 pb-3 pl-[18px] focus-within:border-muted-foreground";
 
 interface ComposerProps {
 	text: string;
@@ -21,6 +21,8 @@ interface ComposerProps {
 	running: boolean;
 	providers: ProviderOption[];
 	modelChoice: ModelChoice;
+	context?: ContextUsage;
+	onNewChat: () => void;
 	onAddProvider: () => void;
 	/** The app can't reply yet, so the composer dims and takes no input. */
 	dimmed: boolean;
@@ -32,29 +34,31 @@ interface ComposerProps {
 	onStop: () => void;
 }
 
-export function Composer(props: ComposerProps) {
-	const { text, onTextChange, textArea, isNewChat, drafts, canAttach, canSend, running } = props;
-	const { providers, modelChoice, onAddProvider, dimmed, needsModel } = props;
-	const { onAddFiles, onRemoveDraft } = props;
-	const { onSend, onStop } = props;
-
-	const prompt = isNewChat ? "Ask the tutor anything" : "Reply to the tutor";
-	const placeholder = needsModel ? "Choose a model to start" : prompt;
-
-	function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
-		if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
-			event.preventDefault();
-			onSend();
-		}
+const sendOnEnter = (onSend: () => void) => (event: KeyboardEvent<HTMLTextAreaElement>) => {
+	if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+		event.preventDefault();
+		onSend();
 	}
+};
 
-	function onPaste(event: ClipboardEvent<HTMLTextAreaElement>) {
+const attachPastedFiles =
+	(onAddFiles: (files: File[]) => void) => (event: ClipboardEvent<HTMLTextAreaElement>) => {
 		const files = Array.from(event.clipboardData.files);
 		if (files.length > 0) {
 			event.preventDefault();
 			onAddFiles(files);
 		}
-	}
+	};
+
+export function Composer(props: ComposerProps) {
+	const { text, onTextChange, textArea, isNewChat, drafts, canAttach, canSend, running } = props;
+	const { providers, modelChoice, context, onNewChat, onAddProvider, dimmed, needsModel } = props;
+	const { onAddFiles, onRemoveDraft } = props;
+	const { onSend, onStop } = props;
+
+	const card = useRef<HTMLDivElement>(null);
+	const prompt = isNewChat ? "Ask the tutor anything" : "Reply to the tutor";
+	const placeholder = needsModel ? "Choose a model to start" : prompt;
 
 	return (
 		<form
@@ -64,7 +68,7 @@ export function Composer(props: ComposerProps) {
 				onSend();
 			}}
 		>
-			<div className={cn(CARD, dimmed && "opacity-50")}>
+			<div ref={card} className={cn(CARD, dimmed && "opacity-50")}>
 				{drafts.length > 0 && (
 					<ul className="mb-3 flex [scrollbar-width:none] gap-2 overflow-x-auto">
 						{drafts.map((draft) => (
@@ -81,8 +85,8 @@ export function Composer(props: ComposerProps) {
 					placeholder={placeholder}
 					value={text}
 					onChange={(event) => onTextChange(event.target.value)}
-					onKeyDown={onKeyDown}
-					onPaste={onPaste}
+					onKeyDown={sendOnEnter(onSend)}
+					onPaste={attachPastedFiles(onAddFiles)}
 					autoFocus
 				/>
 				<ComposerControls
@@ -91,6 +95,9 @@ export function Composer(props: ComposerProps) {
 					running={running}
 					providers={providers}
 					modelChoice={modelChoice}
+					context={context}
+					card={card}
+					onNewChat={onNewChat}
 					menusDisabled={dimmed}
 					onAddProvider={onAddProvider}
 					onAddFiles={onAddFiles}

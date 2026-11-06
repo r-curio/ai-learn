@@ -15,6 +15,13 @@ export interface UsageSummary {
 	costUsd: number;
 }
 
+/** How full a chat is: the last model call's input size, against that model's limit. */
+export interface ContextUsage {
+	tokens: number;
+	/** Missing if the model that made the call is no longer in the catalog. */
+	limit?: number;
+}
+
 export type RunEvent =
 	| { type: "text_delta"; delta: string }
 	| { type: "reasoning_delta"; delta: string }
@@ -28,6 +35,8 @@ export type RunEvent =
 			errorMessage?: string;
 			usage: UsageSummary;
 			sessionUsage: UsageSummary;
+			/** Missing until a model call has reported its input size. */
+			context?: ContextUsage;
 	  };
 
 export const EFFORTS = ["low", "medium", "high", "xhigh", "max"] as const;
@@ -140,6 +149,8 @@ export interface SessionView {
 	messages: TranscriptMessage[];
 	canRetry: boolean;
 	usage: UsageSummary;
+	/** Missing until a model call has reported its input size. */
+	context?: ContextUsage;
 }
 
 /** What to tell the learner about how a reply ended. Nothing, if it ended normally. */
