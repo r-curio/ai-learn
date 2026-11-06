@@ -1,6 +1,7 @@
 import { serve, type ServerType } from "@hono/node-server";
 import { randomBytes } from "node:crypto";
 import { createEngine, type Engine } from "../harness/engine.ts";
+import type { KeyCipher } from "../harness/provider-keys.ts";
 import { createDemoEngine } from "../harness/fake-engine.ts";
 import { createApp } from "./app.ts";
 
@@ -10,6 +11,8 @@ export interface StartOptions {
 	token?: string;
 	webRoot?: string;
 	engine?: Engine;
+	/** The desktop app passes its keychain encryption. Without it, keys can't be saved. */
+	keyCipher?: KeyCipher;
 }
 
 export interface RunningServer {
@@ -18,15 +21,17 @@ export interface RunningServer {
 	close(): Promise<void>;
 }
 
-export function chooseEngine(): Engine {
-	return process.env.AI_LEARN_FAKE_MODEL === "1" ? createDemoEngine() : createEngine();
+export function chooseEngine(dataDir: string, cipher?: KeyCipher): Engine {
+	return process.env.AI_LEARN_FAKE_MODEL === "1"
+		? createDemoEngine()
+		: createEngine({ dataDir, cipher });
 }
 
 /** Start the server on loopback only. Port 0 picks any free port. */
 export function startServer(options: StartOptions): Promise<RunningServer> {
 	const token = options.token ?? randomBytes(32).toString("hex");
 	const app = createApp({
-		engine: options.engine ?? chooseEngine(),
+		engine: options.engine ?? chooseEngine(options.dataDir, options.keyCipher),
 		dataDir: options.dataDir,
 		token,
 		webRoot: options.webRoot,

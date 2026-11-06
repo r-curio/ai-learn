@@ -2,7 +2,8 @@ import { Search } from "lucide-react";
 import { useState, type FormEvent, type ReactNode } from "react";
 import { Button } from "../components/button.tsx";
 import { Input } from "../components/input.tsx";
-import type { ProviderRow } from "./useProviders.ts";
+import { Notice } from "../components/Notice.tsx";
+import type { AddableProvider, ConnectedRow } from "./useProviders.ts";
 
 const ROW =
 	"flex h-[52px] items-center gap-2.5 pr-2.5 pl-3.5 not-last:border-b not-last:border-border";
@@ -25,15 +26,22 @@ function AddKeyRow({
 	onSave,
 	onCancel,
 }: {
-	provider: ProviderRow;
-	onSave: (key: string) => void;
+	provider: AddableProvider;
+	onSave: (key: string) => Promise<void>;
 	onCancel: () => void;
 }) {
 	const [key, setKey] = useState("");
+	const [saving, setSaving] = useState(false);
+	const [error, setError] = useState<string>();
 
 	function submit(event: FormEvent) {
 		event.preventDefault();
-		if (key.trim()) onSave(key.trim());
+		if (!key.trim() || saving) return;
+		setSaving(true);
+		setError(undefined);
+		onSave(key.trim())
+			.catch((cause: Error) => setError(cause.message))
+			.finally(() => setSaving(false));
 	}
 
 	return (
@@ -59,30 +67,42 @@ function AddKeyRow({
 				<Button variant="ghost" size="sm" className="h-9 px-2.5" onClick={onCancel}>
 					Cancel
 				</Button>
-				<Button type="submit" className="h-9" disabled={!key.trim()}>
+				<Button type="submit" className="h-9" disabled={!key.trim() || saving}>
 					Save
 				</Button>
 			</div>
+			{error && (
+				<p role="alert" className="text-[13px] leading-[18px] text-destructive">
+					{error}
+				</p>
+			)}
 		</form>
 	);
 }
 
-function ConnectedSection(props: { providers: ProviderRow[]; onDisconnect: (id: string) => void }) {
+function ConnectedSection(props: {
+	providers: ConnectedRow[];
+	onDisconnect: (id: string) => void;
+}) {
 	return (
 		<Section title="Connected">
 			{props.providers.map((provider) => (
 				<div className={ROW} key={provider.id}>
 					<span className="flex-1 text-[14px] leading-[18px] font-medium">{provider.label}</span>
 					<span className={COUNT}>{MODELS(provider.modelCount)}</span>
-					<Button
-						variant="ghost"
-						size="sm"
-						className="h-8 px-2.5 text-muted-foreground"
-						aria-label={`Remove ${provider.label}`}
-						onClick={() => props.onDisconnect(provider.id)}
-					>
-						Remove
-					</Button>
+					{provider.keySource === "saved" ? (
+						<Button
+							variant="ghost"
+							size="sm"
+							className="h-8 px-2.5 text-muted-foreground"
+							aria-label={`Remove ${provider.label}`}
+							onClick={() => props.onDisconnect(provider.id)}
+						>
+							Remove
+						</Button>
+					) : (
+						<span className={`${COUNT} px-2.5`}>From environment</span>
+					)}
 				</div>
 			))}
 		</Section>
@@ -90,8 +110,8 @@ function ConnectedSection(props: { providers: ProviderRow[]; onDisconnect: (id: 
 }
 
 function AvailableSection(props: {
-	providers: ProviderRow[];
-	onConnect: (id: string, key: string) => void;
+	providers: AddableProvider[];
+	onConnect: (id: string, key: string) => Promise<void>;
 }) {
 	const [search, setSearch] = useState("");
 	const [addingId, setAddingId] = useState<string>();
@@ -106,7 +126,7 @@ function AvailableSection(props: {
 				<Input
 					className="h-auto flex-1 rounded-none border-0 bg-transparent px-0"
 					aria-label="Search providers"
-					placeholder="Search providers"
+					placeholder={`Search ${props.providers.length} providers`}
 					value={search}
 					onChange={(event) => setSearch(event.target.value)}
 				/>
@@ -117,8 +137,8 @@ function AvailableSection(props: {
 						key={provider.id}
 						provider={provider}
 						onCancel={() => setAddingId(undefined)}
-						onSave={(key) => {
-							props.onConnect(provider.id, key);
+						onSave={async (key) => {
+							await props.onConnect(provider.id, key);
 							setAddingId(undefined);
 						}}
 					/>
@@ -148,9 +168,10 @@ function AvailableSection(props: {
 }
 
 interface ProvidersViewProps {
-	connected: ProviderRow[];
-	available: ProviderRow[];
-	onConnect: (id: string, key: string) => void;
+	connected: ConnectedRow[];
+	available: AddableProvider[];
+	keysUnavailable?: string;
+	onConnect: (id: string, key: string) => Promise<void>;
 	onDisconnect: (id: string) => void;
 }
 
@@ -158,6 +179,7 @@ interface ProvidersViewProps {
 export function ProvidersView({
 	connected,
 	available,
+	keysUnavailable,
 	onConnect,
 	onDisconnect,
 }: ProvidersViewProps) {
@@ -168,14 +190,18 @@ export function ProvidersView({
 				<header className="flex flex-col gap-1">
 					<h1 className="text-[17px] leading-[25px] font-medium">Providers</h1>
 					<p className="text-[13px] leading-[18px] text-muted-foreground">
-						Add a key to use a provider's models. Keys stay on this computer and only go to that
-						provider.
+						Add a key once to use a provider's models. Keys are encrypted with your computer's
+						keychain, stay on this computer, and only go to that provider.
 					</p>
 				</header>
 				{connected.length > 0 && (
 					<ConnectedSection providers={connected} onDisconnect={onDisconnect} />
 				)}
-				<AvailableSection providers={available} onConnect={onConnect} />
+				{keysUnavailable ? (
+					<Notice>{keysUnavailable}</Notice>
+				) : (
+					<AvailableSection providers={available} onConnect={onConnect} />
+				)}
 			</main>
 		</div>
 	);
