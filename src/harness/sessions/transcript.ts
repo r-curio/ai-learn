@@ -3,6 +3,7 @@ import type {
 	AttachmentInfo,
 	ContextUsage,
 	ModelRef,
+	QuestionAnswer,
 	TranscriptBlock,
 	TranscriptMessage,
 	UsageSummary,
@@ -40,6 +41,25 @@ function addReplyParts(
 			toolBlocks.set(part.id, block);
 		}
 	}
+}
+
+/** A learner's answer as they see it, using the choices from the reply that asked. */
+function answerMessage(
+	id: string,
+	questionId: string,
+	answer: QuestionAnswer,
+	asked: TranscriptMessage | undefined,
+): TranscriptMessage {
+	const question = asked?.blocks.find(
+		(block) => block.kind === "question" && block.id === questionId,
+	);
+	const choices = question?.kind === "question" ? question.choices : [];
+	return {
+		id,
+		role: "user",
+		blocks: [{ kind: "text", text: answerText(choices, answer) }],
+		...("confidence" in answer ? { confidence: answer.confidence } : {}),
+	};
 }
 
 /** Replies saved before `workedMs` was recorded estimate it, but only if there's a trace to head. */
@@ -104,16 +124,7 @@ export function buildTranscript(
 
 		// An answer sits between two parts of a turn, so the tutor's next words start a new reply.
 		if (message.role === "toolResult" && entry.answer) {
-			const question = current?.blocks.find(
-				(block) => block.kind === "question" && block.id === message.toolCallId,
-			);
-			const choices = question?.kind === "question" ? question.choices : [];
-			messages.push({
-				id: `m${index}`,
-				role: "user",
-				blocks: [{ kind: "text", text: answerText(choices, entry.answer) }],
-				...("confidence" in entry.answer ? { confidence: entry.answer.confidence } : {}),
-			});
+			messages.push(answerMessage(`m${index}`, message.toolCallId, entry.answer, current));
 			current = undefined;
 			failedFrom = undefined;
 			toolBlocks = new Map();
