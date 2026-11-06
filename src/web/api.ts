@@ -5,6 +5,7 @@ import type {
 	ModelSelection,
 	OpenPage,
 	Preferences,
+	QuestionAnswer,
 	RunEvent,
 	SearchResult,
 	SessionSummary,
@@ -148,6 +149,21 @@ export function retryRun(
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({ model }),
+		}),
+		onEvent,
+	);
+}
+
+export function answerQuestion(
+	sessionId: string,
+	body: { questionId: string; answer: QuestionAnswer; model: ModelSelection },
+	onEvent: (event: RunEvent) => void,
+): Promise<void> {
+	return streamRun(
+		request(`/api/sessions/${sessionId}/answer`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(body),
 		}),
 		onEvent,
 	);

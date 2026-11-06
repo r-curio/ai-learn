@@ -27,6 +27,7 @@ It also holds each chat's visible text for search, built from what the learner s
 9. **How full a chat is comes from the log.** It's the input size in the last saved reply that reported one, against that reply's model limit, so nothing extra is saved and older chats work too. The composer shows the limit of the model it has selected, since that's where the next call goes.
 10. **Citations stay inside the reply's text.** The tutor writes `<cite attachment="..." page="4">exact quote</cite>`, and the log keeps it as sent. The transcript removes any citation whose quote isn't on that page of the saved PDF text, and the UI shows the rest as "p. 4" links. Chats started before citations keep their old prompt, so they don't gain any.
 11. **The open page is part of the message.** While a PDF is open in the attachment pane, a new message also carries `<viewing attachment="..." page="4" />` for the model. It's saved in the log and replayed with that turn, and `display` leaves it out, so the learner never sees it.
+12. **A pending question is a tool call with no result.** The reply holding the `ask_question` call is saved and the run ends, so the log already shows that a question is waiting, and a reload leaves it alone. The answer is saved as that call's tool result before the model is called. Its record also keeps the answer as given, in `answer`. The model reads the result's text, which includes the learner's reasoning. The transcript shows only the answer and confidence. Older logs have no questions, so they stay byte-identical and need no version bump. Existing chats can use the tool on their next call. See [ADR 0010](adr/0010-a-pending-question-is-an-unanswered-tool-call.md).
 
 ## Three views of one log
 
@@ -44,6 +45,8 @@ For example, a message with a PDF is one long block of text for the model, but t
 | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | App killed before or during a reply | The learner's message is kept. A partial reply is lost, because replies are saved when complete. The chat shows Retry. |
 | App killed while a tool runs        | The tool gets an error result on reload and is never rerun automatically, since it may have partly finished.           |
+| App killed while a question waits   | Nothing changes. The question reappears on reload and can still be answered.                                           |
+| App killed after an answer          | The answer is kept. The chat shows Retry, and the learner doesn't answer again.                                        |
 | Crash during a write                | The cut-off last line is trimmed on reload.                                                                            |
 | Damage elsewhere in the log         | The chat refuses to open and says why. It is never silently repaired.                                                  |
 | The model returns an error          | The failure stays in the log and shows Retry. A retry marker hides it afterward, and Pi doesn't resend it.             |

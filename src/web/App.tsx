@@ -54,7 +54,13 @@ export function App() {
 	const { dragging, dropHandlers } = useFileDrop(attach);
 	const hasContent = Boolean(text.trim() || files.attachments.length > 0);
 	const canSend = Boolean(
-		sessionId && status?.ready && hasModel && !running && !files.uploading && hasContent,
+		sessionId &&
+		status?.ready &&
+		hasModel &&
+		!running &&
+		!files.uploading &&
+		!chat.pendingQuestion &&
+		hasContent,
 	);
 
 	// The box can't hold focus while it's disabled, so give it focus once a saved model has loaded.
@@ -135,6 +141,14 @@ export function App() {
 								running={running}
 								runStartedAt={chat.runStartedAt}
 								canRetry={chat.canRetry}
+								pendingQuestion={chat.pendingQuestion}
+								onDontKnow={() => {
+									const question = chat.pendingQuestion;
+									if (!status?.ready || running || !question) return;
+									if (modelChoice.selection)
+										chat.answer(question, { kind: "unknown" }, modelChoice.selection);
+									else modelChoice.setPickerOpen(true);
+								}}
 								chatType={chatType}
 								onChatTypeChange={setChatType}
 								onRetry={() => {
@@ -169,6 +183,7 @@ export function App() {
 								onAddProvider={() => setView("settings")}
 								dimmed={setupNeeded}
 								needsModel={!setupNeeded && !hasModel}
+								questionPending={Boolean(chat.pendingQuestion) && !running}
 								onAddFiles={attach}
 								onRemoveDraft={files.removeDraft}
 								onSend={send}

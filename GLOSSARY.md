@@ -54,6 +54,26 @@ _Avoid_: Transcript, history
 A SQLite file that copies session summaries and each chat's visible text for fast lookups and search. It can always be rebuilt from the session folders, so nothing is stored only there.
 _Avoid_: Database, session store
 
+**Question**:
+Something the tutor asks through its `ask_question` tool, with 2 to 4 choices. A run ends when it asks one.
+_Avoid_: Quiz, prompt
+
+**Pending question**:
+A question with no answer yet. It's saved as a tool call with no result, and the session can't continue until it's answered.
+_Avoid_: Open question, paused run
+
+**Answer**:
+What the learner gives a question: a choice, their own text, or "I don't know", plus confidence and reasoning.
+_Avoid_: Response, reply
+
+**Confidence**:
+How sure the learner says they are of an answer, from 0 to 100. An "I don't know" has none.
+_Avoid_: Certainty, score
+
+**Learner's reasoning**:
+The optional words a learner adds to an answer. The tutor reads them, and they don't show in the transcript. The tutor's own reasoning belongs to Activity.
+_Avoid_: Explanation, justification
+
 **Context**:
 How full a session is: the size of the last model call's input against the model's limit. It's not the running token total shown in the top bar.
 _Avoid_: Memory, usage

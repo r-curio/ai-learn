@@ -4,11 +4,13 @@ import type {
 	AttachmentInfo,
 	ChatType,
 	EngineStatus,
+	Question,
 	TranscriptMessage,
 } from "../../shared/protocol.ts";
 import { Notice } from "../components/Notice.tsx";
 import { SegmentedTabs } from "../components/tabs.tsx";
 import { MessageView } from "./MessageView.tsx";
+import { PendingQuestion } from "./PendingQuestion.tsx";
 
 interface ChatViewProps {
 	status?: EngineStatus;
@@ -18,6 +20,8 @@ interface ChatViewProps {
 	running: boolean;
 	runStartedAt: number;
 	canRetry: boolean;
+	pendingQuestion?: Question;
+	onDontKnow: () => void;
 	chatType: ChatType;
 	onChatTypeChange: (chatType: ChatType) => void;
 	onRetry: () => void;
@@ -62,6 +66,7 @@ function EmptyScreen({
 export function ChatView(props: ChatViewProps) {
 	const { status, error, sessionId, messages, running, runStartedAt, canRetry, onRetry } = props;
 	const { chatType, onChatTypeChange, onOpenAttachment, onOpenCitation } = props;
+	const { pendingQuestion, onDontKnow } = props;
 	const scroller = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
@@ -115,6 +120,9 @@ export function ChatView(props: ChatViewProps) {
 							onOpenCitation={onOpenCitation}
 						/>
 					))}
+				{pendingQuestion && !running && (
+					<PendingQuestion question={pendingQuestion} onDontKnow={onDontKnow} />
+				)}
 			</main>
 		</div>
 	);

@@ -125,8 +125,29 @@ export interface SearchResult extends SessionSummary {
 	snippet: SnippetPart[];
 }
 
+/** Something the tutor asked, which waits for the learner's answer. */
+export interface Question {
+	/** The tool call that asked it. */
+	id: string;
+	text: string;
+	choices: string[];
+}
+
+/** Someone who doesn't know has no confidence to give, so that answer can't carry one. */
+export type QuestionAnswer =
+	| { kind: "choice"; choice: number; confidence: number; reasoning?: string }
+	| { kind: "own"; text: string; confidence: number; reasoning?: string }
+	| { kind: "unknown"; reasoning?: string };
+
+/** An answer as the learner sees it. Their reasoning goes to the tutor and isn't part of this. */
+export function answerText(choices: string[], answer: QuestionAnswer): string {
+	if (answer.kind === "choice") return choices[answer.choice] ?? "";
+	return answer.kind === "own" ? answer.text : "I don't know";
+}
+
 export type TranscriptBlock =
 	| { kind: "text"; text: string }
+	| ({ kind: "question" } & Question)
 	| { kind: "reasoning"; text: string }
 	| {
 			kind: "tool";
@@ -147,6 +168,8 @@ export interface TranscriptMessage {
 	failed?: boolean;
 	/** How long the tutor worked before the reply's text started. */
 	workedMs?: number;
+	/** On a learner's answer: how sure they were, from 0 to 100. */
+	confidence?: number;
 }
 
 export interface SessionView {
@@ -157,6 +180,8 @@ export interface SessionView {
 	usage: UsageSummary;
 	/** Missing until a model call has reported its input size. */
 	context?: ContextUsage;
+	/** The question the tutor is waiting on. The chat can't continue until it's answered. */
+	pendingQuestion?: Question;
 }
 
 /** What to tell the learner about how a reply ended. Nothing, if it ended normally. */

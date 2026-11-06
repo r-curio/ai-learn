@@ -7,6 +7,8 @@ import {
 	chatTypeOf,
 	type ChatType,
 	type OpenPage,
+	type Question,
+	type QuestionAnswer,
 	type RunEvent,
 	type SessionSummary,
 	type SessionView,
@@ -21,7 +23,14 @@ import {
 	messagesFromLog,
 	unresolvedToolCalls,
 } from "./recovery.ts";
-import { createTools, toolLabels } from "../tools.ts";
+import {
+	answerResult,
+	pendingQuestionIn,
+	questionHooks,
+	questionPlaceholder,
+} from "./questions.ts";
+import { runProgress } from "./run-progress.ts";
+import { createTools } from "../tools.ts";
 import { SYSTEM_PROMPT, viewingTag } from "./tutor-prompt.ts";
 import {
 	addUsage,
@@ -85,6 +94,7 @@ export class Session {
 				messages: restored?.messages ?? [],
 			},
 			streamFn: engine.streamFn,
+			...questionHooks,
 			sessionId: this.id,
 			identity: { attribution: { name: "ai-learn", url: "https://github.com/r-curio/ai-learn" } },
 		});
@@ -99,7 +109,9 @@ export class Session {
 
 		const messages = messagesFromLog(entries, attachments);
 		const session = new Session(engine, dataDir, { id, entries, messages, attachments });
+		const waiting = pendingQuestionIn(messages)?.id;
 		for (const call of unresolvedToolCalls(messages)) {
+			if (call.id === waiting) continue;
 			const result = interruptedToolResult(call);
 			// Add to the agent's own list, which also holds the system prompt.
 			session.agent.state.messages.push(result);
@@ -118,8 +130,16 @@ export class Session {
 	get canRetry(): boolean {
 		const tail = this.messages.at(-1);
 		return (
-			!this.running && tail !== undefined && (tail.role !== "assistant" || isFailedReply(tail))
+			!this.running &&
+			!this.pendingQuestion &&
+			tail !== undefined &&
+			(tail.role !== "assistant" || isFailedReply(tail))
 		);
+	}
+
+	/** The question the tutor is waiting on: a saved tool call with no result yet. */
+	get pendingQuestion(): Question | undefined {
+		return this.running ? undefined : pendingQuestionIn(this.messages);
 	}
 
 	get hasContent(): boolean {
@@ -178,7 +198,15 @@ export class Session {
 		const canRetry = this.canRetry;
 		if (canRetry && !isFailedReply(this.messages.at(-1))) markInterrupted(messages);
 		const usage = { ...this.usage };
-		return { id: this.id, title: this.title(), messages, canRetry, usage, context: this.context() };
+		return {
+			id: this.id,
+			title: this.title(),
+			messages,
+			canRetry,
+			usage,
+			context: this.context(),
+			pendingQuestion: this.pendingQuestion,
+		};
 	}
 
 	private context() {
@@ -189,58 +217,33 @@ export class Session {
 		const runUsage = emptyUsage();
 		let last: AssistantMessage | undefined;
 		let writeFailure: string | undefined;
-		const startedAt = performance.now();
-		let workedMs: number | undefined;
+		const placeholders = new Set<string>();
+		const progress = runProgress(onEvent, (id) => this.attachments.info(id)?.name);
 		const unsubscribe = this.agent.subscribe(async (event: AgentEvent) => {
-			if (event.type === "message_update" && event.assistantMessageEvent.type === "text_delta") {
-				if (workedMs === undefined) {
-					workedMs = Math.round(performance.now() - startedAt);
-					onEvent({ type: "reply_start", workedMs });
-				}
-				onEvent({ type: "text_delta", delta: event.assistantMessageEvent.delta });
-			} else if (
-				event.type === "message_update" &&
-				event.assistantMessageEvent.type === "thinking_delta"
-			) {
-				onEvent({ type: "reasoning_delta", delta: event.assistantMessageEvent.delta });
-			} else if (event.type === "tool_execution_start") {
-				const labels = toolLabels(
-					event.toolName,
-					event.args,
-					(id) => this.attachments.info(id)?.name,
-				);
-				onEvent({ type: "tool_start", id: event.toolCallId, name: event.toolName, ...labels });
-			} else if (event.type === "tool_execution_end") {
-				onEvent({
-					type: "tool_end",
-					id: event.toolCallId,
-					isError: event.isError,
-					durationMs: event.durationMs,
+			progress.report(event);
+			if (event.type !== "message_end") return;
+			const { message } = event;
+			if (message.role !== "assistant" && message.role !== "toolResult") return;
+			if (message.role === "toolResult" && questionPlaceholder(message)) {
+				placeholders.add(message.toolCallId);
+				return;
+			}
+			if (message.role === "assistant") {
+				last = message;
+				addUsage(runUsage, message);
+				addUsage(this.usage, message);
+			}
+			const worked = message.role === "assistant" ? progress.takeWorkedTime() : {};
+			// Pi waits for this before moving on, so each step is on disk before the next begins.
+			try {
+				await this.record({
+					type: "message",
+					message: toStored(message, this.attachments),
+					...worked,
 				});
-			} else if (
-				event.type === "message_end" &&
-				(event.message.role === "assistant" || event.message.role === "toolResult")
-			) {
-				const isReply = event.message.role === "assistant";
-				if (event.message.role === "assistant") {
-					last = event.message;
-					addUsage(runUsage, last);
-					addUsage(this.usage, last);
-				}
-				const worked = isReply && workedMs !== undefined ? { workedMs } : {};
-				// Text before a tool call isn't the end of the work, so the next step measures again.
-				if (isReply) workedMs = undefined;
-				// Pi waits for this before moving on, so each step is on disk before the next begins.
-				try {
-					await this.record({
-						type: "message",
-						message: toStored(event.message, this.attachments),
-						...worked,
-					});
-				} catch (error) {
-					writeFailure = `Couldn't save this session: ${(error as Error).message}`;
-					this.agent.abort();
-				}
+			} catch (error) {
+				writeFailure = `Couldn't save this session: ${(error as Error).message}`;
+				this.agent.abort();
 			}
 		});
 
@@ -252,6 +255,9 @@ export class Session {
 			failure = error instanceof Error ? error.message : String(error);
 		} finally {
 			unsubscribe();
+			this.agent.state.messages = this.agent.state.messages.filter(
+				(message) => message.role !== "toolResult" || !placeholders.has(message.toolCallId),
+			);
 			this.running = false;
 		}
 		failure = writeFailure ?? failure;
@@ -278,6 +284,7 @@ export class Session {
 		choice: ResolvedModel,
 	): Promise<void> {
 		if (this.running) throw new SessionBusyError();
+		if (this.pendingQuestion) throw new SessionStateError("Answer the tutor's question first.");
 		this.use(choice);
 		const { text, attachmentIds, viewing } = input;
 		const content = [
@@ -285,19 +292,48 @@ export class Session {
 			...(viewing ? [{ type: "text" as const, text: viewingTag(viewing) }] : []),
 			...(text.trim() ? [{ type: "text" as const, text }] : []),
 		];
-		this.running = true;
 		const message: Message = { role: "user", content, timestamp: Date.now() };
+		const entry: LogEntry = {
+			type: "message",
+			message: toStored(message, this.attachments),
+			display: { text, attachmentIds },
+		};
+		await this.saveThenRun(entry, () => this.agent.prompt(message), onEvent);
+	}
+
+	private async saveThenRun(
+		entry: LogEntry,
+		start: () => Promise<void>,
+		onEvent: (event: RunEvent) => void,
+	): Promise<void> {
+		this.running = true;
 		try {
-			await this.record({
-				type: "message",
-				message: toStored(message, this.attachments),
-				display: { text, attachmentIds },
-			});
+			await this.record(entry);
 		} catch (error) {
 			this.running = false;
 			throw error;
 		}
-		await this.run(() => this.agent.prompt(message), onEvent);
+		await this.run(start, onEvent);
+	}
+
+	/** Give the tutor the learner's answer and carry on. The answer is saved before the model is called. */
+	async answer(
+		questionId: string,
+		answer: QuestionAnswer,
+		onEvent: (event: RunEvent) => void,
+		choice: ResolvedModel,
+	): Promise<void> {
+		if (this.running) throw new SessionBusyError();
+		const question = this.pendingQuestion;
+		if (question?.id !== questionId)
+			throw new SessionStateError("That question isn't waiting for an answer.");
+		this.use(choice);
+		const result = answerResult(question, answer);
+		const start = () => {
+			this.agent.state.messages.push(result);
+			return this.agent.continue();
+		};
+		await this.saveThenRun({ type: "message", message: result, answer }, start, onEvent);
 	}
 
 	/** Try again after a failed or interrupted reply. */
