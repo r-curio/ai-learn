@@ -1,40 +1,28 @@
-import { useEffect, useState } from "react";
 import type { AttachmentInfo } from "../../shared/protocol.ts";
-import { fetchImageUrl } from "../api.ts";
+import { Button } from "../components/button.tsx";
 import { Skeleton } from "../components/skeleton.tsx";
+import { useAttachmentUrl } from "../viewer/useAttachmentUrl.ts";
 import { SentFile } from "./SentFile.tsx";
 
 export function SavedImage({
 	sessionId,
 	attachment,
+	onOpen,
 }: {
 	sessionId: string;
 	attachment: AttachmentInfo;
+	onOpen: () => void;
 }) {
-	const [url, setUrl] = useState<string>();
-	const [failed, setFailed] = useState(false);
-	useEffect(() => {
-		let active = true;
-		let created: string | undefined;
-		fetchImageUrl(sessionId, attachment.id)
-			.then((next) => {
-				created = next;
-				if (active) setUrl(next);
-				else URL.revokeObjectURL(next);
-			})
-			.catch(() => active && setFailed(true));
-		return () => {
-			active = false;
-			if (created) URL.revokeObjectURL(created);
-		};
-	}, [sessionId, attachment.id]);
-	if (failed) return <SentFile name={attachment.name} />;
+	const { url, failed } = useAttachmentUrl(sessionId, attachment.id);
+	if (failed) return <SentFile name={attachment.name} onOpen={onOpen} />;
 	return url ? (
-		<img
-			className="block size-20 rounded-xl border border-border object-cover"
-			src={url}
-			alt={attachment.name}
-		/>
+		<Button variant="ghost" size="icon" className="size-20 rounded-xl p-0" onClick={onOpen}>
+			<img
+				className="block size-20 rounded-xl border border-border object-cover"
+				src={url}
+				alt={attachment.name}
+			/>
+		</Button>
 	) : (
 		<Skeleton role="img" className="size-20 rounded-xl bg-border" aria-label={attachment.name} />
 	);

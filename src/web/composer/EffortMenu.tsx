@@ -107,7 +107,14 @@ export function EffortMenu({ choice, anchor, disabled }: EffortMenuProps) {
 					disabled={disabled || !effort}
 					className={`${MENU_TRIGGER} font-normal text-muted-foreground aria-expanded:text-muted-foreground`}
 				>
-					{effort ? `${EFFORT_LABELS[effort]} effort` : noEffortLabel}
+					{effort ? (
+						<span>
+							{EFFORT_LABELS[effort]}
+							<span className="in-data-compact:sr-only"> effort</span>
+						</span>
+					) : (
+						noEffortLabel
+					)}
 					<ChevronDown className="size-3 text-muted-foreground" strokeWidth={2.8} />
 				</Button>
 			</PopoverTrigger>

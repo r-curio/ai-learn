@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { cn } from "cn";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { ChatView } from "./chat/ChatView.tsx";
 import { useChat } from "./chat/useChat.ts";
 import { Composer } from "./composer/Composer.tsx";
@@ -12,6 +13,11 @@ import { useProviders } from "./settings/useProviders.ts";
 import { Rail, type RailView } from "./shell/Rail.tsx";
 import { TopBar } from "./shell/TopBar.tsx";
 import { useSidebarPreference } from "./shell/useSidebarPreference.ts";
+import { AttachmentPane } from "./viewer/AttachmentPane.tsx";
+import { useAttachmentPane } from "./viewer/useAttachmentPane.ts";
+
+/** The sidebar narrows while an attachment is open, to leave room for the chat and the page. */
+const NARROW_SIDEBAR = { "--sidebar-width": "216px" } as CSSProperties;
 
 export function App() {
 	const [text, setText] = useState("");
@@ -20,11 +26,14 @@ export function App() {
 	const files = useDrafts();
 	const [view, setView] = useState<RailView>("chat");
 	const { clearDrafts, addFiles } = files;
+	const pane = useAttachmentPane();
+	const { close: closePane } = pane;
 
 	const onChatChange = useCallback(() => {
 		clearDrafts();
 		setText("");
-	}, [clearDrafts]);
+		closePane();
+	}, [clearDrafts, closePane]);
 	const onReady = useCallback(() => textArea.current?.focus(), []);
 	const chat = useChat({ onChatChange, onReady });
 	const { sessionId, status, running } = chat;
@@ -73,6 +82,7 @@ export function App() {
 	return (
 		<SidebarProvider
 			className="relative"
+			style={pane.open && view === "chat" ? NARROW_SIDEBAR : undefined}
 			open={sidebar.open}
 			onOpenChange={onSidebarChange}
 			{...(view === "chat" ? dropHandlers : {})}
@@ -99,45 +109,62 @@ export function App() {
 						onDisconnect={providers.disconnect}
 					/>
 				) : (
-					<>
-						<TopBar
-							title={chat.sessions.find((summary) => summary.id === sessionId)?.title}
+					<div className="flex min-h-0 flex-1">
+						<div
+							data-compact={pane.open || undefined}
+							className={cn("flex min-w-0 flex-1 flex-col", pane.open && "max-[1100px]:hidden")}
+						>
+							<TopBar
+								title={chat.sessions.find((summary) => summary.id === sessionId)?.title}
+								usage={pane.open ? undefined : chat.usage}
+							/>
+							<ChatView
+								status={status}
+								error={chat.error}
+								sessionId={sessionId}
+								messages={chat.messages}
+								running={running}
+								runStartedAt={chat.runStartedAt}
+								canRetry={chat.canRetry}
+								onRetry={() => {
+									if (!status?.ready || running) return;
+									if (modelChoice.selection) chat.retry(modelChoice.selection);
+									else modelChoice.setPickerOpen(true);
+								}}
+								onOpenAttachment={(attachment) => {
+									if (sessionId) pane.show({ sessionId, attachment });
+								}}
+							/>
+							<Composer
+								text={text}
+								onTextChange={setText}
+								textArea={textArea}
+								isNewChat={chat.messages.length === 0}
+								drafts={files.drafts}
+								canAttach={Boolean(sessionId) && !setupNeeded && hasModel}
+								canSend={canSend}
+								running={running}
+								providers={status?.providers ?? []}
+								modelChoice={modelChoice}
+								onAddProvider={() => setView("settings")}
+								dimmed={setupNeeded}
+								needsModel={!setupNeeded && !hasModel}
+								onAddFiles={attach}
+								onRemoveDraft={files.removeDraft}
+								onSend={send}
+								onStop={chat.stop}
+							/>
+						</div>
+						<AttachmentPane
+							target={pane.target}
+							open={pane.open}
 							usage={chat.usage}
-						/>
-						<ChatView
-							status={status}
-							error={chat.error}
-							sessionId={sessionId}
-							messages={chat.messages}
-							running={running}
-							runStartedAt={chat.runStartedAt}
-							canRetry={chat.canRetry}
-							onRetry={() => {
-								if (!status?.ready || running) return;
-								if (modelChoice.selection) chat.retry(modelChoice.selection);
-								else modelChoice.setPickerOpen(true);
+							onClose={() => {
+								pane.close();
+								textArea.current?.focus();
 							}}
 						/>
-						<Composer
-							text={text}
-							onTextChange={setText}
-							textArea={textArea}
-							isNewChat={chat.messages.length === 0}
-							drafts={files.drafts}
-							canAttach={Boolean(sessionId) && !setupNeeded && hasModel}
-							canSend={canSend}
-							running={running}
-							providers={status?.providers ?? []}
-							modelChoice={modelChoice}
-							onAddProvider={() => setView("settings")}
-							dimmed={setupNeeded}
-							needsModel={!setupNeeded && !hasModel}
-							onAddFiles={attach}
-							onRemoveDraft={files.removeDraft}
-							onSend={send}
-							onStop={chat.stop}
-						/>
-					</>
+					</div>
 				)}
 			</SidebarInset>
 			{dragging && !setupNeeded && (

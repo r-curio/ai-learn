@@ -43,6 +43,7 @@
 	--sidebar-accent-foreground: var(--foreground);
 	--sidebar-border: var(--border);
 	--sidebar-ring: var(--ring);
+	--page: #ffffff;
 	--shadow-popover-value: 0 4px 16px rgb(35 36 58 / 0.1);
 }
 
@@ -90,6 +91,7 @@
 	--color-border: var(--border);
 	--color-input: var(--input);
 	--color-ring: var(--ring);
+	--color-page: var(--page);
 	--color-rail: var(--rail);
 	--color-sidebar: var(--sidebar);
 	--color-sidebar-foreground: var(--sidebar-foreground);
@@ -220,7 +222,7 @@
 
 /* The width the chat and the composer share, so they always line up. */
 @utility chat-column {
-	@apply mx-auto w-full max-w-[720px] px-5 max-md:px-4;
+	@apply mx-auto w-full max-w-[720px] px-5 in-data-compact:px-6 max-md:px-4;
 }
 
 /* The app has no native title bar, so these areas move the window instead. */

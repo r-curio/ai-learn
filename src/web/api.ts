@@ -98,12 +98,9 @@ export async function deleteSession(id: string): Promise<void> {
 	await request(`/api/sessions/${id}`, { method: "DELETE" });
 }
 
-/** Images need the auth header, so they load as blobs rather than through a plain src URL. */
-export async function fetchImageUrl(sessionId: string, attachmentId: string): Promise<string> {
-	const blob = await (
-		await request(`/api/sessions/${sessionId}/attachments/${attachmentId}`)
-	).blob();
-	return URL.createObjectURL(blob);
+/** Attachments need the auth header, so they load as blobs rather than through a plain src URL. */
+export async function fetchAttachment(sessionId: string, attachmentId: string): Promise<Blob> {
+	return (await request(`/api/sessions/${sessionId}/attachments/${attachmentId}`)).blob();
 }
 
 export async function uploadAttachment(sessionId: string, file: File): Promise<AttachmentInfo> {

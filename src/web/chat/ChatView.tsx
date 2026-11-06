@@ -1,5 +1,5 @@
 import { useEffect, useRef, type ReactNode } from "react";
-import type { EngineStatus, TranscriptMessage } from "../../shared/protocol.ts";
+import type { AttachmentInfo, EngineStatus, TranscriptMessage } from "../../shared/protocol.ts";
 import { Notice } from "../components/Notice.tsx";
 import { MessageView } from "./MessageView.tsx";
 
@@ -12,6 +12,7 @@ interface ChatViewProps {
 	runStartedAt: number;
 	canRetry: boolean;
 	onRetry: () => void;
+	onOpenAttachment: (attachment: AttachmentInfo) => void;
 }
 
 const Code = ({ children }: { children: string }) => (
@@ -36,6 +37,7 @@ function EmptyScreen({ title, children }: { title: string; children: ReactNode }
 
 export function ChatView(props: ChatViewProps) {
 	const { status, error, sessionId, messages, running, runStartedAt, canRetry, onRetry } = props;
+	const { onOpenAttachment } = props;
 	const scroller = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
@@ -45,7 +47,10 @@ export function ChatView(props: ChatViewProps) {
 
 	return (
 		<div className="flex-1 overflow-y-auto" ref={scroller}>
-			<main className="chat-column flex min-h-full flex-col gap-5 pt-3 pb-5" aria-live="polite">
+			<main
+				className="chat-column flex min-h-full flex-col gap-5 pt-3 pb-5 in-data-compact:gap-[18px] in-data-compact:pt-2"
+				aria-live="polite"
+			>
 				{error && <Notice error>{error}</Notice>}
 				{status && !status.ready && messages.length === 0 && (
 					<EmptyScreen title="Add your API key to start">
@@ -70,6 +75,7 @@ export function ChatView(props: ChatViewProps) {
 							key={message.id}
 							liveSince={running && index === messages.length - 1 ? runStartedAt : undefined}
 							onRetry={canRetry && !running && index === messages.length - 1 ? onRetry : undefined}
+							onOpenAttachment={onOpenAttachment}
 						/>
 					))}
 			</main>
