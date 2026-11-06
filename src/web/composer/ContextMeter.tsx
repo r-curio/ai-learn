@@ -70,29 +70,29 @@ function useHoverPopover() {
 	const keepFocus = useRef(false);
 	const closing = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-	const hoverProps = {
-		onPointerEnter(event: PointerEvent) {
-			if (event.pointerType !== "mouse") return;
-			clearTimeout(closing.current);
-			if (!open) keepFocus.current = true;
-			setOpen(true);
-		},
-		onPointerLeave(event: PointerEvent) {
-			if (event.pointerType !== "mouse" || !keepFocus.current) return;
-			closing.current = setTimeout(() => setOpen(false), CLOSE_DELAY_MS);
-		},
+	const onPointerLeave = (event: PointerEvent) => {
+		if (event.pointerType !== "mouse" || !keepFocus.current) return;
+		closing.current = setTimeout(() => setOpen(false), CLOSE_DELAY_MS);
 	};
 	return {
 		rootProps: { open, onOpenChange: setOpen },
 		triggerProps: {
-			...hoverProps,
+			onPointerEnter(event: PointerEvent) {
+				if (event.pointerType !== "mouse") return;
+				clearTimeout(closing.current);
+				if (!open) keepFocus.current = true;
+				setOpen(true);
+			},
+			onPointerLeave,
 			onClick(event: MouseEvent) {
 				// Hover already showed the details, so a click shouldn't take them away.
 				if (keepFocus.current) event.preventDefault();
 			},
 		},
 		contentProps: {
-			...hoverProps,
+			// Only the meter opens the details, so a pointer left on them as they close can't reopen them.
+			onPointerEnter: () => clearTimeout(closing.current),
+			onPointerLeave,
 			onOpenAutoFocus(event: Event) {
 				if (keepFocus.current) event.preventDefault();
 			},
@@ -104,6 +104,7 @@ function useHoverPopover() {
 		},
 		/** Close without handing focus back to the meter, because something else is taking it. */
 		dismiss: () => {
+			clearTimeout(closing.current);
 			keepFocus.current = true;
 			setOpen(false);
 		},
