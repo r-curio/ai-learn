@@ -38,7 +38,7 @@ export function ConfidenceSlider({
 					value={[shown ?? MIDDLE]}
 					// Radix reports no change for a press on the unmoved handle, but that's still a choice.
 					onPointerDown={() => {
-						if (shown === undefined) onChange(MIDDLE);
+						if (shown === undefined && !notNeeded) onChange(MIDDLE);
 					}}
 					onValueChange={([value = MIDDLE]) => onChange(value)}
 				/>
