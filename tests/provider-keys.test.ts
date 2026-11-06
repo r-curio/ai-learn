@@ -3,8 +3,9 @@ import assert from "node:assert/strict";
 import { readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { test } from "node:test";
+import { builtinModels } from "@earendil-works/pi-ai/providers/all";
 import { createEngine } from "../src/harness/engine.ts";
-import type { KeyCipher } from "../src/harness/provider-keys.ts";
+import { ProviderKeyStore, type KeyCipher } from "../src/harness/provider-keys.ts";
 import { createApp } from "../src/server/app.ts";
 import type { EngineStatus } from "../src/shared/protocol.ts";
 import { tempDir } from "./helpers.ts";
@@ -110,15 +111,52 @@ test("removing a saved key disconnects the provider and takes it off disk", asyn
 	);
 });
 
-test("an environment key wins, and can't be replaced or removed in the app", async () => {
+test("an environment key wins over a saved one, and can't be replaced in the app", async () => {
 	const dataDir = await tempDir();
 	const cipher = testCipher();
 	await saveKey(appFor(dataDir, cipher).app, "anthropic", SECRET);
+
+	// Ask Pi directly which key a request would really use.
+	const keyInUse = async (values: Record<string, string>) => {
+		const authContext = envOf(values);
+		const environment = builtinModels({ authContext });
+		const credentials = new ProviderKeyStore(
+			dataDir,
+			cipher,
+			async (id) => (await environment.getAuth(id)) !== undefined,
+		);
+		return (await builtinModels({ authContext, credentials }).getAuth("anthropic"))?.auth.apiKey;
+	};
+	assert.equal(await keyInUse({}), SECRET);
+	assert.equal(await keyInUse({ ANTHROPIC_API_KEY: "sk-from-env" }), "sk-from-env");
 
 	const { app } = appFor(dataDir, cipher, { ANTHROPIC_API_KEY: "sk-from-env" });
 	const status = await statusOf(app);
 	assert.equal(status.providers.find(({ id }) => id === "anthropic")?.keySource, "environment");
 	assert.equal((await saveKey(app, "anthropic", "sk-new")).status, 409);
+});
+
+test("providers that need more than a key aren't offered, and their keys are refused", async () => {
+	const dataDir = await tempDir();
+	const { app } = appFor(dataDir, testCipher());
+	const { addable } = await statusOf(app);
+	assert.ok(addable.some(({ id }) => id === "openai"));
+	for (const id of ["azure", "amazon-bedrock", "cloudflare-ai-gateway", "cloudflare-workers-ai"]) {
+		assert.ok(!addable.some((provider) => provider.id === id));
+		assert.equal((await saveKey(app, id, SECRET)).status, 400);
+	}
+	assert.ok(!(await readdir(dataDir)).includes(FILE));
+});
+
+test("every provider offered connects once it has a key", async () => {
+	const dataDir = await tempDir();
+	const { app } = appFor(dataDir, testCipher());
+	const offered = (await statusOf(app)).addable.map(({ id }) => id);
+	assert.ok(offered.length > 0);
+	for (const id of offered) assert.equal((await saveKey(app, id, SECRET)).status, 200);
+	const after = await statusOf(app);
+	assert.deepEqual(after.addable, []);
+	assert.deepEqual(after.providers.map(({ id }) => id).sort(), [...offered].sort());
 });
 
 test("keys are refused, with a reason, when real encryption isn't available", async () => {

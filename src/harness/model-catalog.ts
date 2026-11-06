@@ -20,6 +20,21 @@ export interface KeySources {
 
 const NO_FAKE_KEYS = "The fake model doesn't use keys.";
 
+/**
+ * These also need an account, endpoint, region, or project, and the key form can't collect those.
+ * They can still connect through the environment.
+ */
+const KEY_ALONE_IS_NOT_ENOUGH = new Set([
+	"amazon-bedrock",
+	"azure",
+	"cloudflare-ai-gateway",
+	"cloudflare-workers-ai",
+	"google-vertex",
+]);
+
+const canSaveKey = (models: Models, id: string) =>
+	!KEY_ALONE_IS_NOT_ENOUGH.has(id) && models.getProvider(id)?.auth.apiKey?.login !== undefined;
+
 /** Pi's lower levels, like "off" and "minimal", aren't offered, so they never reach a learner. */
 function effortsOf(model: Model<string>): Effort[] {
 	const supported: string[] = getSupportedThinkingLevels(model);
@@ -58,7 +73,7 @@ async function readCatalog(models: Models, sources?: KeySources) {
 				};
 				return { connected };
 			}
-			if (!sources || !provider.auth.apiKey?.login) return {};
+			if (!sources || !canSaveKey(models, provider.id)) return {};
 			const addable: AddableProvider = { ...row, modelCount: options.length };
 			return { addable };
 		}),
@@ -101,7 +116,7 @@ async function readStatus(models: Models, sources?: KeySources): Promise<EngineS
 async function saveKey(models: Models, sources: KeySources | undefined, id: string, key: string) {
 	const reason = sources ? sources.keys.unavailableReason() : NO_FAKE_KEYS;
 	if (!sources || reason) throw new ProviderKeyError(reason ?? NO_FAKE_KEYS, 503);
-	if (!models.getProvider(id)?.auth.apiKey?.login)
+	if (!canSaveKey(models, id))
 		throw new ProviderKeyError("That provider can't use a saved key.", 400);
 	if (await isConfigured(sources.environment, id))
 		throw new ProviderKeyError("This provider's key already comes from the environment.", 409);

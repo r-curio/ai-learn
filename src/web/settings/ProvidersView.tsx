@@ -39,10 +39,9 @@ function AddKeyRow({
 		if (!key.trim() || saving) return;
 		setSaving(true);
 		setError(undefined);
-		onSave(key.trim()).catch((cause: Error) => {
-			setError(cause.message);
-			setSaving(false);
-		});
+		onSave(key.trim())
+			.catch((cause: Error) => setError(cause.message))
+			.finally(() => setSaving(false));
 	}
 
 	return (
@@ -138,7 +137,10 @@ function AvailableSection(props: {
 						key={provider.id}
 						provider={provider}
 						onCancel={() => setAddingId(undefined)}
-						onSave={(key) => props.onConnect(provider.id, key)}
+						onSave={async (key) => {
+							await props.onConnect(provider.id, key);
+							setAddingId(undefined);
+						}}
 					/>
 				) : (
 					<div className={ROW} key={provider.id}>
