@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import {
 	noticeFor,
 	type AttachmentInfo,
+	type ChatType,
 	type ModelSelection,
 	type RunEvent,
 	type SessionView,
@@ -80,7 +81,12 @@ export function useConversation(onRunEnd: () => void) {
 		}
 	}
 
-	function send(text: string, attachments: AttachmentInfo[], model: ModelSelection) {
+	function send(
+		text: string,
+		attachments: AttachmentInfo[],
+		model: ModelSelection,
+		chatType: ChatType,
+	) {
 		const replyId = makeKey();
 		const blocks: TranscriptMessage["blocks"] = text.trim() ? [{ kind: "text", text }] : [];
 		setMessages((current) => [
@@ -88,7 +94,13 @@ export function useConversation(onRunEnd: () => void) {
 			{ id: makeKey(), role: "user", blocks, attachments },
 			{ id: replyId, role: "assistant", blocks: [] },
 		]);
-		const body = { text, attachmentIds: attachments.map((attachment) => attachment.id), model };
+		// Always sent, since a first send that fails leaves nothing saved. The server ignores it after that.
+		const body = {
+			text,
+			attachmentIds: attachments.map((attachment) => attachment.id),
+			model,
+			chatType,
+		};
 		void follow(replyId, (onEvent) => sendMessage(sessionId!, body, onEvent));
 	}
 

@@ -22,6 +22,10 @@ _Avoid_: Maintainer, admin
 One saved conversation between a learner and the tutor. The UI calls this a "chat", because that's the word learners expect.
 _Avoid_: Conversation, thread
 
+**Chat type**:
+Whether a session is Learning or Practice, chosen when it starts and fixed after that. Saved in the session log's header, and a log with none counts as Learning. For now it only organizes the chat list, and the tutor behaves the same in both.
+_Avoid_: Mode, category
+
 **Turn**:
 One message from the learner and everything the tutor does in response.
 _Avoid_: Exchange, round

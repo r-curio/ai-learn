@@ -1,6 +1,6 @@
 import { readdir, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
-import type { SearchResult, SessionSummary } from "../../shared/protocol.ts";
+import { chatTypeOf, type SearchResult, type SessionSummary } from "../../shared/protocol.ts";
 import type { Engine } from "../engine.ts";
 import { peekLog } from "./log.ts";
 import { Session, SessionBusyError } from "./session.ts";
@@ -17,9 +17,10 @@ async function readSummary(
 	id: string,
 ): Promise<SessionSummary | undefined> {
 	try {
-		return JSON.parse(
+		const saved = JSON.parse(
 			await readFile(join(dataDir, "sessions", id, "summary.json"), "utf8"),
-		) as SessionSummary;
+		) as Omit<SessionSummary, "chatType"> & { chatType?: unknown };
+		return { ...saved, chatType: chatTypeOf(saved.chatType) };
 	} catch {
 		try {
 			const session = await Session.load(engine, dataDir, id);

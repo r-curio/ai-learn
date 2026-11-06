@@ -10,7 +10,7 @@ import type { Engine } from "../harness/engine.ts";
 import type { Session } from "../harness/sessions/session.ts";
 import { SessionBusyError, SessionStateError } from "../harness/sessions/session.ts";
 import { SessionStore } from "../harness/sessions/store.ts";
-import { EFFORTS, type RunEvent } from "../shared/protocol.ts";
+import { CHAT_TYPES, EFFORTS, type RunEvent } from "../shared/protocol.ts";
 import { addProviderKeyRoutes } from "./provider-routes.ts";
 import { preferencesInput, readPreferences, writePreferences } from "./preferences.ts";
 import { SessionLogError } from "../harness/sessions/log.ts";
@@ -34,6 +34,7 @@ const messageInput = z.object({
 	text: z.string().max(200_000),
 	attachmentIds: z.array(z.string()).max(20).default([]),
 	model: modelSelection,
+	chatType: z.enum(CHAT_TYPES).optional(),
 });
 
 const retryInput = z.object({ model: modelSelection });
@@ -179,13 +180,14 @@ export function createApp({ engine, dataDir, token, webRoot }: AppOptions): Hono
 
 		const parsed = messageInput.safeParse(await c.req.json().catch(() => undefined));
 		if (!parsed.success) return c.json({ error: "Invalid message." }, 400);
-		const { text, attachmentIds, model } = parsed.data;
+		const { text, attachmentIds, model, chatType } = parsed.data;
 		if (!text.trim() && attachmentIds.length === 0)
 			return c.json({ error: "Message is empty." }, 400);
 		const unknown = attachmentIds.find((id) => !session.attachments.has(id));
 		if (unknown) return c.json({ error: "Unknown attachment." }, 400);
 		const choice = await engine.resolve(model);
 		if (!choice) return c.json({ error: UNAVAILABLE_MODEL }, 400);
+		if (chatType) session.chooseType(chatType);
 
 		return streamRun(c, session, (onEvent) =>
 			session.send({ text, attachmentIds }, onEvent, choice),

@@ -8,6 +8,7 @@ import type {
 } from "@earendil-works/pi-ai";
 import { appendFile, mkdir, readFile, truncate } from "node:fs/promises";
 import { dirname } from "node:path";
+import type { ChatType } from "../../shared/protocol.ts";
 import type { AttachmentStore } from "../attachments.ts";
 
 export const LOG_VERSION = 1;
@@ -23,6 +24,8 @@ export interface LogHeader {
 	id: string;
 	createdAt: number;
 	systemPrompt: string;
+	/** Older logs don't have this, and count as Learning. */
+	chatType?: ChatType;
 }
 
 export interface LogMessage {

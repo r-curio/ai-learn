@@ -45,7 +45,7 @@ This is the product's direction, not its current behaviour. The teaching engine 
 **Undecided:**
 
 - How someone without developer tools will get the app. Today it runs from source and needs Node and an Anthropic API key, with no packaged installer, which doesn't yet suit a learner with no technical background.
-- What Practice does differently from Learning (issue #21).
+- What Practice does differently from Learning (issue #5). Until then, a chat's type only organizes the chat list.
 
 ## Brand Commitments
 

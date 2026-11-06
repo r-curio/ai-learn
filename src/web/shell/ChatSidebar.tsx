@@ -1,6 +1,8 @@
 import { Pencil, X } from "lucide-react";
-import type { SearchResult, SessionSummary, SnippetPart } from "../../shared/protocol.ts";
+import { useState } from "react";
+import type { ChatType, SearchResult, SessionSummary, SnippetPart } from "../../shared/protocol.ts";
 import { Button } from "../components/button.tsx";
+import { SegmentedTabs } from "../components/tabs.tsx";
 import {
 	Sidebar,
 	SidebarContent,
@@ -15,6 +17,14 @@ import {
 import { ChatSearchField, ChatSnippet, SearchStatus } from "./ChatSearch.tsx";
 import { Logo } from "./Logo.tsx";
 import { useChatSearch } from "./useChatSearch.ts";
+
+type ChatFilter = "all" | ChatType;
+
+const FILTER_OPTIONS: readonly { value: ChatFilter; label: string }[] = [
+	{ value: "all", label: "All" },
+	{ value: "learning", label: "Learning" },
+	{ value: "practice", label: "Practice" },
+];
 
 function ChatRow({
 	summary,
@@ -96,7 +106,13 @@ export function ChatSidebar({
 }: ChatSidebarProps) {
 	const { setOpenMobile } = useSidebar();
 	const search = useChatSearch(sessions);
-	const rows: (SessionSummary & Partial<SearchResult>)[] = search.found?.results ?? sessions;
+	const [filter, setFilter] = useState<ChatFilter>("all");
+	const matches = (row: SessionSummary) => filter === "all" || row.chatType === filter;
+	const found = search.found && { ...search.found, results: search.found.results.filter(matches) };
+	const rows: (SessionSummary & Partial<SearchResult>)[] =
+		found?.results ?? sessions.filter(matches);
+	const typeLabel =
+		filter === "all" ? undefined : FILTER_OPTIONS.find((option) => option.value === filter)?.label;
 	return (
 		<Sidebar aria-label="Chats">
 			<SidebarHeader className="gap-3.5 px-2.5 pt-3.5">
@@ -114,10 +130,20 @@ export function ChatSidebar({
 					<Pencil className="size-[18px]" strokeWidth={1.5} />
 					New chat
 				</Button>
-				<ChatSearchField value={search.query} onChange={search.change} />
+				<div className="flex flex-col gap-3">
+					<ChatSearchField value={search.query} onChange={search.change} />
+					{sessions.length > 0 && (
+						<SegmentedTabs
+							label="Filter chats by type"
+							value={filter}
+							options={FILTER_OPTIONS}
+							onChange={setFilter}
+						/>
+					)}
+				</div>
 			</SidebarHeader>
 			<SidebarContent className="px-2.5 pt-3 pb-4">
-				<SearchStatus failed={search.failed} found={search.found} />
+				<SearchStatus failed={search.failed} found={found} typeLabel={typeLabel} />
 				<SidebarMenu>
 					{rows.map((summary) => (
 						<ChatRow
@@ -137,6 +163,11 @@ export function ChatSidebar({
 				{sessions.length === 0 && !search.found && !search.failed && (
 					<p className="px-2.5 text-[14px] leading-[18px] text-muted-foreground">
 						Your chats will appear here.
+					</p>
+				)}
+				{sessions.length > 0 && rows.length === 0 && !found && !search.failed && (
+					<p className="px-2.5 text-[14px] leading-[18px] text-muted-foreground">
+						No {typeLabel} chats yet.
 					</p>
 				)}
 			</SidebarContent>
