@@ -88,6 +88,16 @@ export interface SessionSummary {
 	updatedAt: number;
 }
 
+export interface SnippetPart {
+	text: string;
+	/** Whether this is the part the learner searched for. */
+	match: boolean;
+}
+
+export interface SearchResult extends SessionSummary {
+	snippet: SnippetPart[];
+}
+
 export type TranscriptBlock =
 	| { kind: "text"; text: string }
 	| { kind: "tool"; id: string; label: string; state: "running" | "done" | "failed" };

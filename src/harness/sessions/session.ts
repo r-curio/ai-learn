@@ -14,7 +14,14 @@ import {
 	unresolvedToolCalls,
 } from "./recovery.ts";
 import { createTools } from "../tools.ts";
-import { addUsage, buildTranscript, INTERRUPTED_NOTICE, titleOf, usageOf } from "./transcript.ts";
+import {
+	addUsage,
+	buildTranscript,
+	INTERRUPTED_NOTICE,
+	titleOf,
+	usageOf,
+	searchTextOf,
+} from "./transcript.ts";
 
 const SYSTEM_PROMPT = `You are a patient, accurate tutor running inside a local learning app.
 Explain clearly, check your facts, and say when you are unsure.
@@ -137,6 +144,10 @@ export class Session {
 
 	summary(): SessionSummary {
 		return { id: this.id, title: this.title(), updatedAt: Date.now() };
+	}
+
+	searchText(): string {
+		return searchTextOf(this.entries);
 	}
 
 	private title(): string {
