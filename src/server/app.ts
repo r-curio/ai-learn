@@ -11,6 +11,7 @@ import type { Session } from "../harness/sessions/session.ts";
 import { SessionBusyError, SessionStateError } from "../harness/sessions/session.ts";
 import { SessionStore } from "../harness/sessions/store.ts";
 import { EFFORTS, type RunEvent } from "../shared/protocol.ts";
+import { addProviderKeyRoutes } from "./provider-routes.ts";
 import { preferencesInput, readPreferences, writePreferences } from "./preferences.ts";
 import { SessionLogError } from "../harness/sessions/log.ts";
 
@@ -116,6 +117,8 @@ export function createApp({ engine, dataDir, token, webRoot }: AppOptions): Hono
 		await writePreferences(dataDir, preferences);
 		return c.json(preferences);
 	});
+
+	addProviderKeyRoutes(app, engine);
 
 	app.get("/api/sessions", async (c) => c.json(await store.list()));
 

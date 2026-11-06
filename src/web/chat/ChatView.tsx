@@ -19,13 +19,8 @@ const Code = ({ children }: { children: string }) => (
 
 /** What's missing and how to fix it. Names like ANTHROPIC_API_KEY in the reason are set as code. */
 function SetupText({ reason = "" }: { reason?: string }) {
-	const parts = reason.split(/\b([A-Z0-9]+(?:_[A-Z0-9]+)+)\b/);
-	return (
-		<>
-			{parts.map((part, index) => (index % 2 ? <Code key={index}>{part}</Code> : part))} Add it to{" "}
-			<Code>.env.local</Code> in the project folder, then restart the app.
-		</>
-	);
+	const parts = reason.split(/(\.env\.local|\b[A-Z0-9]+(?:_[A-Z0-9]+)+\b)/);
+	return <>{parts.map((part, index) => (index % 2 ? <Code key={index}>{part}</Code> : part))}</>;
 }
 
 /** A centred heading and one line. The bottom padding sets the optical centre the frames use. */

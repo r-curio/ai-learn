@@ -58,6 +58,19 @@ export async function savePreferences(preferences: Partial<Preferences>): Promis
 	});
 }
 
+/** The key goes one way: nothing from the server ever contains it. */
+export async function saveProviderKey(providerId: string, key: string): Promise<void> {
+	await request(`/api/providers/${encodeURIComponent(providerId)}/key`, {
+		method: "PUT",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({ key }),
+	});
+}
+
+export async function removeProviderKey(providerId: string): Promise<void> {
+	await request(`/api/providers/${encodeURIComponent(providerId)}/key`, { method: "DELETE" });
+}
+
 export async function createSession(): Promise<string> {
 	const { id } = (await (await request("/api/sessions", { method: "POST" })).json()) as {
 		id: string;

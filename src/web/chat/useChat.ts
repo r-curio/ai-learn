@@ -22,6 +22,8 @@ export function useChat({ onChatChange, onReady }: ChatOptions) {
 			.catch((cause: Error) => setError(cause.message));
 	}, []);
 
+	const refreshStatus = useCallback(() => getStatus().then(setStatus), []);
+
 	const conversation = useConversation(() => {
 		refreshSessions();
 		onReady();
@@ -64,5 +66,14 @@ export function useChat({ onChatChange, onReady }: ChatOptions) {
 		}
 	}
 
-	return { ...conversation, status, sessions, error, startNewChat, openSession, removeSession };
+	return {
+		...conversation,
+		status,
+		refreshStatus,
+		sessions,
+		error,
+		startNewChat,
+		openSession,
+		removeSession,
+	};
 }

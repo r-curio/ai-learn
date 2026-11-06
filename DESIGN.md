@@ -365,7 +365,7 @@ Use Tailwind transitions and CSS custom properties in `src/web/globals.css` firs
 
 ### Navigation
 
-- **Rail:** 36px square items with 6px between them. The active item is Clean Sheet with an indigo icon. Home, graphs, and settings stay inert until they have somewhere to go.
+- **Rail:** 36px square items with 6px between them. The active item is Clean Sheet with an indigo icon. Settings opens the Providers screen. Home and graphs stay inert until they have somewhere to go.
 - **Sidebar:** logo and name with a collapse button, then New chat, search, filter, and chats. The active row uses Clean Sheet with Title type, and inactive rows use Slate Violet with Label type. New chat is Clean Sheet only while the new chat screen is open.
 - **Window controls:** real system controls, never drawn ones. The frames' three dots are placeholders.
 
@@ -401,7 +401,7 @@ The product's signature component, which replaces the composer while a question 
 
 Both float over the composer rather than above it, with their bottom edge 6px over the controls row. The [Model picker variants](https://app.paper.design/file/01M6K667H87BCQPSD9R4ZWSTST/p-8-0) page replaces frames 04 and 05.
 
-- **Model picker:** 300px wide, with search and models grouped under their provider. Each 36px row has the name, a context badge, and a check slot. The exact price shows in a tooltip on hover or arrow-key focus.
+- **Model picker:** 300px wide, with search, models grouped under their provider, and Add provider at the bottom. Each 36px row has the name, a context badge, and a check slot. The exact price shows in a tooltip on hover or arrow-key focus.
 - **Effort slider:** a 40px Track Grey pill holding the five level names. A Clean Sheet knob carries the current name, with an indigo trail running from the left edge through the knob, so Max fills the whole bar. It rests only on named levels, and always shows all five. Levels a model doesn't allow are dimmed and skipped. This is separate from the answer card's 4px confidence slider.
 
 ### Context meter

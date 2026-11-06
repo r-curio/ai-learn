@@ -136,10 +136,17 @@ interface ModelPickerProps {
 	/** The row the menu lines up with, so it stays put whichever button opened it. */
 	anchor: RefObject<HTMLDivElement | null>;
 	disabled: boolean;
+	onAddProvider: () => void;
 }
 
 /** Floats over the composer, and lists the models of every connected provider. */
-export function ModelPicker({ providers, choice, anchor, disabled }: ModelPickerProps) {
+export function ModelPicker({
+	providers,
+	choice,
+	anchor,
+	disabled,
+	onAddProvider,
+}: ModelPickerProps) {
 	const { model, chooseModel, pickerOpen: open, setPickerOpen: setOpen } = choice;
 
 	return (
@@ -178,6 +185,19 @@ export function ModelPicker({ providers, choice, anchor, disabled }: ModelPicker
 						No providers are connected
 					</p>
 				)}
+				<div className="flex h-10 items-center border-t border-border px-1.5">
+					<Button
+						variant="ghost"
+						size="xs"
+						className="h-7 px-2 font-medium text-primary hover:text-primary"
+						onClick={() => {
+							setOpen(false);
+							onAddProvider();
+						}}
+					>
+						Add provider
+					</Button>
+				</div>
 			</PopoverContent>
 		</Popover>
 	);

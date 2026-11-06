@@ -26,5 +26,5 @@ Skills live in `.agents/skills/`, and `.claude/skills` links to that folder.
 
 - Treat saved session history as immutable. Replies replay byte-identical, so changes to what's sent for old turns need a log version bump.
 - Treat the session index as disposable. It's rebuilt from the session folders, so anything new must be saved in the log or another source first.
-- Keep model and API keys in `.env.local`, which git ignores.
+- API keys live encrypted in the app (ADR 0009) or in `.env.local`, which git ignores. Never log a key, return one from the server, or save one anywhere else.
 - Prove behavior with a real run before calling it done. Real model runs cost money, so stay under about $0.50 per PR unless the owner agrees to more.

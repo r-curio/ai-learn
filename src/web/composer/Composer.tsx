@@ -21,6 +21,7 @@ interface ComposerProps {
 	running: boolean;
 	providers: ProviderOption[];
 	modelChoice: ModelChoice;
+	onAddProvider: () => void;
 	/** The app can't reply yet, so the composer dims and takes no input. */
 	dimmed: boolean;
 	/** Nothing can be written until a model is chosen. The model menu stays usable. */
@@ -33,7 +34,8 @@ interface ComposerProps {
 
 export function Composer(props: ComposerProps) {
 	const { text, onTextChange, textArea, isNewChat, drafts, canAttach, canSend, running } = props;
-	const { providers, modelChoice, dimmed, needsModel, onAddFiles, onRemoveDraft } = props;
+	const { providers, modelChoice, onAddProvider, dimmed, needsModel } = props;
+	const { onAddFiles, onRemoveDraft } = props;
 	const { onSend, onStop } = props;
 
 	const prompt = isNewChat ? "Ask the tutor anything" : "Reply to the tutor";
@@ -90,6 +92,7 @@ export function Composer(props: ComposerProps) {
 					providers={providers}
 					modelChoice={modelChoice}
 					menusDisabled={dimmed}
+					onAddProvider={onAddProvider}
 					onAddFiles={onAddFiles}
 					onStop={onStop}
 				/>
