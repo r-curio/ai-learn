@@ -34,13 +34,13 @@ function warnNotSaved(cause: Error) {
  * The model and effort picked in the composer, remembered across launches. The learner's wanted
  * effort is kept apart from the one in use, so a trip through a model with no Medium still comes
  * back to Medium afterward. No model is picked for the learner: until they choose one, and again
- * if a saved model's key is gone, there's nothing to send with.
+ * if a saved model's key is gone, the message box stays disabled.
  */
 export function useModelChoice(status: EngineStatus | undefined, focusMessage: () => void) {
 	const [chosen, setChosen] = useState<ModelRef>();
 	const [wantedEffort, setWantedEffort] = useState<Effort>("medium");
 	const [pickerOpen, setPickerOpen] = useState(false);
-	const openedBySend = useRef(false);
+	const firstChoice = useRef(false);
 
 	useEffect(() => {
 		getPreferences()
@@ -53,7 +53,8 @@ export function useModelChoice(status: EngineStatus | undefined, focusMessage: (
 			});
 	}, []);
 
-	const chooseModel = useCallback((model: ModelRef) => {
+	const chooseModel = useCallback((model: ModelRef, isFirstChoice: boolean) => {
+		firstChoice.current = isFirstChoice;
 		setChosen(model);
 		savePreferences({ model }).catch(warnNotSaved);
 	}, []);
@@ -63,16 +64,11 @@ export function useModelChoice(status: EngineStatus | undefined, focusMessage: (
 		savePreferences({ effort }).catch(warnNotSaved);
 	}, []);
 
-	const openPickerForSend = useCallback(() => {
-		openedBySend.current = true;
-		setPickerOpen(true);
-	}, []);
-
-	/** After a send opened the picker, the next Enter should send, so go back to the message. */
+	/** Picking the first model unlocks the message box, so that's where the learner goes next. */
 	const onPickerCloseFocus = useCallback(
 		(event: Event) => {
-			if (!openedBySend.current) return;
-			openedBySend.current = false;
+			if (!firstChoice.current) return;
+			firstChoice.current = false;
 			event.preventDefault();
 			focusMessage();
 		},
@@ -98,7 +94,6 @@ export function useModelChoice(status: EngineStatus | undefined, focusMessage: (
 		chooseModel,
 		pickerOpen,
 		setPickerOpen,
-		openPickerForSend,
 		onPickerCloseFocus,
 	};
 }

@@ -168,7 +168,7 @@ export function ModelPicker({ providers, choice, anchor, disabled }: ModelPicker
 							providers={providers}
 							current={model}
 							onPick={(picked) => {
-								chooseModel({ provider: picked.provider, id: picked.id });
+								chooseModel({ provider: picked.provider, id: picked.id }, !model);
 								setOpen(false);
 							}}
 						/>
