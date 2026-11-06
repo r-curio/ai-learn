@@ -365,7 +365,7 @@ Use Tailwind transitions and CSS custom properties in `src/web/globals.css` firs
 
 ### Navigation
 
-- **Rail:** 36px square items with 6px between them. The active item is Clean Sheet with an indigo icon. Home, graphs, and settings stay inert until they have somewhere to go.
+- **Rail:** 36px square items with 6px between them. The active item is Clean Sheet with an indigo icon. Settings opens the Providers screen. Home and graphs stay inert until they have somewhere to go.
 - **Sidebar:** logo and name with a collapse button, then New chat, search, filter, and chats. The active row uses Clean Sheet with Title type, and inactive rows use Slate Violet with Label type. New chat is Clean Sheet only while the new chat screen is open.
 - **Window controls:** real system controls, never drawn ones. The frames' three dots are placeholders.
 
