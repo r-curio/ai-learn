@@ -1,6 +1,7 @@
 import { cn } from "cn";
 import { Pencil } from "lucide-react";
 import { useRef, type KeyboardEvent } from "react";
+import { flushSync } from "react-dom";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { stripCitations } from "../../shared/citations.ts";
@@ -21,8 +22,7 @@ import { ConfidenceSlider } from "./ConfidenceSlider.tsx";
 import { OwnAnswer } from "./OwnAnswer.tsx";
 import { useAnswerDraft } from "./useAnswerDraft.ts";
 
-const OTHER_ANSWER =
-	"h-[38px] flex-1 gap-2 px-2.5 text-[14px] leading-[18px] font-normal text-foreground";
+const OTHER_ANSWER = "h-[38px] gap-2 px-2.5 text-[14px] leading-[18px] font-normal text-foreground";
 
 interface AnswerCardProps {
 	question: Question;
@@ -54,10 +54,12 @@ export function AnswerCard(props: AnswerCardProps) {
 	}
 
 	function closeOwnAnswer() {
-		setOwnText("");
-		setSelection(undefined);
-		// The row is about to go, so wait for its button to be back before moving the keyboard there.
-		requestAnimationFrame(() => typeOwn.current?.focus());
+		// The pressed button is leaving, so bring its row back now and move the keyboard there.
+		flushSync(() => {
+			setOwnText("");
+			setSelection(undefined);
+		});
+		typeOwn.current?.focus();
 	}
 
 	const submitOnEnter = (event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -89,7 +91,7 @@ export function AnswerCard(props: AnswerCardProps) {
 				{selection === "own" ? (
 					<OwnAnswer text={ownText} onTextChange={setOwnText} onClose={closeOwnAnswer} />
 				) : (
-					<div className="flex flex-none gap-1.5">
+					<div className="grid flex-none grid-cols-2 gap-1.5">
 						<Button
 							variant="outline"
 							aria-pressed={unknown}
