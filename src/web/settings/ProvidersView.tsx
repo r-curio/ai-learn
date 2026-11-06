@@ -101,10 +101,10 @@ function AvailableSection(props: {
 
 	return (
 		<Section title="Add a provider">
-			<div className="flex h-11 flex-none items-center gap-2 border-b border-border px-3.5">
+			<div className="flex h-11 flex-none items-center gap-2 border-b border-border px-3.5 transition-colors duration-150 ease-out focus-within:border-muted-foreground">
 				<Search className="size-4 flex-none text-muted-foreground" strokeWidth={1.5} />
-				<input
-					className="min-w-0 flex-1 bg-transparent text-[14px] leading-[18px] outline-hidden placeholder:text-muted-foreground"
+				<Input
+					className="h-auto flex-1 rounded-none border-0 bg-transparent px-0"
 					aria-label="Search providers"
 					placeholder="Search providers"
 					value={search}
