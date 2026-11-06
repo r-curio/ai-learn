@@ -1,4 +1,4 @@
-import { app, BrowserWindow, nativeTheme, session, shell } from "electron";
+import { app, BrowserWindow, nativeTheme, safeStorage, session, shell } from "electron";
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -44,6 +44,21 @@ async function createWindow() {
 	await window.loadURL(`${origin}/#token=${server.token}`);
 }
 
+const NO_KEYCHAIN =
+	"This computer has no keychain to encrypt keys with, so they can't be saved. Add them to .env.local instead.";
+
+/** Saved API keys are encrypted with the system keychain. Without real encryption, none are saved. */
+const keyCipher = {
+	unavailableReason() {
+		if (!safeStorage.isEncryptionAvailable()) return NO_KEYCHAIN;
+		const plainText =
+			process.platform === "linux" && safeStorage.getSelectedStorageBackend() === "basic_text";
+		return plainText ? NO_KEYCHAIN : undefined;
+	},
+	encrypt: (text) => safeStorage.encryptString(text),
+	decrypt: (data) => safeStorage.decryptString(data),
+};
+
 if (!app.requestSingleInstanceLock()) {
 	app.quit();
 } else {
@@ -64,6 +79,7 @@ if (!app.requestSingleInstanceLock()) {
 		server = await startServer({
 			dataDir: app.getPath("userData"),
 			webRoot: join(root, "dist/web"),
+			keyCipher,
 		});
 		await createWindow();
 		app.on("activate", () => {

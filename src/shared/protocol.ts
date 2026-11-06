@@ -61,12 +61,24 @@ export interface ProviderOption {
 	id: string;
 	label: string;
 	models: ModelOption[];
+	/** Only a saved key can be removed in the app. */
+	keySource: "saved" | "environment";
+}
+
+/** A provider that can be connected by adding a key. */
+export interface AddableProvider {
+	id: string;
+	label: string;
+	modelCount: number;
 }
 
 export interface EngineStatus {
 	ready: boolean;
 	/** Only the providers that can be used right now. */
 	providers: ProviderOption[];
+	addable: AddableProvider[];
+	/** Why keys can't be saved encrypted here. Missing when they can. */
+	keysUnavailable?: string;
 	reason?: string;
 }
 

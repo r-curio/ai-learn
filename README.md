@@ -21,7 +21,7 @@ You need Node 22.19 or newer and an API key for a model provider, such as [Anthr
 
 ```bash
 npm install
-cp .env.example .env.local   # then add your ANTHROPIC_API_KEY
+cp .env.example .env.local   # for browser dev mode, add a key such as ANTHROPIC_API_KEY
 npm run desktop              # builds and opens the desktop app
 ```
 
@@ -36,7 +36,7 @@ AI_LEARN_FAKE_MODEL=1 npm run desktop   # try it for free with the fake model
 
 ## Privacy
 
-Your files and the app's data stay on your computer, but your messages and attachments are sent to the provider of the model you choose to generate replies. The local server only listens on `127.0.0.1` and requires a secret token created at each launch.
+API keys you add in Settings are encrypted with your computer's keychain and only sent to their provider. Your files and the app's data stay on your computer, but your messages and attachments are sent to the provider of the model you choose to generate replies. The local server only listens on `127.0.0.1` and requires a secret token created at each launch.
 
 ## Current limits
 

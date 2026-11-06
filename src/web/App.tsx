@@ -30,7 +30,7 @@ export function App() {
 	const { sessionId, status, running } = chat;
 	const modelChoice = useModelChoice(status, onReady);
 	const hasModel = Boolean(modelChoice.selection);
-	const providers = useProviders(status);
+	const providers = useProviders(status, chat.refreshStatus);
 	const setupNeeded = status?.ready === false;
 
 	const attach = useCallback(
@@ -94,6 +94,7 @@ export function App() {
 					<ProvidersView
 						connected={providers.connected}
 						available={providers.available}
+						keysUnavailable={status?.keysUnavailable}
 						onConnect={providers.connect}
 						onDisconnect={providers.disconnect}
 					/>
