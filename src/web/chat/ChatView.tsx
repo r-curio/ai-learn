@@ -4,13 +4,11 @@ import type {
 	AttachmentInfo,
 	ChatType,
 	EngineStatus,
-	Question,
 	TranscriptMessage,
 } from "../../shared/protocol.ts";
 import { Notice } from "../components/Notice.tsx";
 import { SegmentedTabs } from "../components/tabs.tsx";
 import { MessageView } from "./MessageView.tsx";
-import { PendingQuestion } from "./PendingQuestion.tsx";
 
 interface ChatViewProps {
 	status?: EngineStatus;
@@ -20,8 +18,8 @@ interface ChatViewProps {
 	running: boolean;
 	runStartedAt: number;
 	canRetry: boolean;
-	pendingQuestion?: Question;
-	onDontKnow: () => void;
+	/** The waiting question, which the answer card shows instead of the transcript. */
+	pendingQuestionId?: string;
 	chatType: ChatType;
 	onChatTypeChange: (chatType: ChatType) => void;
 	onRetry: () => void;
@@ -66,7 +64,7 @@ function EmptyScreen({
 export function ChatView(props: ChatViewProps) {
 	const { status, error, sessionId, messages, running, runStartedAt, canRetry, onRetry } = props;
 	const { chatType, onChatTypeChange, onOpenAttachment, onOpenCitation } = props;
-	const { pendingQuestion, onDontKnow } = props;
+	const { pendingQuestionId } = props;
 	const scroller = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
@@ -114,15 +112,13 @@ export function ChatView(props: ChatViewProps) {
 							message={message}
 							sessionId={sessionId}
 							key={message.id}
+							pendingQuestionId={pendingQuestionId}
 							liveSince={running && index === messages.length - 1 ? runStartedAt : undefined}
 							onRetry={canRetry && !running && index === messages.length - 1 ? onRetry : undefined}
 							onOpenAttachment={onOpenAttachment}
 							onOpenCitation={onOpenCitation}
 						/>
 					))}
-				{pendingQuestion && !running && (
-					<PendingQuestion question={pendingQuestion} onDontKnow={onDontKnow} />
-				)}
 			</main>
 		</div>
 	);

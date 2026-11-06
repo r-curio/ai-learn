@@ -2,7 +2,7 @@ import { cn } from "cn";
 import { FileText } from "lucide-react";
 import { useRef, type ClipboardEvent, type KeyboardEvent, type RefObject } from "react";
 import type { ContextUsage, ProviderOption } from "../../shared/protocol.ts";
-import { Textarea } from "../components/textarea.tsx";
+import { Textarea } from "../components/form/textarea.tsx";
 import { ComposerControls } from "./ComposerControls.tsx";
 import { DraftChip } from "./DraftChip.tsx";
 import type { Draft } from "./useDrafts.ts";
@@ -29,8 +29,8 @@ interface ComposerProps {
 	dimmed: boolean;
 	/** Nothing can be written until a model is chosen. The model menu stays usable. */
 	needsModel: boolean;
-	/** The tutor is waiting on an answer, so a new message can't be written. */
-	questionPending: boolean;
+	/** It's coming back after the answer card, so it swaps in the same way. */
+	swappingIn: boolean;
 	onAddFiles: (files: File[]) => void;
 	onRemoveDraft: (key: string) => void;
 	onSend: () => void;
@@ -70,17 +70,20 @@ const attachPastedFiles =
 export function Composer(props: ComposerProps) {
 	const { text, onTextChange, textArea, isNewChat, drafts, canAttach, canSend, running } = props;
 	const { providers, modelChoice, context, onNewChat, onAddProvider, dimmed, needsModel } = props;
-	const { onAddFiles, onRemoveDraft, questionPending } = props;
+	const { onAddFiles, onRemoveDraft, swappingIn } = props;
 	const { onSend, onStop, openPage } = props;
 
 	const card = useRef<HTMLDivElement>(null);
 	const prompt = isNewChat ? "Ask the tutor anything" : "Reply to the tutor";
-	const waitingPrompt = questionPending ? "Answer the tutor's question first" : prompt;
-	const placeholder = needsModel ? "Choose a model to start" : waitingPrompt;
+	const placeholder = needsModel ? "Choose a model to start" : prompt;
 
 	return (
 		<form
-			className="chat-column pt-1.5 pb-5"
+			className={cn(
+				"chat-column pt-1.5 pb-5",
+				swappingIn &&
+					"animate-in duration-200 ease-fluid fade-in-0 motion-safe:slide-in-from-bottom-1",
+			)}
 			onSubmit={(event) => {
 				event.preventDefault();
 				onSend();
@@ -100,7 +103,7 @@ export function Composer(props: ComposerProps) {
 					className="block max-h-[200px] min-h-0 resize-none rounded-none border-0 p-0 text-[15px] leading-[18px] transition-none focus-visible:ring-0 disabled:bg-transparent disabled:opacity-100"
 					aria-label="Message"
 					rows={1}
-					disabled={dimmed || needsModel || questionPending}
+					disabled={dimmed || needsModel}
 					placeholder={placeholder}
 					value={text}
 					onChange={(event) => onTextChange(event.target.value)}

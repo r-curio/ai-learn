@@ -54,6 +54,17 @@ function createForcedReplies() {
 				`The model compares each query with every key. ${tag} Want to try it?`,
 			);
 		}
+		if (text.includes("fake:ask-long"))
+			return fauxAssistantMessage(
+				[
+					fauxText("A longer one this time."),
+					fauxToolCall(ASK_QUESTION, {
+						question: LONG_PARAGRAPH,
+						choices: [LONG_PARAGRAPH, "The query", LONG_PARAGRAPH, LONG_PARAGRAPH],
+					}),
+				],
+				{ stopReason: "toolUse" },
+			);
 		if (text.includes("fake:ask"))
 			return fauxAssistantMessage(
 				[

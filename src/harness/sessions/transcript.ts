@@ -33,7 +33,8 @@ function addReplyParts(
 		} else if (part.type === "thinking" && part.thinking.trim()) {
 			blocks.push({ kind: "reasoning", text: part.thinking });
 		} else if (part.type === "toolCall" && part.id === question?.id) {
-			blocks.push({ kind: "question", ...question });
+			const text = keepCitations(question.text, citationIsReal);
+			blocks.push({ kind: "question", ...question, text });
 		} else if (part.type === "toolCall") {
 			const { label } = toolLabels(part.name, part.arguments, (id) => attachmentInfo(id)?.name);
 			const block: ToolBlock = { kind: "tool", id: part.id, label, state: "running" };
