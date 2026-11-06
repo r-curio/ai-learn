@@ -88,6 +88,14 @@ _Avoid_: Provider, backend
 A scripted stand-in for a real model, used for tests and trying the app at no cost.
 _Avoid_: Mock, stub
 
+**Provider**:
+A company or service that runs models, like Anthropic or OpenRouter. The learner connects one by adding its API key.
+_Avoid_: Vendor, backend
+
+**Effort**:
+How hard a model works on a reply, from Low to Max. It's Pi's thinking level under a name learners understand.
+_Avoid_: Thinking level (in the UI), reasoning level
+
 **Preferences**:
 Settings the learner chooses, like whether the sidebar is open, saved in the app's data folder.
 _Avoid_: Settings file, config

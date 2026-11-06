@@ -8,24 +8,29 @@ import {
 	type FauxResponseStep,
 } from "@earendil-works/pi-ai";
 import type { Engine } from "./engine.ts";
+import { engineFromModels } from "./model-catalog.ts";
 
-const FAKE_MODEL = { id: "fake-model", input: ["text", "image"] as ("text" | "image")[] };
+const FAKE_INPUT: ("text" | "image")[] = ["text", "image"];
+const FAKE_MODELS = [
+	{ id: "fake-model", name: "Fake Model", reasoning: true, input: FAKE_INPUT },
+	{ id: "fake-model-deep", name: "Fake Deep Model", reasoning: true, input: FAKE_INPUT },
+];
 
 /** A deterministic engine for tests: replies come from a fixed script. */
 export function createScriptedEngine(
 	responses: FauxResponseStep[],
 	tokensPerSecond?: number,
 ): Engine & { faux: FauxProviderHandle } {
-	const faux = fauxProvider({ models: [FAKE_MODEL], tokensPerSecond });
+	const faux = fauxProvider({ models: FAKE_MODELS, tokensPerSecond });
+	// One offers every level and one only the top two, so a switch has a level to change.
+	const [model, deep] = faux.models;
+	model.thinkingLevelMap = { xhigh: "xhigh", max: "max" };
+	if (deep)
+		deep.thinkingLevelMap = { low: null, medium: null, high: null, xhigh: "xhigh", max: "max" };
 	const models = createModels();
 	models.setProvider(faux.provider);
 	faux.setResponses(responses);
-	return {
-		faux,
-		model: faux.getModel(),
-		streamFn: models.streamSimple.bind(models),
-		status: () => ({ ready: true, model: FAKE_MODEL.id }),
-	};
+	return { faux, ...engineFromModels(models) };
 }
 
 const LONG_PARAGRAPH =

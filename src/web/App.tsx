@@ -1,9 +1,10 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ChatView } from "./chat/ChatView.tsx";
 import { useChat } from "./chat/useChat.ts";
 import { Composer } from "./composer/Composer.tsx";
 import { useDrafts } from "./composer/useDrafts.ts";
 import { useFileDrop } from "./composer/useFileDrop.ts";
+import { useModelChoice } from "./composer/useModelChoice.ts";
 import { SidebarInset, SidebarProvider } from "./components/sidebar.tsx";
 import { ChatSidebar } from "./shell/ChatSidebar.tsx";
 import { Rail } from "./shell/Rail.tsx";
@@ -24,21 +25,30 @@ export function App() {
 	const onReady = useCallback(() => textArea.current?.focus(), []);
 	const chat = useChat({ onChatChange, onReady });
 	const { sessionId, status, running } = chat;
+	const modelChoice = useModelChoice(status, onReady);
+	const hasModel = Boolean(modelChoice.selection);
 	const setupNeeded = status?.ready === false;
 
 	const attach = useCallback(
 		(dropped: File[]) => {
-			if (sessionId && !setupNeeded) addFiles(sessionId, dropped);
+			if (sessionId && !setupNeeded && hasModel) addFiles(sessionId, dropped);
 		},
-		[addFiles, sessionId, setupNeeded],
+		[addFiles, sessionId, setupNeeded, hasModel],
 	);
 	const { dragging, dropHandlers } = useFileDrop(attach);
 	const hasContent = Boolean(text.trim() || files.attachments.length > 0);
-	const canSend = Boolean(sessionId && status?.ready && !running && !files.uploading && hasContent);
+	const canSend = Boolean(
+		sessionId && status?.ready && hasModel && !running && !files.uploading && hasContent,
+	);
+
+	// The box can't hold focus while it's disabled, so give it focus once a saved model has loaded.
+	useEffect(() => {
+		if (hasModel) textArea.current?.focus();
+	}, [hasModel]);
 
 	function send() {
-		if (!canSend) return;
-		chat.send(text, files.attachments);
+		if (!canSend || !modelChoice.selection) return;
+		chat.send(text, files.attachments, modelChoice.selection);
 		setText("");
 		clearDrafts();
 	}
@@ -74,36 +84,43 @@ export function App() {
 				onDelete={(summary) => void chat.removeSession(summary)}
 			/>
 			<SidebarInset>
-				<TopBar
-					title={chat.sessions.find((summary) => summary.id === sessionId)?.title}
-					usage={chat.usage}
-				/>
-				<ChatView
-					status={status}
-					error={chat.error}
-					sessionId={sessionId}
-					messages={chat.messages}
-					running={running}
-					canRetry={chat.canRetry}
-					onRetry={() => {
-						if (status?.ready && !running) chat.retry();
-					}}
-				/>
-				<Composer
-					text={text}
-					onTextChange={setText}
-					textArea={textArea}
-					isNewChat={chat.messages.length === 0}
-					drafts={files.drafts}
-					canAttach={Boolean(sessionId) && !setupNeeded}
-					canSend={canSend}
-					running={running}
-					dimmed={setupNeeded}
-					onAddFiles={attach}
-					onRemoveDraft={files.removeDraft}
-					onSend={send}
-					onStop={chat.stop}
-				/>
+				<>
+					<TopBar
+						title={chat.sessions.find((summary) => summary.id === sessionId)?.title}
+						usage={chat.usage}
+					/>
+					<ChatView
+						status={status}
+						error={chat.error}
+						sessionId={sessionId}
+						messages={chat.messages}
+						running={running}
+						canRetry={chat.canRetry}
+						onRetry={() => {
+							if (!status?.ready || running) return;
+							if (modelChoice.selection) chat.retry(modelChoice.selection);
+							else modelChoice.setPickerOpen(true);
+						}}
+					/>
+					<Composer
+						text={text}
+						onTextChange={setText}
+						textArea={textArea}
+						isNewChat={chat.messages.length === 0}
+						drafts={files.drafts}
+						canAttach={Boolean(sessionId) && !setupNeeded && hasModel}
+						canSend={canSend}
+						running={running}
+						providers={status?.providers ?? []}
+						modelChoice={modelChoice}
+						dimmed={setupNeeded}
+						needsModel={!setupNeeded && !hasModel}
+						onAddFiles={attach}
+						onRemoveDraft={files.removeDraft}
+						onSend={send}
+						onStop={chat.stop}
+					/>
+				</>
 			</SidebarInset>
 			{dragging && !setupNeeded && (
 				<div

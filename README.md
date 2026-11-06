@@ -6,7 +6,7 @@ A local-first AI learning app. You chat with a tutor, attach your own material, 
 
 ## What works today
 
-- Streaming replies from Claude, with a Stop button
+- Streaming replies from the model you choose, with a Stop button
 - Attach images, PDFs, and text files with the button, drag and drop, or paste
 - A tool that lets the model read long attachments in parts
 - Saved chats you can reopen, continue, and delete
@@ -17,7 +17,7 @@ A local-first AI learning app. You chat with a tutor, attach your own material, 
 
 ## Run it
 
-You need Node 22.19 or newer and an [Anthropic API key](https://console.anthropic.com/). API usage is billed by Anthropic.
+You need Node 22.19 or newer and an API key for a model provider, such as [Anthropic](https://console.anthropic.com/). API usage is billed by that provider.
 
 ```bash
 npm install
@@ -36,7 +36,7 @@ AI_LEARN_FAKE_MODEL=1 npm run desktop   # try it for free with the fake model
 
 ## Privacy
 
-Your files and the app's data stay on your computer, but your messages and attachments are sent to Anthropic to generate replies. The local server only listens on `127.0.0.1` and requires a secret token created at each launch.
+Your files and the app's data stay on your computer, but your messages and attachments are sent to the provider of the model you choose to generate replies. The local server only listens on `127.0.0.1` and requires a secret token created at each launch.
 
 ## Current limits
 

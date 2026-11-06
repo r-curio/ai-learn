@@ -6,14 +6,15 @@ import { test } from "node:test";
 import { createScriptedEngine } from "../src/harness/fake-engine.ts";
 import type { Session } from "../src/harness/sessions/session.ts";
 import { SessionStore } from "../src/harness/sessions/store.ts";
-import { tempDir } from "./helpers.ts";
+import { FAKE_CHOICE, tempDir } from "./helpers.ts";
 
 const indexPath = (dir: string) => join(dir, "session-index.sqlite");
 
 const newStore = (dir: string) =>
 	new SessionStore(createScriptedEngine([fauxAssistantMessage("Fine.")]), dir);
 
-const ask = (session: Session, text: string) => session.send({ text, attachmentIds: [] }, () => {});
+const ask = (session: Session, text: string) =>
+	session.send({ text, attachmentIds: [] }, () => {}, FAKE_CHOICE);
 
 async function storeWithOneChat(dir: string) {
 	const store = newStore(dir);

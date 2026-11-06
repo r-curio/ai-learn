@@ -4,7 +4,7 @@ import { test } from "node:test";
 import { createScriptedEngine } from "../src/harness/fake-engine.ts";
 import { Session, SessionBusyError } from "../src/harness/sessions/session.ts";
 import type { RunEvent } from "../src/shared/protocol.ts";
-import { PNG, tempDir } from "./helpers.ts";
+import { FAKE_CHOICE, PNG, tempDir } from "./helpers.ts";
 
 async function run(
 	session: Session,
@@ -12,7 +12,7 @@ async function run(
 	attachmentIds: string[] = [],
 ): Promise<RunEvent[]> {
 	const events: RunEvent[] = [];
-	await session.send({ text, attachmentIds }, (event) => events.push(event));
+	await session.send({ text, attachmentIds }, (event) => events.push(event), FAKE_CHOICE);
 	return events;
 }
 

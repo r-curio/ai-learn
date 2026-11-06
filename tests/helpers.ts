@@ -1,6 +1,14 @@
 import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { ResolvedModel } from "../src/harness/engine.ts";
+import { createScriptedEngine } from "../src/harness/fake-engine.ts";
+
+/** What the scripted fake model runs on, since a turn always names a model. */
+export const FAKE_CHOICE: ResolvedModel = {
+	model: createScriptedEngine([]).faux.getModel(),
+	thinkingLevel: "medium",
+};
 
 export const tempDir = () => mkdtemp(join(tmpdir(), "ai-learn-test-"));
 

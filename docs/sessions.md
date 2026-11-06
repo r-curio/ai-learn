@@ -18,6 +18,7 @@ The index copies each `summary.json` so the chat list doesn't read every folder.
 3. **Save first, then act.** The learner's message is flushed to disk before the model is called. Each reply and tool result is flushed before the next step starts.
 4. **A session keeps its original system prompt.** The header stores it, so changing the prompt in a later version doesn't alter old conversations.
 5. **Images are stored by reference.** The log points to the attachment file and restores the same data on load, which keeps logs small.
+6. **A chat can change model on any turn.** Each saved reply already names the model that wrote it, so the log needs no record of the choice. Pi drops reasoning data when it sends a reply to a different model, and the log itself keeps it. The composer's choice is a preference, not part of the chat.
 
 ## Three views of one log
 

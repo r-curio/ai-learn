@@ -1,6 +1,7 @@
 import type {
 	AttachmentInfo,
 	EngineStatus,
+	ModelSelection,
 	Preferences,
 	RunEvent,
 	SessionSummary,
@@ -49,7 +50,7 @@ export async function getPreferences(): Promise<Preferences> {
 	return (await request("/api/preferences")).json() as Promise<Preferences>;
 }
 
-export async function savePreferences(preferences: Preferences): Promise<void> {
+export async function savePreferences(preferences: Partial<Preferences>): Promise<void> {
 	await request("/api/preferences", {
 		method: "PUT",
 		headers: { "Content-Type": "application/json" },
@@ -98,7 +99,7 @@ export async function abortRun(sessionId: string): Promise<void> {
 
 export function sendMessage(
 	sessionId: string,
-	body: { text: string; attachmentIds: string[] },
+	body: { text: string; attachmentIds: string[]; model: ModelSelection },
 	onEvent: (event: RunEvent) => void,
 ): Promise<void> {
 	return streamRun(
@@ -111,8 +112,19 @@ export function sendMessage(
 	);
 }
 
-export function retryRun(sessionId: string, onEvent: (event: RunEvent) => void): Promise<void> {
-	return streamRun(request(`/api/sessions/${sessionId}/retry`, { method: "POST" }), onEvent);
+export function retryRun(
+	sessionId: string,
+	model: ModelSelection,
+	onEvent: (event: RunEvent) => void,
+): Promise<void> {
+	return streamRun(
+		request(`/api/sessions/${sessionId}/retry`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ model }),
+		}),
+		onEvent,
+	);
 }
 
 /** Read server-sent events and call `onEvent` for each until the run ends. */

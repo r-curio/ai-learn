@@ -27,14 +27,46 @@ export type RunEvent =
 			sessionUsage: UsageSummary;
 	  };
 
+export const EFFORTS = ["low", "medium", "high", "xhigh", "max"] as const;
+export type Effort = (typeof EFFORTS)[number];
+
+export interface ModelRef {
+	provider: string;
+	id: string;
+}
+
+/** The model a learner picked for one turn. Models with no effort setting leave it out. */
+export interface ModelSelection extends ModelRef {
+	effort?: Effort;
+}
+
 /** Settings the learner chooses, kept in the data folder so they survive a restart. */
 export interface Preferences {
 	sidebarOpen: boolean;
+	model?: ModelRef;
+	effort?: Effort;
+}
+
+export interface ModelOption extends ModelRef {
+	label: string;
+	contextWindow: number;
+	/** US dollars per 1M tokens. */
+	inputPrice: number;
+	outputPrice: number;
+	/** Empty when the model has no effort setting. */
+	efforts: Effort[];
+}
+
+export interface ProviderOption {
+	id: string;
+	label: string;
+	models: ModelOption[];
 }
 
 export interface EngineStatus {
 	ready: boolean;
-	model: string;
+	/** Only the providers that can be used right now. */
+	providers: ProviderOption[];
 	reason?: string;
 }
 

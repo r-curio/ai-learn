@@ -5,7 +5,7 @@ import { rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { RunEvent, SessionSummary, SessionView, UsageSummary } from "../../shared/protocol.ts";
 import { AttachmentStore } from "../attachments.ts";
-import type { Engine } from "../engine.ts";
+import type { Engine, ResolvedModel } from "../engine.ts";
 import { LOG_VERSION, LogWriter, readLog, toStored, type LogEntry, type LogHeader } from "./log.ts";
 import {
 	interruptedToolResult,
@@ -65,8 +65,6 @@ export class Session {
 		this.agent = new Agent({
 			initialState: {
 				systemPrompt: this.systemPrompt,
-				model: engine.model,
-				thinkingLevel: "medium",
 				tools: createTools(this.attachments),
 				messages: restored?.messages ?? [],
 			},
@@ -218,12 +216,20 @@ export class Session {
 		});
 	}
 
+	/** Each saved reply names its model, so a new choice needs no record of its own. */
+	private use(choice: ResolvedModel): void {
+		this.agent.state.model = choice.model;
+		this.agent.state.thinkingLevel = choice.thinkingLevel;
+	}
+
 	/** Run one learner turn to completion. The message is saved before the model is called. */
 	async send(
 		input: { text: string; attachmentIds: string[] },
 		onEvent: (event: RunEvent) => void,
+		choice: ResolvedModel,
 	): Promise<void> {
 		if (this.running) throw new SessionBusyError();
+		this.use(choice);
 		const content = [
 			...this.attachments.toContent(input.attachmentIds),
 			...(input.text.trim() ? [{ type: "text" as const, text: input.text }] : []),
@@ -244,9 +250,10 @@ export class Session {
 	}
 
 	/** Try again after a failed or interrupted reply. */
-	async retry(onEvent: (event: RunEvent) => void): Promise<void> {
+	async retry(onEvent: (event: RunEvent) => void, choice: ResolvedModel): Promise<void> {
 		if (this.running) throw new SessionBusyError();
 		if (!this.canRetry) throw new SessionStateError("There's nothing to retry.");
+		this.use(choice);
 		this.running = true;
 		try {
 			if (isFailedReply(this.messages.at(-1))) {
