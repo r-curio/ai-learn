@@ -25,6 +25,8 @@ It also holds each chat's visible text for search, built from what the learner s
 
 8. **A chat's type is set once, in the header.** Each message carries the learner's choice, because a first send can fail before anything is saved. The session only uses it while its log is empty, so later turns can't change it. Logs from before chat types have no value and count as Learning, so old logs stay byte-identical and need no version bump. `summary.json` and the index only copy it.
 9. **How full a chat is comes from the log.** It's the input size in the last saved reply that reported one, against that reply's model limit, so nothing extra is saved and older chats work too. The composer shows the limit of the model it has selected, since that's where the next call goes.
+10. **Citations stay inside the reply's text.** The tutor writes `<cite attachment="..." page="4">exact quote</cite>`, and the log keeps it as sent. The transcript removes any citation whose quote isn't on that page of the saved PDF text, and the UI shows the rest as "p. 4" links. Chats started before citations keep their old prompt, so they don't gain any.
+11. **The open page is part of the message.** While a PDF is open in the attachment pane, a new message also carries `<viewing attachment="..." page="4" />` for the model. It's saved in the log and replayed with that turn, and `display` leaves it out, so the learner never sees it.
 
 ## Three views of one log
 

@@ -62,9 +62,15 @@ export function App() {
 		if (hasModel) textArea.current?.focus();
 	}, [hasModel]);
 
+	// The tray and the tutor only know about a PDF once its first page has been measured.
+	const openPdf = pane.open && pane.target?.attachment.kind === "pdf" ? pane.target : undefined;
+	const openPage = openPdf && pane.page ? pane.page : undefined;
+
 	function send() {
 		if (!canSend || !modelChoice.selection) return;
-		chat.send(text, files.attachments, modelChoice.selection, chatType);
+		const viewing =
+			openPdf && openPage ? { attachmentId: openPdf.attachment.id, page: openPage } : undefined;
+		chat.send(text, files.attachments, modelChoice.selection, chatType, viewing);
 		setText("");
 		clearDrafts();
 	}
@@ -139,6 +145,13 @@ export function App() {
 								onOpenAttachment={(attachment) => {
 									if (sessionId) pane.show({ sessionId, attachment });
 								}}
+								onOpenCitation={(citation) => {
+									const attachment = chat.messages
+										.flatMap((message) => message.attachments ?? [])
+										.find(({ id }) => id === citation.attachmentId);
+									if (sessionId && attachment)
+										pane.show({ sessionId, attachment, citation: { ...citation } });
+								}}
 							/>
 							<Composer
 								text={text}
@@ -160,12 +173,18 @@ export function App() {
 								onRemoveDraft={files.removeDraft}
 								onSend={send}
 								onStop={chat.stop}
+								openPage={
+									openPdf && openPage
+										? { name: openPdf.attachment.name, page: openPage }
+										: undefined
+								}
 							/>
 						</div>
 						<AttachmentPane
 							target={pane.target}
 							open={pane.open}
 							usage={chat.usage}
+							onPageChange={pane.setPage}
 							onClose={() => {
 								pane.close();
 								textArea.current?.focus();

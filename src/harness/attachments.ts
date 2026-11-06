@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readdir, readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { ImageContent, TextContent } from "@earendil-works/pi-ai";
+import { textContainsQuote, type Citation } from "../shared/citations.ts";
 import type { AttachmentInfo, AttachmentKind } from "../shared/protocol.ts";
 
 export const MAX_FILE_BYTES = 25 * 1024 * 1024;
@@ -204,6 +205,28 @@ export class AttachmentStore {
 	idForImage(data: string): string | undefined {
 		for (const item of this.items.values()) if (item.image?.data === data) return item.id;
 		return undefined;
+	}
+
+	/** One page of a PDF's saved text. */
+	private pageText(id: string, page: number): string | undefined {
+		const item = this.items.get(id);
+		if (item?.kind !== "pdf" || !item.text) return undefined;
+		const marker = `[Page ${page}]\n`;
+		const start = page === 1 ? 0 : item.text.indexOf(`\n\n${marker}`);
+		if (start < 0 || !item.text.startsWith(marker, page === 1 ? 0 : start + 2)) return undefined;
+		const end = item.text.indexOf(`\n\n[Page ${page + 1}]\n`, start);
+		return item.text.slice(start, end < 0 ? undefined : end);
+	}
+
+	/** Whether a citation's quote is really on the page it names. */
+	hasCitation({ attachmentId, page, quote }: Citation): boolean {
+		const text = this.pageText(attachmentId, page);
+		return text !== undefined && textContainsQuote(text, quote);
+	}
+
+	/** Whether this is a page of a PDF in this session. */
+	hasPage(id: string, page: number): boolean {
+		return this.pageText(id, page) !== undefined;
 	}
 
 	/** Build the message content that puts these attachments in front of the model. */

@@ -1,5 +1,7 @@
+import type { MouseEvent } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { parseCitations, type Citation } from "../../shared/citations.ts";
 import type { AttachmentInfo, TranscriptMessage } from "../../shared/protocol.ts";
 import { Button } from "../components/button.tsx";
 import { Notice } from "../components/Notice.tsx";
@@ -8,15 +10,58 @@ import styles from "./prose.module.css";
 import { SavedImage } from "./SavedImage.tsx";
 import { isDocument, SentDocument, SentFile } from "./SentFile.tsx";
 
-function TextBlock({ text, role }: { text: string; role: TranscriptMessage["role"] }) {
-	if (role === "assistant") {
-		return (
-			<div className={styles.prose}>
-				<Markdown remarkPlugins={[remarkGfm]}>{text}</Markdown>
-			</div>
-		);
-	}
-	return <p className="wrap-anywhere whitespace-pre-wrap">{text}</p>;
+const CITATION_HREF = /^#cite-(\d+)$/;
+
+/** The tutor's words, where a citation is a link that opens the passage in the attachment pane. */
+function ReplyText({
+	raw,
+	live,
+	onOpenCitation,
+}: {
+	raw: string;
+	live: boolean;
+	onOpenCitation: (citation: Citation) => void;
+}) {
+	const { text, citations } = parseCitations(raw, live);
+	return (
+		<div className={styles.prose}>
+			<Markdown
+				remarkPlugins={[remarkGfm]}
+				components={{
+					a({ href, children }) {
+						const citation = citations[Number(href?.match(CITATION_HREF)?.[1] ?? -1)];
+						if (!citation) return <a href={href}>{children}</a>;
+						const open = (event: MouseEvent) => {
+							event.preventDefault();
+							onOpenCitation(citation);
+						};
+						return (
+							<a href={href} onClick={open} title={`Open page ${citation.page}`}>
+								{children}
+							</a>
+						);
+					},
+				}}
+			>
+				{text}
+			</Markdown>
+		</div>
+	);
+}
+
+function MessageText({
+	text,
+	learner,
+	live,
+	onOpenCitation,
+}: {
+	text: string;
+	learner: boolean;
+	live: boolean;
+	onOpenCitation: (citation: Citation) => void;
+}) {
+	if (learner) return <p className="wrap-anywhere whitespace-pre-wrap">{text}</p>;
+	return <ReplyText raw={text} live={live} onOpenCitation={onOpenCitation} />;
 }
 
 function SentAttachments({
@@ -96,6 +141,7 @@ export function MessageView({
 	onRetry,
 	liveSince,
 	onOpenAttachment,
+	onOpenCitation,
 }: {
 	message: TranscriptMessage;
 	sessionId: string;
@@ -103,6 +149,7 @@ export function MessageView({
 	/** When this reply's run started, while it's still running. */
 	liveSince?: number;
 	onOpenAttachment: (attachment: AttachmentInfo) => void;
+	onOpenCitation: (citation: Citation) => void;
 }) {
 	const learner = message.role === "user";
 	const showActivity = !learner && hasActivity(message, liveSince);
@@ -131,7 +178,13 @@ export function MessageView({
 					}
 				>
 					{texts.map((text, index) => (
-						<TextBlock text={text} role={message.role} key={index} />
+						<MessageText
+							text={text}
+							learner={learner}
+							live={liveSince !== undefined}
+							onOpenCitation={onOpenCitation}
+							key={index}
+						/>
 					))}
 					<ReplyNotice message={message} onRetry={onRetry} />
 				</div>

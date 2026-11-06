@@ -45,6 +45,14 @@ const LONG_PARAGRAPH =
 function createForcedReplies() {
 	let failedLastTime = false;
 	return (text: string) => {
+		const cite = text.match(/fake:cite (\d+) ([^\n]+)/);
+		if (cite) {
+			const id = text.match(/<attachment id="([^"]+)" name="[^"]*" kind="pdf"/)?.[1];
+			const tag = `<cite attachment="${id}" page="${cite[1]}">${cite[2]}</cite>`;
+			return fauxAssistantMessage(
+				`The model compares each query with every key. ${tag} Want to try it?`,
+			);
+		}
 		if (text.includes("fake:plain")) return fauxAssistantMessage("**Fake model** plain reply.");
 		if (text.includes("fake:long"))
 			return fauxAssistantMessage(Array(16).fill(LONG_PARAGRAPH).join("\n\n"));

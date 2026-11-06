@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from "react";
+import type { Citation } from "../../shared/citations.ts";
 import type {
 	AttachmentInfo,
 	ChatType,
@@ -21,6 +22,7 @@ interface ChatViewProps {
 	onChatTypeChange: (chatType: ChatType) => void;
 	onRetry: () => void;
 	onOpenAttachment: (attachment: AttachmentInfo) => void;
+	onOpenCitation: (citation: Citation) => void;
 }
 
 const CHAT_TYPE_OPTIONS = [
@@ -59,7 +61,7 @@ function EmptyScreen({
 
 export function ChatView(props: ChatViewProps) {
 	const { status, error, sessionId, messages, running, runStartedAt, canRetry, onRetry } = props;
-	const { chatType, onChatTypeChange, onOpenAttachment } = props;
+	const { chatType, onChatTypeChange, onOpenAttachment, onOpenCitation } = props;
 	const scroller = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
@@ -110,6 +112,7 @@ export function ChatView(props: ChatViewProps) {
 							liveSince={running && index === messages.length - 1 ? runStartedAt : undefined}
 							onRetry={canRetry && !running && index === messages.length - 1 ? onRetry : undefined}
 							onOpenAttachment={onOpenAttachment}
+							onOpenCitation={onOpenCitation}
 						/>
 					))}
 			</main>

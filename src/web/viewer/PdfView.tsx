@@ -1,10 +1,12 @@
 import type { PDFDocumentProxy, RenderTask } from "pdfjs-dist";
 import { memo, useEffect, useRef, useState, type RefObject } from "react";
+import type { Citation } from "../../shared/citations.ts";
 import { fetchAttachment } from "../api.ts";
 import { Notice } from "../components/Notice.tsx";
 import { Skeleton } from "../components/skeleton.tsx";
 import { openPdf } from "../pdf.ts";
 import { OPEN_FAILED } from "./FileViews.tsx";
+import { useKeepInView, useQuoteRects } from "./pageHighlight.ts";
 
 /** Pages this close to the current one stay drawn, so scrolling doesn't show blank sheets. */
 const DRAWN_AROUND = 2;
@@ -48,11 +50,39 @@ interface PdfPageProps {
 	/** The width to draw at, in CSS pixels. */
 	width: number;
 	drawn: boolean;
+	/** The words to highlight on this page. */
+	quote?: string;
+}
+
+/** The marker over a cited passage. It multiplies with the page, so the text stays readable beneath it. */
+function PageHighlight({
+	document,
+	number,
+	quote,
+}: {
+	document: PDFDocumentProxy;
+	number: number;
+	quote: string;
+}) {
+	const rects = useQuoteRects(document, number, quote);
+	return rects.map((rect, index) => (
+		<div
+			key={index}
+			data-highlight
+			className="pointer-events-none absolute bg-highlight mix-blend-multiply"
+			style={{
+				left: `${rect.left * 100}%`,
+				top: `${rect.top * 100}%`,
+				width: `${rect.width * 100}%`,
+				height: `${rect.height * 100}%`,
+			}}
+		/>
+	));
 }
 
 /** One sheet. It always holds its space, and has a canvas only while it's near the current page. */
 const PdfPage = memo(function PdfPage(props: PdfPageProps) {
-	const { document: pdf, number, initialRatio, width, drawn } = props;
+	const { document: pdf, number, initialRatio, width, drawn, quote } = props;
 	const sheet = useRef<HTMLDivElement>(null);
 	const [ratio, setRatio] = useState(initialRatio);
 	const [failed, setFailed] = useState(false);
@@ -98,6 +128,7 @@ const PdfPage = memo(function PdfPage(props: PdfPageProps) {
 			className="relative w-full max-w-[900px] flex-none border border-border bg-page"
 		>
 			<div ref={sheet} style={{ aspectRatio: ratio }} />
+			{quote && <PageHighlight document={pdf} number={number} quote={quote} />}
 			{failed && (
 				<div className="absolute inset-0 grid place-items-center text-[13px] text-destructive">
 					Page {number} couldn't be drawn.
@@ -156,10 +187,12 @@ function useCurrentPage(scroller: RefObject<HTMLElement | null>, total: number, 
 export function PdfView({
 	sessionId,
 	attachmentId,
+	citation,
 	onPageChange,
 }: {
 	sessionId: string;
 	attachmentId: string;
+	citation?: Citation;
 	onPageChange: (page: { current: number; total: number }) => void;
 }) {
 	const { pdf, failed } = usePdfDocument(sessionId, attachmentId);
@@ -173,6 +206,8 @@ export function PdfView({
 	useEffect(() => {
 		if (total > 0) onPageChange({ current, total });
 	}, [current, total, onPageChange]);
+
+	useKeepInView(scroller, citation?.page, total, citation);
 
 	if (failed) {
 		return (
@@ -196,6 +231,7 @@ export function PdfView({
 						initialRatio={pdf.firstPageRatio}
 						width={pageWidth}
 						drawn={Math.abs(index + 1 - current) <= DRAWN_AROUND}
+						quote={citation?.page === index + 1 ? citation.quote : undefined}
 					/>
 				))}
 		</div>

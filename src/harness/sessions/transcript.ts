@@ -7,6 +7,7 @@ import type {
 	TranscriptMessage,
 	UsageSummary,
 } from "../../shared/protocol.ts";
+import { keepCitations, stripCitations, type Citation } from "../../shared/citations.ts";
 import { noticeFor } from "../../shared/protocol.ts";
 import type { LogEntry } from "./log.ts";
 import { toolLabels } from "../tools.ts";
@@ -21,10 +22,11 @@ function addReplyParts(
 	content: AssistantMessage["content"],
 	toolBlocks: Map<string, ToolBlock>,
 	attachmentInfo: (id: string) => AttachmentInfo | undefined,
+	citationIsReal: (citation: Citation) => boolean,
 ): void {
 	for (const part of content) {
 		if (part.type === "text" && part.text) {
-			blocks.push({ kind: "text", text: part.text });
+			blocks.push({ kind: "text", text: keepCitations(part.text, citationIsReal) });
 		} else if (part.type === "thinking" && part.thinking.trim()) {
 			blocks.push({ kind: "reasoning", text: part.thinking });
 		} else if (part.type === "toolCall") {
@@ -55,6 +57,8 @@ function setWorkedTime(
 export function buildTranscript(
 	entries: LogEntry[],
 	attachmentInfo: (id: string) => AttachmentInfo | undefined,
+	/** A citation that fails this is left out, so the learner is never sent to a passage that isn't there. */
+	citationIsReal: (citation: Citation) => boolean = () => true,
 ): TranscriptMessage[] {
 	const messages: TranscriptMessage[] = [];
 	let current: TranscriptMessage | undefined;
@@ -99,7 +103,7 @@ export function buildTranscript(
 
 		if (message.role === "assistant") {
 			const start = current.blocks.length;
-			addReplyParts(current.blocks, message.content, toolBlocks, attachmentInfo);
+			addReplyParts(current.blocks, message.content, toolBlocks, attachmentInfo, citationIsReal);
 			turn.end = message.timestamp + (message.durationMs ?? 0);
 			const ending = noticeFor(message.stopReason, message.errorMessage);
 			if (ending) {
@@ -134,7 +138,7 @@ export function markInterrupted(messages: TranscriptMessage[]): void {
 export function searchTextOf(entries: LogEntry[]): string {
 	return buildTranscript(entries, () => undefined)
 		.flatMap((message) => message.blocks)
-		.flatMap((block) => (block.kind === "text" ? [block.text] : []))
+		.flatMap((block) => (block.kind === "text" ? [stripCitations(block.text)] : []))
 		.join("\n");
 }
 

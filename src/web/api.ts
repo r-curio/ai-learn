@@ -3,6 +3,7 @@ import type {
 	ChatType,
 	EngineStatus,
 	ModelSelection,
+	OpenPage,
 	Preferences,
 	RunEvent,
 	SearchResult,
@@ -118,7 +119,13 @@ export async function abortRun(sessionId: string): Promise<void> {
 
 export function sendMessage(
 	sessionId: string,
-	body: { text: string; attachmentIds: string[]; model: ModelSelection; chatType?: ChatType },
+	body: {
+		text: string;
+		attachmentIds: string[];
+		viewing?: OpenPage;
+		model: ModelSelection;
+		chatType?: ChatType;
+	},
 	onEvent: (event: RunEvent) => void,
 ): Promise<void> {
 	return streamRun(

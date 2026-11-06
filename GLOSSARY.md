@@ -86,6 +86,10 @@ _Avoid_: Upload, source, document
 An attachment that's been added but not yet sent in a message.
 _Avoid_: Pending file
 
+**Citation**:
+A link in a reply, like "p. 4", to the passage of a PDF the tutor is relying on. It opens the attachment pane with the passage highlighted.
+_Avoid_: Reference, source
+
 **Attachment pane**:
 The area beside the chat that shows a sent attachment. The chat and sidebar narrow while it's open.
 _Avoid_: Viewer, preview, PDF panel
