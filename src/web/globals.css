@@ -44,6 +44,7 @@
 	--sidebar-border: var(--border);
 	--sidebar-ring: var(--ring);
 	--page: #ffffff;
+	--highlight: #ffe600;
 	--shadow-popover-value: 0 4px 16px rgb(35 36 58 / 0.1);
 }
 
@@ -92,6 +93,7 @@
 	--color-input: var(--input);
 	--color-ring: var(--ring);
 	--color-page: var(--page);
+	--color-highlight: var(--highlight);
 	--color-rail: var(--rail);
 	--color-sidebar: var(--sidebar);
 	--color-sidebar-foreground: var(--sidebar-foreground);

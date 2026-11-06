@@ -5,6 +5,7 @@ import {
 	type ChatType,
 	type ContextUsage,
 	type ModelSelection,
+	type OpenPage,
 	type RunEvent,
 	type SessionView,
 	type TranscriptMessage,
@@ -91,6 +92,7 @@ export function useConversation(onRunEnd: () => void) {
 		attachments: AttachmentInfo[],
 		model: ModelSelection,
 		chatType: ChatType,
+		viewing?: OpenPage,
 	) {
 		const replyId = makeKey();
 		const blocks: TranscriptMessage["blocks"] = text.trim() ? [{ kind: "text", text }] : [];
@@ -99,10 +101,11 @@ export function useConversation(onRunEnd: () => void) {
 			{ id: makeKey(), role: "user", blocks, attachments },
 			{ id: replyId, role: "assistant", blocks: [] },
 		]);
-		// Always sent, since a first send that fails leaves nothing saved. The server ignores it after that.
+		// The type is always sent, since a first send that fails leaves nothing saved. The server ignores it after that.
 		const body = {
 			text,
 			attachmentIds: attachments.map((attachment) => attachment.id),
+			viewing,
 			model,
 			chatType,
 		};

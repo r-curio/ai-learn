@@ -27,6 +27,7 @@ colors:
   sidebar: "#F0F0F5"
   sidebar-dark: "#1C1D2C"
   page: "#FFFFFF"
+  highlight: "#FFE600"
   rail: "#ECECF2"
   rail-dark: "#191A28"
   warning: "#9A6400"
@@ -222,6 +223,7 @@ A cool, indigo-tinted neutral family with one indigo accent. Amber and red appea
 - **Slate Violet** (`muted-foreground`): placeholders, inactive chat titles, usage, captions, and icons.
 - **Clean Sheet** (`card`): the raised surface for the composer, answer card, New chat when active, the active chat row, the active rail item, and the active tab.
 - **Page White** (`page`): the sheet behind a PDF page in the attachment pane. It's white in both themes, because PDFs are drawn for white paper.
+- **Marker Yellow** (`highlight`): the passage a citation points to, on a PDF page. Like Page White, it's the same in both themes, because it sits on the page.
 - **Rail Shade** (`rail`) and **Sidebar Shade** (`sidebar`): the two steps that separate the shell from the chat. The rail is darkest in dark mode and the sidebar sits between it and the chat.
 - **Track Grey** (`secondary`): the track behind segmented controls.
 - **Quiet Chip** (`muted`): letter chips on unselected answers.

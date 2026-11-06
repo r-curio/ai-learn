@@ -1,4 +1,5 @@
 import { cn } from "cn";
+import { FileText } from "lucide-react";
 import { useRef, type ClipboardEvent, type KeyboardEvent, type RefObject } from "react";
 import type { ContextUsage, ProviderOption } from "../../shared/protocol.ts";
 import { Textarea } from "../components/textarea.tsx";
@@ -32,6 +33,20 @@ interface ComposerProps {
 	onRemoveDraft: (key: string) => void;
 	onSend: () => void;
 	onStop: () => void;
+	/** The PDF page open in the attachment pane, which the tutor is told about. */
+	openPage?: { name: string; page: number };
+}
+
+/** It tucks behind the card, which is why the card sits above it. */
+function OpenPageTray({ name, page }: { name: string; page: number }) {
+	return (
+		<div className="mx-3.5 -mb-[26px] flex h-[60px] items-start gap-1.5 rounded-t-[14px] border border-border bg-rail px-3.5 pt-2 text-[12px] leading-4 text-muted-foreground">
+			<FileText className="size-3.5 flex-none" strokeWidth={1.5} />
+			<span className="truncate">
+				{name} · page {page}
+			</span>
+		</div>
+	);
 }
 
 const sendOnEnter = (onSend: () => void) => (event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -54,7 +69,7 @@ export function Composer(props: ComposerProps) {
 	const { text, onTextChange, textArea, isNewChat, drafts, canAttach, canSend, running } = props;
 	const { providers, modelChoice, context, onNewChat, onAddProvider, dimmed, needsModel } = props;
 	const { onAddFiles, onRemoveDraft } = props;
-	const { onSend, onStop } = props;
+	const { onSend, onStop, openPage } = props;
 
 	const card = useRef<HTMLDivElement>(null);
 	const prompt = isNewChat ? "Ask the tutor anything" : "Reply to the tutor";
@@ -68,7 +83,8 @@ export function Composer(props: ComposerProps) {
 				onSend();
 			}}
 		>
-			<div ref={card} className={cn(CARD, dimmed && "opacity-50")}>
+			{openPage && <OpenPageTray {...openPage} />}
+			<div ref={card} className={cn(CARD, "relative", dimmed && "opacity-50")}>
 				{drafts.length > 0 && (
 					<ul className="mb-3 flex [scrollbar-width:none] gap-2 overflow-x-auto">
 						{drafts.map((draft) => (

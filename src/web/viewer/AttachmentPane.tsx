@@ -1,6 +1,6 @@
 import { cn } from "cn";
 import { X } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import type { UsageSummary } from "../../shared/protocol.ts";
 import { IconButton } from "../components/IconButton.tsx";
 import { UsageLabel } from "../shell/TopBar.tsx";
@@ -16,13 +16,22 @@ function PaneContents({
 	target,
 	usage,
 	onClose,
+	onPageChange,
 }: {
 	target: PaneTarget;
 	usage?: UsageSummary;
 	onClose: () => void;
+	onPageChange: (page: number) => void;
 }) {
-	const { sessionId, attachment } = target;
+	const { sessionId, attachment, citation } = target;
 	const [page, setPage] = useState<{ current: number; total: number }>();
+	const showPage = useCallback(
+		(next: { current: number; total: number }) => {
+			setPage(next);
+			onPageChange(next.current);
+		},
+		[onPageChange],
+	);
 	const file = { sessionId, attachmentId: attachment.id, name: attachment.name };
 	return (
 		<>
@@ -43,7 +52,9 @@ function PaneContents({
 					<X className="size-4" strokeWidth={1.5} />
 				</IconButton>
 			</header>
-			{attachment.kind === "pdf" && <PdfView {...file} onPageChange={setPage} />}
+			{attachment.kind === "pdf" && (
+				<PdfView {...file} citation={citation} onPageChange={showPage} />
+			)}
 			{attachment.kind === "image" && <ImageView {...file} />}
 			{attachment.kind === "text" && <TextView {...file} />}
 		</>
@@ -56,11 +67,13 @@ export function AttachmentPane({
 	open,
 	usage,
 	onClose,
+	onPageChange,
 }: {
 	target?: PaneTarget;
 	open: boolean;
 	usage?: UsageSummary;
 	onClose: () => void;
+	onPageChange: (page: number) => void;
 }) {
 	return (
 		<aside
@@ -79,6 +92,7 @@ export function AttachmentPane({
 					target={target}
 					usage={usage}
 					onClose={onClose}
+					onPageChange={onPageChange}
 				/>
 			)}
 		</aside>

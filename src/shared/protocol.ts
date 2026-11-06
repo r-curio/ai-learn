@@ -9,6 +9,12 @@ export interface AttachmentInfo {
 	size: number;
 }
 
+/** The PDF page the learner has open while they write a message. */
+export interface OpenPage {
+	attachmentId: string;
+	page: number;
+}
+
 export interface UsageSummary {
 	inputTokens: number;
 	outputTokens: number;
