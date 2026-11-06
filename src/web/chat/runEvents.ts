@@ -36,7 +36,7 @@ export function applyRunEvent(message: TranscriptMessage, event: RunEvent): Tran
 			...message,
 			blocks: message.blocks.map((block) =>
 				block.kind === "tool" && block.id === event.id
-					? { ...block, state: event.isError ? "failed" : "done" }
+					? { ...block, state: event.isError ? "failed" : "done", durationMs: event.durationMs }
 					: block,
 			),
 		};
