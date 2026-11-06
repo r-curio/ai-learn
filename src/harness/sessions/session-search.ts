@@ -18,19 +18,31 @@ export function toFtsQuery(typed: string): string | undefined {
 	return words.map((word) => `"${word.replaceAll('"', '""')}"*`).join(" ");
 }
 
+/** Enough words before a match to read it in context, while keeping it on the sidebar's one line. */
+const LEAD_CHARS = 16;
+
+function clean(text: string): string {
+	return text.replace(/\s+/g, " ");
+}
+
 function part(text: string, match: boolean): SnippetPart[] {
-	const clean = text.replace(/\s+/g, " ");
-	return clean ? [{ text: clean, match }] : [];
+	return text ? [{ text, match }] : [];
+}
+
+function shortenLead(lead: string): string {
+	if (lead.length <= LEAD_CHARS) return lead;
+	const tail = lead.slice(-LEAD_CHARS);
+	return `…${tail.slice(tail.indexOf(" ") + 1)}`;
 }
 
 /** Split a marked snippet into parts, so the UI never has to treat chat text as HTML. */
 export function snippetParts(snippet: string): SnippetPart[] {
 	const [before = "", ...pieces] = snippet.split(MATCH_START);
 	return [
-		...part(before, false),
+		...part(pieces.length > 0 ? shortenLead(clean(before)) : clean(before), false),
 		...pieces.flatMap((piece) => {
 			const [match = "", rest = ""] = piece.split(MATCH_END);
-			return [...part(match, true), ...part(rest, false)];
+			return [...part(clean(match), true), ...part(clean(rest), false)];
 		}),
 	];
 }

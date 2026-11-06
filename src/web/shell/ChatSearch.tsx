@@ -1,6 +1,6 @@
 import { Search, X } from "lucide-react";
 import { useRef } from "react";
-import type { SnippetPart } from "../../shared/protocol.ts";
+import type { SearchResult, SnippetPart } from "../../shared/protocol.ts";
 import { IconButton } from "../components/IconButton.tsx";
 import { Input } from "../components/input.tsx";
 
@@ -59,5 +59,34 @@ export function ChatSnippet({ parts }: { parts: SnippetPart[] }) {
 				),
 			)}
 		</span>
+	);
+}
+
+export function SearchStatus({
+	failed,
+	found,
+}: {
+	failed: boolean;
+	found?: { query: string; results: SearchResult[] };
+}) {
+	const className = "px-2.5 text-[14px] leading-[18px] text-muted-foreground";
+	if (failed)
+		return (
+			<p role="status" className={className}>
+				Couldn't search your chats.
+			</p>
+		);
+	if (!found) return null;
+	const count = found.results.length;
+	if (count === 0)
+		return (
+			<p role="status" className={className}>
+				No chats match "{found.query}".
+			</p>
+		);
+	return (
+		<p role="status" className="px-2.5 pb-1.5 text-[13px] leading-4 text-muted-foreground">
+			{count === 1 ? "1 chat" : `${count} chats`}
+		</p>
 	);
 }

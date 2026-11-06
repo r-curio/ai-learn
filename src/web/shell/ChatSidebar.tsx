@@ -12,7 +12,7 @@ import {
 	SidebarTrigger,
 	useSidebar,
 } from "../components/sidebar.tsx";
-import { ChatSearchField, ChatSnippet } from "./ChatSearch.tsx";
+import { ChatSearchField, ChatSnippet, SearchStatus } from "./ChatSearch.tsx";
 import { Logo } from "./Logo.tsx";
 import { useChatSearch } from "./useChatSearch.ts";
 
@@ -37,12 +37,14 @@ function ChatRow({
 			<SidebarMenuButton
 				isActive={active}
 				disabled={disabled}
-				className={snippet && "flex h-14 flex-col justify-center gap-0.5 text-foreground"}
+				className={snippet && "flex h-14 flex-col justify-center gap-0.5"}
 				onClick={onOpen}
 			>
 				{snippet ? (
 					<>
-						<span className="block w-full truncate font-medium">{summary.title}</span>
+						<span className="block w-full truncate font-medium text-foreground">
+							{summary.title}
+						</span>
 						{snippet.length > 0 && <ChatSnippet parts={snippet} />}
 					</>
 				) : (
@@ -60,32 +62,15 @@ function ChatRow({
 	);
 }
 
-function SearchStatus({
-	failed,
-	found,
-}: {
-	failed: boolean;
-	found?: { query: string; results: SearchResult[] };
-}) {
-	const className = "px-2.5 text-[14px] leading-[18px] text-muted-foreground";
-	if (failed)
-		return (
-			<p role="status" className={className}>
-				Couldn't search your chats.
-			</p>
-		);
-	if (!found) return null;
-	const count = found.results.length;
-	if (count === 0)
-		return (
-			<p role="status" className={className}>
-				No chats match "{found.query}".
-			</p>
-		);
+function SidebarTitleBar() {
 	return (
-		<p role="status" className="px-2.5 pb-1.5 text-[13px] leading-4 text-muted-foreground">
-			{count === 1 ? "1 chat" : `${count} chats`}
-		</p>
+		<div className="flex h-7 items-center justify-between pr-1 pl-2 app-drag">
+			<div className="flex items-center gap-2">
+				<Logo />
+				<span className="text-[16px] leading-5 font-semibold tracking-[-0.02em]">ai-learn</span>
+			</div>
+			<SidebarTrigger />
+		</div>
 	);
 }
 
@@ -115,13 +100,7 @@ export function ChatSidebar({
 	return (
 		<Sidebar aria-label="Chats">
 			<SidebarHeader className="gap-3.5 px-2.5 pt-3.5">
-				<div className="flex h-7 items-center justify-between pr-1 pl-2 app-drag">
-					<div className="flex items-center gap-2">
-						<Logo />
-						<span className="text-[16px] leading-5 font-semibold tracking-[-0.02em]">ai-learn</span>
-					</div>
-					<SidebarTrigger />
-				</div>
+				<SidebarTitleBar />
 				<Button
 					variant="ghost"
 					data-current={onNewChatScreen || undefined}

@@ -18,8 +18,8 @@ const SEARCH_SCHEMA = `CREATE VIRTUAL TABLE IF NOT EXISTS session_search USING f
 	body
 )`;
 
-/** Long enough for the words around a match, short enough to keep it on the sidebar's one line. */
-const SNIPPET_TOKENS = 8;
+/** Enough to fill the sidebar's one line after `snippetParts` shortens the start. */
+const SNIPPET_TOKENS = 12;
 
 function open(path: string): DatabaseSync {
 	const db = new DatabaseSync(path);
