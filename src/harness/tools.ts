@@ -15,7 +15,7 @@ const readAttachmentInput = z.object({
 
 export const ASK_QUESTION = "ask_question";
 
-export const askQuestionInput = z.object({
+export const askQuestionInput = z.strictObject({
 	question: z.string().min(1).describe("The question to ask."),
 	choices: z.array(z.string().min(1)).min(2).max(4).describe("The answers to choose from."),
 });

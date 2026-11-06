@@ -177,6 +177,24 @@ test("a question with bad arguments isn't left waiting, and the tutor hears why"
 	assert.equal(session.pendingQuestion, undefined);
 });
 
+test("a question with an extra argument gets an error, even after a reload", async () => {
+	const dataDir = await tempDir();
+	const extra = { ...QUESTION, correct_index: 1 };
+	const engine = createScriptedEngine([
+		fauxAssistantMessage(fauxToolCall("ask_question", extra), { stopReason: "toolUse" }),
+		fauxAssistantMessage("Let me ask that properly."),
+	]);
+	const session = new Session(engine, dataDir);
+	await sendTurn(session);
+	assert.equal(engine.faux.state.callCount, 2);
+	assert.equal(session.pendingQuestion, undefined);
+	assert.equal(session.canRetry, false);
+	const reply = session.view().messages.at(-1);
+	assert.ok(reply?.blocks.some((block) => block.kind === "tool" && block.state === "failed"));
+	assert.ok(!reply?.blocks.some((block) => block.kind === "question"));
+	assert.equal(reply?.notice, undefined);
+});
+
 test("the answer route accepts only answers that fit the waiting question", async () => {
 	const token = "test-token";
 	const base = "http://127.0.0.1:1234";

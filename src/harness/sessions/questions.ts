@@ -16,6 +16,10 @@ export function questionIn(reply: AssistantMessage): Question | undefined {
 	return undefined;
 }
 
+/** What Pi needs a tool to return, which stands in until the real answer. It's never saved. */
+export const questionPlaceholder = (result: ToolResultMessage): boolean =>
+	result.toolName === ASK_QUESTION && !result.isError;
+
 export const questionHooks: Pick<AgentOptions, "beforeToolCall" | "finishTurn"> = {
 	// A reply gets one question, so only one can ever be waiting.
 	beforeToolCall: async ({ assistantMessage, toolCall }) =>
@@ -23,13 +27,9 @@ export const questionHooks: Pick<AgentOptions, "beforeToolCall" | "finishTurn"> 
 			? { block: true, reason: "Ask one question at a time." }
 			: undefined,
 	// Now the tutor waits for the learner, and the saved reply is what remembers that.
-	finishTurn: async ({ message }) =>
-		message.role === "assistant" && questionIn(message) ? { action: "end" } : undefined,
+	finishTurn: async ({ toolResults }) =>
+		toolResults.some(questionPlaceholder) ? { action: "end" } : undefined,
 };
-
-/** What Pi needs a tool to return, which stands in until the real answer. It's never saved. */
-export const questionPlaceholder = (result: ToolResultMessage): boolean =>
-	result.toolName === ASK_QUESTION && !result.isError;
 
 /** A question is waiting when the latest reply asked it and it has no result. The log needs nothing more. */
 export function pendingQuestionIn(messages: Message[]): Question | undefined {
