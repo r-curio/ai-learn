@@ -71,7 +71,7 @@ export function useConversation(onRunEnd: () => void) {
 		}
 	}
 
-	function send(text: string, attachments: AttachmentInfo[], model?: ModelSelection) {
+	function send(text: string, attachments: AttachmentInfo[], model: ModelSelection) {
 		const replyId = makeKey();
 		const blocks: TranscriptMessage["blocks"] = text.trim() ? [{ kind: "text", text }] : [];
 		setMessages((current) => [
@@ -83,7 +83,7 @@ export function useConversation(onRunEnd: () => void) {
 		void follow(replyId, (onEvent) => sendMessage(sessionId!, body, onEvent));
 	}
 
-	function retry(model?: ModelSelection) {
+	function retry(model: ModelSelection) {
 		const tail = messages.at(-1);
 		const replyId = tail?.role === "assistant" ? tail.id : makeKey();
 		setMessages((current) => {

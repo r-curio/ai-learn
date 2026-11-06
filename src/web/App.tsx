@@ -40,6 +40,8 @@ export function App() {
 
 	function send() {
 		if (!canSend) return;
+		// The message stays in the box while the learner picks, so nothing they typed is lost.
+		if (!modelChoice.selection) return modelChoice.setPickerOpen(true);
 		chat.send(text, files.attachments, modelChoice.selection);
 		setText("");
 		clearDrafts();
@@ -89,7 +91,9 @@ export function App() {
 						running={running}
 						canRetry={chat.canRetry}
 						onRetry={() => {
-							if (status?.ready && !running) chat.retry(modelChoice.selection);
+							if (!status?.ready || running) return;
+							if (modelChoice.selection) chat.retry(modelChoice.selection);
+							else modelChoice.setPickerOpen(true);
 						}}
 					/>
 					<Composer

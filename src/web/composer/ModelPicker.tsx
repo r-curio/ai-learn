@@ -140,8 +140,7 @@ interface ModelPickerProps {
 
 /** Floats over the composer, and lists the models of every connected provider. */
 export function ModelPicker({ providers, choice, anchor, disabled }: ModelPickerProps) {
-	const [open, setOpen] = useState(false);
-	const { model, chooseModel } = choice;
+	const { model, chooseModel, pickerOpen: open, setPickerOpen: setOpen } = choice;
 
 	return (
 		<Popover open={open} onOpenChange={setOpen}>

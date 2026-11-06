@@ -47,22 +47,16 @@ async function resolveSelection(
 }
 
 /** An engine over any set of Pi providers, so the fake model behaves like the real ones. */
-export function engineFromModels(
-	models: Models,
-	model: Model<string>,
-): Pick<Engine, "model" | "streamFn" | "status" | "resolve"> {
+export function engineFromModels(models: Models): Engine {
 	return {
-		model,
 		streamFn: models.streamSimple.bind(models),
 		resolve: (selection) => resolveSelection(models, selection),
 		status: async () => {
 			const providers = await connectedProviders(models);
-			const defaultModel = { provider: model.provider, id: model.id };
 			return providers.length > 0
-				? { ready: true, defaultModel, providers }
+				? { ready: true, providers }
 				: {
 						ready: false,
-						defaultModel,
 						providers,
 						reason: "No provider key is set, such as ANTHROPIC_API_KEY.",
 					};

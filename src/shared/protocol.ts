@@ -65,7 +65,6 @@ export interface ProviderOption {
 
 export interface EngineStatus {
 	ready: boolean;
-	defaultModel: ModelRef;
 	/** Only the providers that can be used right now. */
 	providers: ProviderOption[];
 	reason?: string;

@@ -1,6 +1,6 @@
 import { serve, type ServerType } from "@hono/node-server";
 import { randomBytes } from "node:crypto";
-import { createClaudeEngine, type Engine } from "../harness/engine.ts";
+import { createEngine, type Engine } from "../harness/engine.ts";
 import { createDemoEngine } from "../harness/fake-engine.ts";
 import { createApp } from "./app.ts";
 
@@ -19,7 +19,7 @@ export interface RunningServer {
 }
 
 export function chooseEngine(): Engine {
-	return process.env.AI_LEARN_FAKE_MODEL === "1" ? createDemoEngine() : createClaudeEngine();
+	return process.env.AI_LEARN_FAKE_MODEL === "1" ? createDemoEngine() : createEngine();
 }
 
 /** Start the server on loopback only. Port 0 picks any free port. */

@@ -4,6 +4,7 @@ import { once } from "node:events";
 import { test } from "node:test";
 import { tempDir } from "./helpers.ts";
 
+const FAKE_MODEL = { provider: "faux", id: "fake-model", effort: "medium" };
 const TOKEN = "crash-test-token";
 const PORT = 18999;
 const BASE = `http://127.0.0.1:${PORT}`;
@@ -45,7 +46,7 @@ test(
 			const response = await fetch(`${BASE}/api/sessions/${id}/messages`, {
 				method: "POST",
 				headers,
-				body: JSON.stringify({ text: "Tell me about cells" }),
+				body: JSON.stringify({ text: "Tell me about cells", model: FAKE_MODEL }),
 			});
 			// Wait until the reply is streaming, then kill the server with no chance to clean up.
 			await response.body!.getReader().read();
@@ -71,7 +72,11 @@ test(
 			assert.equal(view.canRetry, true);
 			assert.match(view.messages.at(-1)?.notice ?? "", /closed before/);
 
-			const retried = await fetch(`${BASE}/api/sessions/${id}/retry`, { method: "POST", headers });
+			const retried = await fetch(`${BASE}/api/sessions/${id}/retry`, {
+				method: "POST",
+				headers,
+				body: JSON.stringify({ model: FAKE_MODEL }),
+			});
 			assert.match(await retried.text(), /Fake model/);
 			const after = (await (await fetch(`${BASE}/api/sessions/${id}`, { headers })).json()) as {
 				canRetry: boolean;

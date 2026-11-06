@@ -12,7 +12,12 @@ import { test } from "node:test";
 import { createScriptedEngine } from "../src/harness/fake-engine.ts";
 import { Session } from "../src/harness/sessions/session.ts";
 import { createApp } from "../src/server/app.ts";
-import type { EngineStatus, ModelSelection, Preferences } from "../src/shared/protocol.ts";
+import type {
+	EngineStatus,
+	ModelSelection,
+	Preferences,
+	SessionView,
+} from "../src/shared/protocol.ts";
 import { tempDir } from "./helpers.ts";
 
 const TOKEN = "test-token";
@@ -59,8 +64,8 @@ test("switching models keeps saved history intact and survives reopening", async
 	const session = new Session(engine, dir);
 	const say = async (target: Session, text: string, selection: ModelSelection) =>
 		target.send({ text, attachmentIds: [] }, () => {}, await choose(recording, selection));
-	const first = { provider: engine.model.provider, id: "fake-model", effort: "medium" } as const;
-	const deep = { provider: engine.model.provider, id: "fake-model-deep", effort: "max" } as const;
+	const first = { provider: "faux", id: "fake-model", effort: "medium" } as const;
+	const deep = { provider: "faux", id: "fake-model-deep", effort: "max" } as const;
 
 	await say(session, "One", first);
 	await say(session, "Two", deep);
@@ -106,7 +111,7 @@ test("the server lists options, and refuses a model or effort that can't be used
 	assert.equal(status.ready, true);
 	const models = status.providers.flatMap((provider) => provider.models);
 	assert.deepEqual(models.find(({ id }) => id === "fake-model-deep")?.efforts, ["xhigh", "max"]);
-	const provider = status.defaultModel.provider;
+	const provider = "faux";
 
 	const { id } = (await (
 		await app.request(`${BASE}/api/sessions`, { method: "POST", headers: auth })
@@ -121,6 +126,17 @@ test("the server lists options, and refuses a model or effort that can't be used
 	assert.equal((await send({ provider: "nobody", id: "fake-model", effort: "low" })).status, 400);
 	// This model has no Medium, and a stale menu shouldn't be able to ask for it.
 	assert.equal((await send({ provider, id: "fake-model-deep", effort: "medium" })).status, 400);
+	// Nothing is chosen for the learner, so a message without a model is refused and not saved.
+	const unchosen = await app.request(`${BASE}/api/sessions/${id}/messages`, {
+		method: "POST",
+		headers: json,
+		body: JSON.stringify({ text: "Hi" }),
+	});
+	assert.equal(unchosen.status, 400);
+	const view = (await (
+		await app.request(`${BASE}/api/sessions/${id}`, { headers: auth })
+	).json()) as SessionView;
+	assert.equal(view.messages.length, 0);
 	assert.equal(calls.length, 0);
 
 	const accepted = await send({ provider, id: "fake-model-deep", effort: "xhigh" });
@@ -149,10 +165,18 @@ test("retrying can move a failed reply onto another model", async () => {
 		await app.request(`${BASE}/api/sessions/${id}/messages`, {
 			method: "POST",
 			headers: json,
-			body: JSON.stringify({ text: "Hi" }),
+			body: JSON.stringify({
+				text: "Hi",
+				model: { provider: "faux", id: "fake-model", effort: "low" },
+			}),
 		})
 	).text();
-	const model = { provider: engine.model.provider, id: "fake-model-deep", effort: "max" };
+	const model = { provider: "faux", id: "fake-model-deep", effort: "max" };
+	const unchosen = await app.request(`${BASE}/api/sessions/${id}/retry`, {
+		method: "POST",
+		headers: auth,
+	});
+	assert.equal(unchosen.status, 400);
 	const retry = await app.request(`${BASE}/api/sessions/${id}/retry`, {
 		method: "POST",
 		headers: json,

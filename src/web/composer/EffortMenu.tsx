@@ -95,7 +95,8 @@ interface EffortMenuProps {
 }
 
 export function EffortMenu({ choice, anchor, disabled }: EffortMenuProps) {
-	const { effort } = choice;
+	const { model, effort } = choice;
+	const noEffortLabel = model ? "No effort levels" : "Effort";
 	return (
 		<Popover>
 			<PopoverAnchor virtualRef={anchor} />
@@ -106,7 +107,7 @@ export function EffortMenu({ choice, anchor, disabled }: EffortMenuProps) {
 					disabled={disabled || !effort}
 					className={`${MENU_TRIGGER} font-normal text-muted-foreground aria-expanded:text-muted-foreground`}
 				>
-					{effort ? `${EFFORT_LABELS[effort]} effort` : "No effort levels"}
+					{effort ? `${EFFORT_LABELS[effort]} effort` : noEffortLabel}
 					<ChevronDown className="size-3 text-muted-foreground" strokeWidth={2.8} />
 				</Button>
 			</PopoverTrigger>

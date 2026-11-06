@@ -99,7 +99,7 @@ export async function abortRun(sessionId: string): Promise<void> {
 
 export function sendMessage(
 	sessionId: string,
-	body: { text: string; attachmentIds: string[]; model?: ModelSelection },
+	body: { text: string; attachmentIds: string[]; model: ModelSelection },
 	onEvent: (event: RunEvent) => void,
 ): Promise<void> {
 	return streamRun(
@@ -114,7 +114,7 @@ export function sendMessage(
 
 export function retryRun(
 	sessionId: string,
-	model: ModelSelection | undefined,
+	model: ModelSelection,
 	onEvent: (event: RunEvent) => void,
 ): Promise<void> {
 	return streamRun(

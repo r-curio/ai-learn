@@ -65,8 +65,6 @@ export class Session {
 		this.agent = new Agent({
 			initialState: {
 				systemPrompt: this.systemPrompt,
-				model: engine.model,
-				thinkingLevel: "medium",
 				tools: createTools(this.attachments),
 				messages: restored?.messages ?? [],
 			},
@@ -219,8 +217,7 @@ export class Session {
 	}
 
 	/** Each saved reply names its model, so a new choice needs no record of its own. */
-	private use(choice?: ResolvedModel): void {
-		if (!choice) return;
+	private use(choice: ResolvedModel): void {
 		this.agent.state.model = choice.model;
 		this.agent.state.thinkingLevel = choice.thinkingLevel;
 	}
@@ -229,7 +226,7 @@ export class Session {
 	async send(
 		input: { text: string; attachmentIds: string[] },
 		onEvent: (event: RunEvent) => void,
-		choice?: ResolvedModel,
+		choice: ResolvedModel,
 	): Promise<void> {
 		if (this.running) throw new SessionBusyError();
 		this.use(choice);
@@ -253,7 +250,7 @@ export class Session {
 	}
 
 	/** Try again after a failed or interrupted reply. */
-	async retry(onEvent: (event: RunEvent) => void, choice?: ResolvedModel): Promise<void> {
+	async retry(onEvent: (event: RunEvent) => void, choice: ResolvedModel): Promise<void> {
 		if (this.running) throw new SessionBusyError();
 		if (!this.canRetry) throw new SessionStateError("There's nothing to retry.");
 		this.use(choice);

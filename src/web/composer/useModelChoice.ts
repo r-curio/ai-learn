@@ -33,11 +33,13 @@ function warnNotSaved(cause: Error) {
 /**
  * The model and effort picked in the composer, remembered across launches. The learner's wanted
  * effort is kept apart from the one in use, so a trip through a model with no Medium still comes
- * back to Medium afterward. A saved model whose key is gone falls back to the default.
+ * back to Medium afterward. No model is picked for the learner: until they choose one, and again
+ * if a saved model's key is gone, there's nothing to send with.
  */
 export function useModelChoice(status: EngineStatus | undefined) {
 	const [chosen, setChosen] = useState<ModelRef>();
 	const [wantedEffort, setWantedEffort] = useState<Effort>("medium");
+	const [pickerOpen, setPickerOpen] = useState(false);
 
 	useEffect(() => {
 		getPreferences()
@@ -61,9 +63,9 @@ export function useModelChoice(status: EngineStatus | undefined) {
 	}, []);
 
 	const models = status?.providers.flatMap((provider) => provider.models) ?? [];
-	const find = (ref?: ModelRef) =>
-		ref && models.find(({ provider, id }) => provider === ref.provider && id === ref.id);
-	const model: ModelOption | undefined = find(chosen) ?? find(status?.defaultModel) ?? models[0];
+	const model: ModelOption | undefined = models.find(
+		({ provider, id }) => provider === chosen?.provider && id === chosen.id,
+	);
 	const effort = model && closestEffort(wantedEffort, model.efforts);
 	const selection: ModelSelection | undefined = model && {
 		provider: model.provider,
@@ -71,7 +73,7 @@ export function useModelChoice(status: EngineStatus | undefined) {
 		effort,
 	};
 
-	return { model, effort, selection, setEffort, chooseModel };
+	return { model, effort, selection, setEffort, chooseModel, pickerOpen, setPickerOpen };
 }
 
 export type ModelChoice = ReturnType<typeof useModelChoice>;

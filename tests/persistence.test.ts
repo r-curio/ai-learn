@@ -11,7 +11,7 @@ import { createScriptedEngine } from "../src/harness/fake-engine.ts";
 import { readLog, SessionLogError } from "../src/harness/sessions/log.ts";
 import { Session } from "../src/harness/sessions/session.ts";
 import type { RunEvent } from "../src/shared/protocol.ts";
-import { PNG, tempDir } from "./helpers.ts";
+import { FAKE_CHOICE, PNG, tempDir } from "./helpers.ts";
 
 const logPath = (dir: string, id: string) => join(dir, "sessions", id, "session.jsonl");
 
@@ -21,7 +21,7 @@ async function run(
 	attachmentIds: string[] = [],
 ): Promise<RunEvent[]> {
 	const events: RunEvent[] = [];
-	await session.send({ text, attachmentIds }, (event) => events.push(event));
+	await session.send({ text, attachmentIds }, (event) => events.push(event), FAKE_CHOICE);
 	return events;
 }
 
@@ -85,7 +85,7 @@ test("a crash before the reply can be retried", async () => {
 	assert.match(view.messages.at(-1)?.notice ?? "", /closed before/);
 
 	const events: RunEvent[] = [];
-	await reloaded.retry((event) => events.push(event));
+	await reloaded.retry((event) => events.push(event), FAKE_CHOICE);
 	assert.equal(streamed(events), "Recovered.");
 	assert.equal(reloaded.view().canRetry, false);
 	assert.equal(reloaded.view().messages.at(-1)?.notice, undefined);
@@ -114,7 +114,7 @@ test("a tool cut off by a crash gets an error result and is never rerun", async 
 		session.id,
 	);
 	const events: RunEvent[] = [];
-	await reloaded.retry((event) => events.push(event));
+	await reloaded.retry((event) => events.push(event), FAKE_CHOICE);
 	assert.equal(
 		events.some((event) => event.type === "tool_start"),
 		false,
@@ -175,7 +175,7 @@ test("a failed reply can be retried, and the failure isn't resent or shown", asy
 	assert.equal(session.view().messages.at(-1)?.notice, "Overloaded");
 
 	const events: RunEvent[] = [];
-	await session.retry((event) => events.push(event));
+	await session.retry((event) => events.push(event), FAKE_CHOICE);
 	assert.equal(streamed(events), "Worked.");
 	assert.equal(seen[0]?.messages.filter((message) => message.role === "assistant").length, 0);
 
@@ -198,9 +198,13 @@ test("a stopped reply stays visible but isn't retried or resent", async () => {
 		300,
 	);
 	const session = new Session(engine, dir);
-	await session.send({ text: "Go", attachmentIds: [] }, (event) => {
-		if (event.type === "text_delta") session.abort();
-	});
+	await session.send(
+		{ text: "Go", attachmentIds: [] },
+		(event) => {
+			if (event.type === "text_delta") session.abort();
+		},
+		FAKE_CHOICE,
+	);
 	const reloaded = await Session.load(engine, dir, session.id);
 	assert.equal(reloaded.view().canRetry, false);
 	assert.equal(reloaded.view().messages.at(-1)?.notice, "Stopped.");

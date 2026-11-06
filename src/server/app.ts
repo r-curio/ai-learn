@@ -23,9 +23,11 @@ export interface AppOptions {
 	webRoot?: string;
 }
 
-const modelSelection = z
-	.object({ provider: z.string(), id: z.string(), effort: z.enum(EFFORTS).optional() })
-	.optional();
+const modelSelection = z.object({
+	provider: z.string(),
+	id: z.string(),
+	effort: z.enum(EFFORTS).optional(),
+});
 
 const messageInput = z.object({
 	text: z.string().max(200_000),
@@ -177,8 +179,8 @@ export function createApp({ engine, dataDir, token, webRoot }: AppOptions): Hono
 			return c.json({ error: "Message is empty." }, 400);
 		const unknown = attachmentIds.find((id) => !session.attachments.has(id));
 		if (unknown) return c.json({ error: "Unknown attachment." }, 400);
-		const choice = model && (await engine.resolve(model));
-		if (model && !choice) return c.json({ error: UNAVAILABLE_MODEL }, 400);
+		const choice = await engine.resolve(model);
+		if (!choice) return c.json({ error: UNAVAILABLE_MODEL }, 400);
 
 		return streamRun(c, session, (onEvent) =>
 			session.send({ text, attachmentIds }, onEvent, choice),
@@ -190,12 +192,10 @@ export function createApp({ engine, dataDir, token, webRoot }: AppOptions): Hono
 		if (!session) return c.json({ error: "Session not found." }, 404);
 		const status = await engine.status();
 		if (!status.ready) return c.json({ error: status.reason }, 503);
-		// A body is optional here, since a retry can stay on the model already in use.
-		const parsed = retryInput.safeParse(await c.req.json().catch(() => ({})));
+		const parsed = retryInput.safeParse(await c.req.json().catch(() => undefined));
 		if (!parsed.success) return c.json({ error: "Invalid retry." }, 400);
-		const { model } = parsed.data;
-		const choice = model && (await engine.resolve(model));
-		if (model && !choice) return c.json({ error: UNAVAILABLE_MODEL }, 400);
+		const choice = await engine.resolve(parsed.data.model);
+		if (!choice) return c.json({ error: UNAVAILABLE_MODEL }, 400);
 		return streamRun(c, session, (onEvent) => session.retry(onEvent, choice));
 	});
 

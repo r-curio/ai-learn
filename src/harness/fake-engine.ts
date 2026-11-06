@@ -30,7 +30,7 @@ export function createScriptedEngine(
 	const models = createModels();
 	models.setProvider(faux.provider);
 	faux.setResponses(responses);
-	return { faux, ...engineFromModels(models, faux.getModel()) };
+	return { faux, ...engineFromModels(models) };
 }
 
 const LONG_PARAGRAPH =
