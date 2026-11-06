@@ -1,7 +1,5 @@
 import { cn } from "cn";
-import { Pencil } from "lucide-react";
-import { useRef, type KeyboardEvent } from "react";
-import { flushSync } from "react-dom";
+import type { KeyboardEvent } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { stripCitations } from "../../shared/citations.ts";
@@ -19,10 +17,8 @@ import type { ModelChoice } from "../composer/useModelChoice.ts";
 import { AnswerChoices } from "./AnswerChoices.tsx";
 import { AnswerFooter } from "./AnswerFooter.tsx";
 import { ConfidenceSlider } from "./ConfidenceSlider.tsx";
-import { OwnAnswer } from "./OwnAnswer.tsx";
+import { OtherAnswers } from "./OtherAnswers.tsx";
 import { useAnswerDraft } from "./useAnswerDraft.ts";
-
-const OTHER_ANSWER = "h-[38px] gap-2 px-2.5 text-[14px] leading-[18px] font-normal text-foreground";
 
 interface AnswerCardProps {
 	question: Question;
@@ -38,6 +34,45 @@ interface AnswerCardProps {
 	onAddProvider: () => void;
 }
 
+/** Written like the reply it joins once answered, without citation links, which need a saved page to open. */
+function QuestionText({ text }: { text: string }) {
+	return (
+		<div className={cn(styles.prose, "flex-none text-[17px] leading-[25px] font-medium")}>
+			<Markdown remarkPlugins={[remarkGfm]}>{stripCitations(text)}</Markdown>
+		</div>
+	);
+}
+
+function ReasoningField({
+	value,
+	placeholder,
+	onChange,
+	onSubmit,
+}: {
+	value: string;
+	placeholder: string;
+	onChange: (value: string) => void;
+	onSubmit: () => void;
+}) {
+	const submitOnEnter = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+		if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+			event.preventDefault();
+			onSubmit();
+		}
+	};
+	return (
+		<Textarea
+			aria-label="Your reasoning"
+			rows={1}
+			placeholder={placeholder}
+			className="max-h-[124px] min-h-11 flex-none resize-none rounded-lg px-3 py-[11px] text-[14px] leading-5 focus-visible:border-muted-foreground focus-visible:ring-0"
+			value={value}
+			onChange={(event) => onChange(event.target.value)}
+			onKeyDown={submitOnEnter}
+		/>
+	);
+}
+
 /** Takes the composer's place while the tutor waits. Every state keeps the same height, so its top edge stays put. */
 export function AnswerCard(props: AnswerCardProps) {
 	const { question, refused, dimmed, providers, modelChoice, context } = props;
@@ -45,29 +80,12 @@ export function AnswerCard(props: AnswerCardProps) {
 	const draft = useAnswerDraft(refused?.answer);
 	const { selection, setSelection, ownText, setOwnText, confidence, setConfidence } = draft;
 	const { reasoning, setReasoning, answer } = draft;
-	const typeOwn = useRef<HTMLButtonElement>(null);
 	const unknown = selection === "unknown";
 	const canSubmit = Boolean(answer) && !dimmed;
 
 	function submit() {
 		if (canSubmit && answer) onSubmit(answer);
 	}
-
-	function closeOwnAnswer() {
-		// The pressed button is leaving, so bring its row back now and move the keyboard there.
-		flushSync(() => {
-			setOwnText("");
-			setSelection(undefined);
-		});
-		typeOwn.current?.focus();
-	}
-
-	const submitOnEnter = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-		if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
-			event.preventDefault();
-			submit();
-		}
-	};
 
 	return (
 		<div className="chat-column flex max-h-[85%] min-h-0 flex-none animate-in flex-col pt-1.5 pb-5 duration-200 ease-fluid fade-in-0 motion-safe:slide-in-from-bottom-1">
@@ -78,9 +96,7 @@ export function AnswerCard(props: AnswerCardProps) {
 					dimmed && "opacity-50",
 				)}
 			>
-				<div className={cn(styles.prose, "flex-none text-[17px] leading-[25px] font-medium")}>
-					<Markdown remarkPlugins={[remarkGfm]}>{stripCitations(question.text)}</Markdown>
-				</div>
+				<QuestionText text={question.text} />
 				<div className="flex-none">
 					<AnswerChoices
 						choices={question.choices}
@@ -88,42 +104,18 @@ export function AnswerCard(props: AnswerCardProps) {
 						onSelect={setSelection}
 					/>
 				</div>
-				{selection === "own" ? (
-					<OwnAnswer text={ownText} onTextChange={setOwnText} onClose={closeOwnAnswer} />
-				) : (
-					<div className="grid flex-none grid-cols-2 gap-1.5">
-						<Button
-							variant="outline"
-							aria-pressed={unknown}
-							className={cn(
-								OTHER_ANSWER,
-								unknown &&
-									"border-[1.5px] border-primary bg-accent hover:bg-accent hover:text-foreground",
-							)}
-							onClick={() => setSelection(unknown ? undefined : "unknown")}
-						>
-							I don't know
-						</Button>
-						<Button
-							ref={typeOwn}
-							variant="outline"
-							className={OTHER_ANSWER}
-							onClick={() => setSelection("own")}
-						>
-							<Pencil className="text-muted-foreground" strokeWidth={1.5} />
-							Type my own answer
-						</Button>
-					</div>
-				)}
+				<OtherAnswers
+					selection={selection}
+					ownText={ownText}
+					onSelect={setSelection}
+					onOwnTextChange={setOwnText}
+				/>
 				<ConfidenceSlider confidence={confidence} notNeeded={unknown} onChange={setConfidence} />
-				<Textarea
-					aria-label="Your reasoning"
-					rows={1}
-					placeholder={unknown ? "What's confusing you?" : "Why do you think that?"}
-					className="max-h-[124px] min-h-11 flex-none resize-none rounded-lg px-3 py-[11px] text-[14px] leading-5 focus-visible:border-muted-foreground focus-visible:ring-0"
+				<ReasoningField
 					value={reasoning}
-					onChange={(event) => setReasoning(event.target.value)}
-					onKeyDown={submitOnEnter}
+					placeholder={unknown ? "What's confusing you?" : "Why do you think that?"}
+					onChange={setReasoning}
+					onSubmit={submit}
 				/>
 				{refused && <Notice error>{refused.message}</Notice>}
 				<Button

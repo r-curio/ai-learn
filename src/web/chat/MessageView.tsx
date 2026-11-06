@@ -137,6 +137,20 @@ function ReplyNotice({ message, onRetry }: { message: TranscriptMessage; onRetry
 	);
 }
 
+/** The waiting question is left out, because the answer card shows it. */
+function visibleTexts(message: TranscriptMessage, pendingQuestionId?: string) {
+	return message.blocks.flatMap((block) => {
+		if (block.kind === "question") return block.id === pendingQuestionId ? [] : [block.text];
+		return block.kind === "text" ? [block.text] : [];
+	});
+}
+
+const learnerBubble = (isAnswer: boolean) =>
+	cn(
+		"rounded-2xl bg-accent px-4 py-2.5 leading-[23px]",
+		isAnswer && "flex items-center gap-4 font-medium",
+	);
+
 export function MessageView({
 	message,
 	sessionId,
@@ -157,10 +171,7 @@ export function MessageView({
 }) {
 	const learner = message.role === "user";
 	const showActivity = !learner && hasActivity(message, liveSince);
-	const texts = message.blocks.flatMap((block) => {
-		if (block.kind === "question") return block.id === pendingQuestionId ? [] : [block.text];
-		return block.kind === "text" ? [block.text] : [];
-	});
+	const texts = visibleTexts(message, pendingQuestionId);
 	const { confidence } = message;
 	const hasBody = texts.length > 0 || Boolean(message.notice);
 	return (
@@ -180,16 +191,7 @@ export function MessageView({
 				/>
 			)}
 			{hasBody && (
-				<div
-					className={
-						learner
-							? cn(
-									"rounded-2xl bg-accent px-4 py-2.5 leading-[23px]",
-									confidence !== undefined && "flex items-center gap-4 font-medium",
-								)
-							: "flex flex-col gap-3"
-					}
-				>
+				<div className={learner ? learnerBubble(confidence !== undefined) : "flex flex-col gap-3"}>
 					{texts.map((text, index) => (
 						<MessageText
 							text={text}
