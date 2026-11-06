@@ -110,7 +110,7 @@ export function EffortMenu({ choice, anchor, disabled }: EffortMenuProps) {
 					{effort ? (
 						<span>
 							{EFFORT_LABELS[effort]}
-							<span className="in-data-compact:sr-only"> effort</span>
+							<span className="in-data-compact:sr-only @max-[480px]:sr-only"> effort</span>
 						</span>
 					) : (
 						noEffortLabel

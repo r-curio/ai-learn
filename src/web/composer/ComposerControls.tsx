@@ -63,7 +63,7 @@ export function ComposerControls(props: ComposerControlsProps) {
 
 	return (
 		<div ref={row} className="mt-[22px] flex items-center justify-between">
-			<div className="flex min-w-0 items-center">
+			<div className="flex flex-none items-center">
 				<AttachButton canAttach={canAttach} onAddFiles={onAddFiles} />
 				<ContextMeter
 					context={context}
@@ -75,7 +75,7 @@ export function ComposerControls(props: ComposerControlsProps) {
 					onNewChat={onNewChat}
 				/>
 			</div>
-			<div className="flex items-center gap-1">
+			<div className="flex min-w-0 items-center gap-1">
 				<ModelPicker
 					providers={providers}
 					choice={modelChoice}

@@ -158,9 +158,9 @@ export function ModelPicker({
 					size="sm"
 					disabled={disabled}
 					aria-label={model ? `Model: ${model.label}` : "Choose a model"}
-					className={`${MENU_TRIGGER} font-medium text-foreground`}
+					className={`${MENU_TRIGGER} min-w-0 shrink! font-medium text-foreground`}
 				>
-					{model?.label ?? "Choose a model"}
+					<span className="truncate">{model?.label ?? "Choose a model"}</span>
 					<ChevronDown className="size-3 text-muted-foreground" strokeWidth={2.8} />
 				</Button>
 			</PopoverTrigger>

@@ -8,7 +8,7 @@ import type { Draft } from "./useDrafts.ts";
 import type { ModelChoice } from "./useModelChoice.ts";
 
 const CARD =
-	"rounded-3xl border border-border bg-card pt-3.5 pr-3 pb-3 pl-[18px] focus-within:border-muted-foreground";
+	"@container rounded-3xl border border-border bg-card pt-3.5 pr-3 pb-3 pl-[18px] focus-within:border-muted-foreground";
 
 interface ComposerProps {
 	text: string;

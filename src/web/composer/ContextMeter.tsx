@@ -159,12 +159,12 @@ export function ContextMeter(props: ContextMeterProps) {
 					size="sm"
 					// With no model and no reply yet there's no limit, so there are no details to show.
 					disabled={disabled || !limit}
-					className="ml-[5px] h-8 gap-1.5 rounded-md px-1.5 text-[13px] leading-4 tabular-nums disabled:opacity-100"
+					className="ml-[5px] h-8 gap-1.5 rounded-md px-1.5 text-[13px] leading-4 tabular-nums hover:bg-transparent disabled:opacity-100 aria-expanded:bg-transparent"
 					{...triggerProps}
 				>
 					<Ring percent={percent} className={ring} />
 					<span className={cn("transition-colors duration-150", label)}>
-						{percent}%<span className="in-data-compact:sr-only"> context</span>
+						{percent}%<span className="in-data-compact:sr-only @max-[480px]:sr-only"> context</span>
 					</span>
 				</Button>
 			</PopoverTrigger>
