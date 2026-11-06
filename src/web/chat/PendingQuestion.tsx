@@ -18,7 +18,7 @@ export function PendingQuestion({
 					</li>
 				))}
 			</ol>
-			<Button variant="outline" onClick={onDontKnow}>
+			<Button variant="outline" className="text-foreground" onClick={onDontKnow}>
 				I don't know
 			</Button>
 			<p className="text-[13px] leading-4 text-muted-foreground">
