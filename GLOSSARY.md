@@ -43,7 +43,7 @@ The permanent, append-only record of a session, from which everything else can b
 _Avoid_: Transcript, history
 
 **Session index**:
-A SQLite file that copies session summaries for fast lookups. It can always be rebuilt from the session folders, so nothing is stored only there.
+A SQLite file that copies session summaries and each chat's visible text for fast lookups and search. It can always be rebuilt from the session folders, so nothing is stored only there.
 _Avoid_: Database, session store
 
 ## How a reply can end

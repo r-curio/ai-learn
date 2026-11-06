@@ -1,9 +1,12 @@
 import { readdir, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
-import type { SessionSummary } from "../../shared/protocol.ts";
+import type { SearchResult, SessionSummary } from "../../shared/protocol.ts";
 import type { Engine } from "../engine.ts";
+import { peekLog } from "./log.ts";
 import { Session, SessionBusyError } from "./session.ts";
 import { SessionIndex } from "./session-index.ts";
+import { toFtsQuery } from "./session-search.ts";
+import { searchTextOf } from "./transcript.ts";
 
 const SESSION_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
@@ -32,6 +35,7 @@ export class SessionStore {
 	private readonly open = new Map<string, Session>();
 	private readonly index: SessionIndex;
 	private synced?: Promise<void>;
+	private textSynced?: Promise<void>;
 
 	constructor(
 		private readonly engine: Engine,
@@ -45,6 +49,7 @@ export class SessionStore {
 		session.onSummary = (summary) => {
 			try {
 				this.index.upsert(summary);
+				this.index.setText(summary, session.searchText());
 			} catch (error) {
 				console.error(error);
 			}
@@ -81,13 +86,59 @@ export class SessionStore {
 		this.index.replaceAll(summaries.filter((summary) => summary !== undefined));
 	}
 
-	async list(): Promise<SessionSummary[]> {
+	/** A log that can't be read is left searchable by title alone. Opening that chat reports the damage. */
+	private async readSearchText(id: string): Promise<string> {
+		try {
+			return searchTextOf(await peekLog(join(this.dataDir, "sessions", id, "session.jsonl")));
+		} catch {
+			return "";
+		}
+	}
+
+	/** Read only the logs that changed since their text was indexed, so a launch stays cheap. */
+	private async syncText(): Promise<void> {
+		const summaries = this.index.list();
+		const versions = this.index.textVersions();
+		const ids = new Set(summaries.map((summary) => summary.id));
+		for (const id of versions.keys()) if (!ids.has(id)) this.index.removeText(id);
+		for (const summary of summaries) {
+			if (versions.get(summary.id) === summary.updatedAt) continue;
+			const saved = await this.readSearchText(summary.id);
+			// A chat that's open may have saved more while its log was being read.
+			this.index.setText(summary, this.open.get(summary.id)?.searchText() ?? saved);
+		}
+	}
+
+	private whenSynced(): Promise<void> {
 		this.synced ??= this.sync().catch((error: unknown) => {
 			this.synced = undefined;
 			throw error;
 		});
-		await this.synced;
+		return this.synced;
+	}
+
+	private whenTextSynced(): Promise<void> {
+		this.textSynced ??= this.whenSynced()
+			.then(() => this.syncText())
+			.catch((error: unknown) => {
+				this.textSynced = undefined;
+				throw error;
+			});
+		return this.textSynced;
+	}
+
+	async list(): Promise<SessionSummary[]> {
+		await this.whenSynced();
+		// The chat list doesn't wait for this, but the first search will be ready sooner.
+		this.whenTextSynced().catch((error: unknown) => console.error(error));
 		return this.index.list();
+	}
+
+	async search(typed: string): Promise<SearchResult[]> {
+		const query = toFtsQuery(typed);
+		if (!query) return [];
+		await this.whenTextSynced();
+		return this.index.search(query);
 	}
 
 	async delete(id: string): Promise<boolean> {

@@ -122,6 +122,8 @@ export function createApp({ engine, dataDir, token, webRoot }: AppOptions): Hono
 
 	app.get("/api/sessions", async (c) => c.json(await store.list()));
 
+	app.get("/api/sessions/search", async (c) => c.json(await store.search(c.req.query("q") ?? "")));
+
 	app.post("/api/sessions", (c) => c.json({ id: store.create().id }, 201));
 
 	app.get("/api/sessions/:id", async (c) => {

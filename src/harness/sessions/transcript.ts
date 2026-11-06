@@ -86,6 +86,14 @@ export function buildTranscript(
 	return messages;
 }
 
+/** The words the learner can see in a chat. Attachments aren't read, so their contents aren't included. */
+export function searchTextOf(entries: LogEntry[]): string {
+	return buildTranscript(entries, () => undefined)
+		.flatMap((message) => message.blocks)
+		.flatMap((block) => (block.kind === "text" ? [block.text] : []))
+		.join("\n");
+}
+
 export function addUsage(total: UsageSummary, message: AssistantMessage): void {
 	const { usage } = message;
 	total.inputTokens += usage.input + usage.cacheRead + usage.cacheWrite;

@@ -11,6 +11,8 @@ sessions/<id>/
 
 The index copies each `summary.json` so the chat list doesn't read every folder. It's refreshed from the folders once per launch, and it's rebuilt if it's missing or damaged, so nothing may be stored only there.
 
+It also holds each chat's visible text for search, built from what the learner sees and never from attachment files. A launch only rereads a log when its `updatedAt` differs from the one its text was indexed at. That read never repairs the log, because a reply may be saving at the same time. If a crash leaves a log ahead of its summary, the newest text isn't searchable until that chat next saves.
+
 ## The rules
 
 1. **The log is append-only.** Each line is one record: a header, a message, or a retry marker. Nothing is edited afterward. The only exception is trimming a last line that a crash cut short.

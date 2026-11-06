@@ -92,10 +92,24 @@ export function fromStored(stored: StoredMessage, attachments: AttachmentStore):
 /** Read a log, repairing a last line cut short by a crash. Any other damage is an error. */
 export async function readLog(path: string): Promise<LogEntry[]> {
 	const raw = await readFile(path);
-	const lastNewline = raw.lastIndexOf(0x0a);
-	const complete = raw.subarray(0, lastNewline + 1);
+	const complete = completeLines(raw);
 	if (complete.length < raw.length) await truncate(path, complete.length);
+	return parseLog(complete);
+}
 
+/**
+ * Read a log without changing it, ignoring a half-written last line.
+ * Safe while a reply is being saved, which `readLog`'s repair is not.
+ */
+export async function peekLog(path: string): Promise<LogEntry[]> {
+	return parseLog(completeLines(await readFile(path)));
+}
+
+function completeLines(raw: Buffer): Buffer {
+	return raw.subarray(0, raw.lastIndexOf(0x0a) + 1);
+}
+
+function parseLog(complete: Buffer): LogEntry[] {
 	const entries = complete
 		.toString("utf8")
 		.split("\n")

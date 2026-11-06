@@ -4,6 +4,7 @@ import type {
 	ModelSelection,
 	Preferences,
 	RunEvent,
+	SearchResult,
 	SessionSummary,
 	SessionView,
 } from "../shared/protocol.ts";
@@ -80,6 +81,13 @@ export async function createSession(): Promise<string> {
 
 export async function listSessions(): Promise<SessionSummary[]> {
 	return (await request("/api/sessions")).json() as Promise<SessionSummary[]>;
+}
+
+export async function searchSessions(query: string, signal: AbortSignal): Promise<SearchResult[]> {
+	const params = new URLSearchParams({ q: query });
+	return (await request(`/api/sessions/search?${params}`, { signal })).json() as Promise<
+		SearchResult[]
+	>;
 }
 
 export async function getSession(id: string): Promise<SessionView> {

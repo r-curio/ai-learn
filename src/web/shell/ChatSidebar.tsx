@@ -1,5 +1,5 @@
 import { Pencil, X } from "lucide-react";
-import type { SessionSummary } from "../../shared/protocol.ts";
+import type { SearchResult, SessionSummary, SnippetPart } from "../../shared/protocol.ts";
 import { Button } from "../components/button.tsx";
 import {
 	Sidebar,
@@ -12,16 +12,21 @@ import {
 	SidebarTrigger,
 	useSidebar,
 } from "../components/sidebar.tsx";
+import { ChatSearchField, ChatSnippet } from "./ChatSearch.tsx";
 import { Logo } from "./Logo.tsx";
+import { useChatSearch } from "./useChatSearch.ts";
 
 function ChatRow({
 	summary,
+	snippet,
 	active,
 	disabled,
 	onOpen,
 	onDelete,
 }: {
 	summary: SessionSummary;
+	/** Set when this row is a search result. */
+	snippet?: SnippetPart[];
 	active: boolean;
 	disabled: boolean;
 	onOpen: () => void;
@@ -29,8 +34,20 @@ function ChatRow({
 }) {
 	return (
 		<SidebarMenuItem>
-			<SidebarMenuButton isActive={active} disabled={disabled} onClick={onOpen}>
-				{summary.title}
+			<SidebarMenuButton
+				isActive={active}
+				disabled={disabled}
+				className={snippet && "flex h-14 flex-col justify-center gap-0.5 text-foreground"}
+				onClick={onOpen}
+			>
+				{snippet ? (
+					<>
+						<span className="block w-full truncate font-medium">{summary.title}</span>
+						{snippet.length > 0 && <ChatSnippet parts={snippet} />}
+					</>
+				) : (
+					summary.title
+				)}
 			</SidebarMenuButton>
 			<SidebarMenuAction
 				disabled={disabled}
@@ -40,6 +57,35 @@ function ChatRow({
 				<X className="size-4" strokeWidth={1.5} />
 			</SidebarMenuAction>
 		</SidebarMenuItem>
+	);
+}
+
+function SearchStatus({
+	failed,
+	found,
+}: {
+	failed: boolean;
+	found?: { query: string; results: SearchResult[] };
+}) {
+	const className = "px-2.5 text-[14px] leading-[18px] text-muted-foreground";
+	if (failed)
+		return (
+			<p role="status" className={className}>
+				Couldn't search your chats.
+			</p>
+		);
+	if (!found) return null;
+	const count = found.results.length;
+	if (count === 0)
+		return (
+			<p role="status" className={className}>
+				No chats match "{found.query}".
+			</p>
+		);
+	return (
+		<p role="status" className="px-2.5 pb-1.5 text-[13px] leading-4 text-muted-foreground">
+			{count === 1 ? "1 chat" : `${count} chats`}
+		</p>
 	);
 }
 
@@ -64,6 +110,8 @@ export function ChatSidebar({
 	onDelete,
 }: ChatSidebarProps) {
 	const { setOpenMobile } = useSidebar();
+	const search = useChatSearch(sessions);
+	const rows: (SessionSummary & Partial<SearchResult>)[] = search.found?.results ?? sessions;
 	return (
 		<Sidebar aria-label="Chats">
 			<SidebarHeader className="gap-3.5 px-2.5 pt-3.5">
@@ -87,13 +135,16 @@ export function ChatSidebar({
 					<Pencil className="size-[18px]" strokeWidth={1.5} />
 					New chat
 				</Button>
+				<ChatSearchField value={search.query} onChange={search.change} />
 			</SidebarHeader>
-			<SidebarContent className="px-2.5 pt-3.5 pb-4">
+			<SidebarContent className="px-2.5 pt-3 pb-4">
+				<SearchStatus failed={search.failed} found={search.found} />
 				<SidebarMenu>
-					{sessions.map((summary) => (
+					{rows.map((summary) => (
 						<ChatRow
 							key={summary.id}
 							summary={summary}
+							snippet={summary.snippet}
 							active={summary.id === activeId}
 							disabled={disabled}
 							onOpen={() => {
@@ -104,7 +155,7 @@ export function ChatSidebar({
 						/>
 					))}
 				</SidebarMenu>
-				{sessions.length === 0 && (
+				{sessions.length === 0 && !search.found && !search.failed && (
 					<p className="px-2.5 text-[14px] leading-[18px] text-muted-foreground">
 						Your chats will appear here.
 					</p>
