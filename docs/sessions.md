@@ -23,7 +23,7 @@ It also holds each chat's visible text for search, built from what the learner s
 6. **A chat can change model on any turn.** Each saved reply already names the model that wrote it, so the log needs no record of the choice. Pi drops reasoning data when it sends a reply to a different model, and the log itself keeps it. The composer's choice is a preference, not part of the chat. API keys never enter the log.
 7. **Timing sits beside a reply, not in it.** A reply's record can carry `workedMs`, how long the run had taken when its text started, because that moment can't be worked out afterward. It's never sent to the model. Older records don't have it, so the transcript estimates from saved timestamps when the reply has an Activity trace. Tool durations come from what Pi already saves on each tool result.
 
-8. **A chat's type is set once, in the header.** The first message carries the learner's choice, and later turns can't change it. Logs from before chat types have no value and count as Learning, so old logs stay byte-identical and need no version bump. `summary.json` and the index only copy it.
+8. **A chat's type is set once, in the header.** Each message carries the learner's choice, because a first send can fail before anything is saved. The session only uses it while its log is empty, so later turns can't change it. Logs from before chat types have no value and count as Learning, so old logs stay byte-identical and need no version bump. `summary.json` and the index only copy it.
 
 ## Three views of one log
 

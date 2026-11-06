@@ -88,18 +88,18 @@ export function useConversation(onRunEnd: () => void) {
 		chatType: ChatType,
 	) {
 		const replyId = makeKey();
-		const isFirst = messages.length === 0;
 		const blocks: TranscriptMessage["blocks"] = text.trim() ? [{ kind: "text", text }] : [];
 		setMessages((current) => [
 			...current,
 			{ id: makeKey(), role: "user", blocks, attachments },
 			{ id: replyId, role: "assistant", blocks: [] },
 		]);
+		// Always sent, since a first send that fails leaves nothing saved. The server ignores it after that.
 		const body = {
 			text,
 			attachmentIds: attachments.map((attachment) => attachment.id),
 			model,
-			...(isFirst ? { chatType } : {}),
+			chatType,
 		};
 		void follow(replyId, (onEvent) => sendMessage(sessionId!, body, onEvent));
 	}
