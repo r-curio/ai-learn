@@ -17,9 +17,16 @@ const makeKey = () => `local-${++nextKey}`;
 type StartRun = (onEvent: (event: RunEvent) => void) => Promise<void>;
 
 /** A retry replaces what the failed attempt wrote, so the new reply doesn't stream onto the end of it. */
-function withoutFailedText(blocks: TranscriptMessage["blocks"]): TranscriptMessage["blocks"] {
-	const end = blocks.findLastIndex((block) => block.kind !== "text") + 1;
+function withoutFailedAttempt(blocks: TranscriptMessage["blocks"]): TranscriptMessage["blocks"] {
+	const end = blocks.findLastIndex((block) => block.kind === "tool") + 1;
 	return blocks.slice(0, end);
+}
+
+/** The server's copy of a finished reply keeps the streamed one's key, so its Activity block stays as the learner left it. */
+function keepingReplyKey(view: SessionView, replyId: string): SessionView {
+	const tail = view.messages.at(-1);
+	if (tail?.role !== "assistant") return view;
+	return { ...view, messages: [...view.messages.slice(0, -1), { ...tail, id: replyId }] };
 }
 
 /** The open chat: its messages, and sending to it. `onRunEnd` fires after each reply finishes. */
@@ -29,6 +36,7 @@ export function useConversation(onRunEnd: () => void) {
 	const [canRetry, setCanRetry] = useState(false);
 	const [usage, setUsage] = useState<UsageSummary>();
 	const [running, setRunning] = useState(false);
+	const [runStartedAt, setRunStartedAt] = useState(0);
 
 	const showView = useCallback((view: SessionView) => {
 		setSessionId(view.id);
@@ -50,6 +58,7 @@ export function useConversation(onRunEnd: () => void) {
 	async function follow(replyId: string, startRun: StartRun) {
 		const id = sessionId!;
 		setRunning(true);
+		setRunStartedAt(Date.now());
 		setCanRetry(false);
 		try {
 			await startRun((event) => {
@@ -61,7 +70,7 @@ export function useConversation(onRunEnd: () => void) {
 					update(replyId, (message) => applyRunEvent(message, event));
 				}
 			});
-			showView(await getSession(id));
+			showView(keepingReplyKey(await getSession(id), replyId));
 		} catch (cause) {
 			const notice = (cause as Error).message;
 			update(replyId, (message) => ({ ...message, notice, failed: true }));
@@ -93,9 +102,10 @@ export function useConversation(onRunEnd: () => void) {
 						...current.slice(0, -1),
 						{
 							...last,
-							blocks: last.failed ? withoutFailedText(last.blocks) : last.blocks,
+							blocks: last.failed ? withoutFailedAttempt(last.blocks) : last.blocks,
 							notice: undefined,
 							failed: undefined,
+							workedMs: undefined,
 						},
 					]
 				: [...current, { id: replyId, role: "assistant", blocks: [] }];
@@ -107,5 +117,17 @@ export function useConversation(onRunEnd: () => void) {
 		if (sessionId) void abortRun(sessionId);
 	};
 
-	return { sessionId, messages, canRetry, usage, running, showView, showEmpty, send, retry, stop };
+	return {
+		sessionId,
+		messages,
+		canRetry,
+		usage,
+		running,
+		runStartedAt,
+		showView,
+		showEmpty,
+		send,
+		retry,
+		stop,
+	};
 }

@@ -17,8 +17,11 @@ export interface UsageSummary {
 
 export type RunEvent =
 	| { type: "text_delta"; delta: string }
-	| { type: "tool_start"; id: string; name: string; label: string }
-	| { type: "tool_end"; id: string; isError: boolean }
+	| { type: "reasoning_delta"; delta: string }
+	/** The reply's text is starting, so the Activity block collapses and its time stops here. */
+	| { type: "reply_start"; workedMs: number }
+	| { type: "tool_start"; id: string; name: string; label: string; runningLabel: string }
+	| { type: "tool_end"; id: string; isError: boolean; durationMs?: number }
 	| {
 			type: "done";
 			stopReason: string;
@@ -100,7 +103,16 @@ export interface SearchResult extends SessionSummary {
 
 export type TranscriptBlock =
 	| { kind: "text"; text: string }
-	| { kind: "tool"; id: string; label: string; state: "running" | "done" | "failed" };
+	| { kind: "reasoning"; text: string }
+	| {
+			kind: "tool";
+			id: string;
+			label: string;
+			/** What to show while it runs. Only a live reply has one. */
+			runningLabel?: string;
+			state: "running" | "done" | "failed";
+			durationMs?: number;
+	  };
 
 export interface TranscriptMessage {
 	id: string;
@@ -109,6 +121,8 @@ export interface TranscriptMessage {
 	attachments?: AttachmentInfo[];
 	notice?: string;
 	failed?: boolean;
+	/** How long the tutor worked before the reply's text started. */
+	workedMs?: number;
 }
 
 export interface SessionView {

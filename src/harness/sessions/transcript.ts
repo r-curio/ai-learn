@@ -7,9 +7,44 @@ import type {
 } from "../../shared/protocol.ts";
 import { noticeFor } from "../../shared/protocol.ts";
 import type { LogEntry } from "./log.ts";
-import { TOOL_LABELS } from "../tools.ts";
+import { toolLabels } from "../tools.ts";
 
 export const INTERRUPTED_NOTICE = "The app closed before this reply finished.";
+
+type ToolBlock = Extract<TranscriptBlock, { kind: "tool" }>;
+
+/** Add one model step's reasoning, text, and tool calls. Redacted reasoning has no text to show. */
+function addReplyParts(
+	blocks: TranscriptBlock[],
+	content: AssistantMessage["content"],
+	toolBlocks: Map<string, ToolBlock>,
+	attachmentInfo: (id: string) => AttachmentInfo | undefined,
+): void {
+	for (const part of content) {
+		if (part.type === "text" && part.text) {
+			blocks.push({ kind: "text", text: part.text });
+		} else if (part.type === "thinking" && part.thinking.trim()) {
+			blocks.push({ kind: "reasoning", text: part.thinking });
+		} else if (part.type === "toolCall") {
+			const { label } = toolLabels(part.name, part.arguments, (id) => attachmentInfo(id)?.name);
+			const block: ToolBlock = { kind: "tool", id: part.id, label, state: "running" };
+			blocks.push(block);
+			toolBlocks.set(part.id, block);
+		}
+	}
+}
+
+/** Replies saved before `workedMs` was recorded estimate it, but only if there's a trace to head. */
+function setWorkedTime(
+	message: TranscriptMessage,
+	saved: number | undefined,
+	turn: { start: number; end: number },
+): void {
+	const hasTrace = message.blocks.some((block) => block.kind !== "text");
+	const workedMs = saved ?? (hasTrace ? turn.end - turn.start : undefined);
+	if (workedMs === undefined) delete message.workedMs;
+	else message.workedMs = workedMs;
+}
 
 /**
  * Build what the UI shows from the log. One learner turn can span several model calls and
@@ -22,7 +57,8 @@ export function buildTranscript(
 	const messages: TranscriptMessage[] = [];
 	let current: TranscriptMessage | undefined;
 	let failedFrom: number | undefined;
-	let toolBlocks = new Map<string, Extract<TranscriptBlock, { kind: "tool" }>>();
+	let toolBlocks = new Map<string, ToolBlock>();
+	const turn = { start: 0, end: 0 };
 
 	entries.forEach((entry, index) => {
 		if (entry.type === "retry") {
@@ -30,8 +66,10 @@ export function buildTranscript(
 			if (current) {
 				delete current.notice;
 				delete current.failed;
+				delete current.workedMs;
 			}
 			failedFrom = undefined;
+			turn.start = turn.end = entry.timestamp;
 			return;
 		}
 		if (entry.type !== "message") return;
@@ -48,6 +86,7 @@ export function buildTranscript(
 			current = undefined;
 			failedFrom = undefined;
 			toolBlocks = new Map();
+			turn.start = turn.end = message.timestamp;
 			return;
 		}
 
@@ -58,20 +97,8 @@ export function buildTranscript(
 
 		if (message.role === "assistant") {
 			const start = current.blocks.length;
-			for (const part of message.content) {
-				if (part.type === "text" && part.text) {
-					current.blocks.push({ kind: "text", text: part.text });
-				} else if (part.type === "toolCall") {
-					const block = {
-						kind: "tool" as const,
-						id: part.id,
-						label: TOOL_LABELS[part.name] ?? part.name,
-						state: "running" as const,
-					};
-					current.blocks.push(block);
-					toolBlocks.set(part.id, block);
-				}
-			}
+			addReplyParts(current.blocks, message.content, toolBlocks, attachmentInfo);
+			turn.end = message.timestamp + (message.durationMs ?? 0);
 			const ending = noticeFor(message.stopReason, message.errorMessage);
 			if (ending) {
 				current.notice = ending.notice;
@@ -81,7 +108,14 @@ export function buildTranscript(
 		} else if (message.role === "toolResult") {
 			const block = toolBlocks.get(message.toolCallId);
 			if (block) block.state = message.isError ? "failed" : "done";
+			// A tool cut off by a crash is settled at the next launch, so its time says nothing.
+			if (message.durationMs !== undefined) {
+				if (block) block.durationMs = message.durationMs;
+				turn.end = message.timestamp;
+			}
 		}
+
+		setWorkedTime(current, entry.workedMs, turn);
 	});
 	return messages;
 }

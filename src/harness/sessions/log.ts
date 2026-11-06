@@ -30,6 +30,8 @@ export interface LogMessage {
 	message: StoredMessage;
 	/** What the learner typed, separate from the attachment text sent to the model. */
 	display?: { text: string; attachmentIds: string[] };
+	/** On a reply with text: how long the run had taken when that text started. Never sent to the model. */
+	workedMs?: number;
 }
 
 /** Marks a failed reply as replaced, so it's no longer shown or resent. */

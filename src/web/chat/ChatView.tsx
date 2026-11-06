@@ -9,6 +9,7 @@ interface ChatViewProps {
 	sessionId?: string;
 	messages: TranscriptMessage[];
 	running: boolean;
+	runStartedAt: number;
 	canRetry: boolean;
 	onRetry: () => void;
 }
@@ -34,7 +35,7 @@ function EmptyScreen({ title, children }: { title: string; children: ReactNode }
 }
 
 export function ChatView(props: ChatViewProps) {
-	const { status, error, sessionId, messages, running, canRetry, onRetry } = props;
+	const { status, error, sessionId, messages, running, runStartedAt, canRetry, onRetry } = props;
 	const scroller = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
@@ -67,12 +68,10 @@ export function ChatView(props: ChatViewProps) {
 							message={message}
 							sessionId={sessionId}
 							key={message.id}
+							liveSince={running && index === messages.length - 1 ? runStartedAt : undefined}
 							onRetry={canRetry && !running && index === messages.length - 1 ? onRetry : undefined}
 						/>
 					))}
-				{running && messages.at(-1)?.blocks.length === 0 && (
-					<p className="text-[13px] leading-[18px] text-muted-foreground">Thinking…</p>
-				)}
 			</main>
 		</div>
 	);
