@@ -127,25 +127,29 @@ function useSettledWidth(element: RefObject<HTMLElement | null>) {
 	return width;
 }
 
-/** A page is current while it crosses the line through the middle of the pane. */
-function useCurrentPage(scroller: RefObject<HTMLElement | null>, total: number) {
+/**
+ * The current page is the one crossing the middle of the pane. Short pages like slides never reach
+ * the middle at either end of the document, so the top and bottom always mean the first and last.
+ */
+function useCurrentPage(scroller: RefObject<HTMLElement | null>, total: number, paneWidth: number) {
 	const [current, setCurrent] = useState(1);
 	useEffect(() => {
 		const root = scroller.current;
 		if (!root || total === 0) return;
-		const observer = new IntersectionObserver(
-			(entries) => {
-				for (const entry of entries) {
-					if (entry.isIntersecting) {
-						setCurrent(Number((entry.target as HTMLElement).dataset.page));
-					}
-				}
-			},
-			{ root, rootMargin: "-50% 0px -50% 0px" },
-		);
-		root.querySelectorAll("[data-page]").forEach((page) => observer.observe(page));
-		return () => observer.disconnect();
-	}, [scroller, total]);
+		function update(element: HTMLElement) {
+			const { scrollTop, scrollHeight, clientHeight } = element;
+			const line = scrollTop + clientHeight / 2;
+			const pages = Array.from(element.querySelectorAll<HTMLElement>("[data-page]"));
+			const inMiddle = pages.find((page) => page.offsetTop + page.offsetHeight >= line);
+			const atBottom = scrollHeight - clientHeight - scrollTop < 1;
+			const page = scrollTop <= 0 ? pages[0] : atBottom ? pages.at(-1) : inMiddle;
+			if (page) setCurrent(Number(page.dataset.page));
+		}
+		const onScroll = () => update(root);
+		update(root);
+		root.addEventListener("scroll", onScroll, { passive: true });
+		return () => root.removeEventListener("scroll", onScroll);
+	}, [scroller, total, paneWidth]);
 	return current;
 }
 
@@ -162,7 +166,7 @@ export function PdfView({
 	const scroller = useRef<HTMLDivElement>(null);
 	const paneWidth = useSettledWidth(scroller);
 	const total = pdf?.document.numPages ?? 0;
-	const current = useCurrentPage(scroller, total);
+	const current = useCurrentPage(scroller, total, paneWidth);
 	// The border sits outside the drawing, on both sides.
 	const pageWidth = Math.max(0, Math.min(paneWidth - GUTTER, MAX_PAGE_WIDTH) - 2);
 
@@ -180,7 +184,7 @@ export function PdfView({
 	return (
 		<div
 			ref={scroller}
-			className="flex min-h-0 flex-1 flex-col items-center gap-5 overflow-y-auto px-5 pt-5 pb-5"
+			className="relative flex min-h-0 flex-1 flex-col items-center gap-5 overflow-y-auto px-5 pt-5 pb-5"
 		>
 			{!pdf && <Skeleton className="aspect-[3/4] w-full flex-none bg-border" />}
 			{pdf &&
