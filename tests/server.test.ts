@@ -79,6 +79,24 @@ test("saved images can be fetched, only with the token", async () => {
 	assert.equal((await app.request(url, { headers: { Host: auth.Host } })).status, 401);
 });
 
+test("saved text files come back as plain text, so a page can't run them", async () => {
+	const app = await setup();
+	const id = await newSession(app);
+	const html = new TextEncoder().encode("<script>alert(1)</script>");
+	const { id: fileId } = (await (await upload(app, id, html, "page.html")).json()) as {
+		id: string;
+	};
+	const url = `${BASE}/api/sessions/${id}/attachments/${fileId}`;
+	const response = await app.request(url, { headers: auth });
+	assert.equal(response.status, 200);
+	assert.equal(response.headers.get("content-type"), "text/plain; charset=utf-8");
+	assert.equal(response.headers.get("x-content-type-options"), "nosniff");
+	assert.equal(await response.text(), "<script>alert(1)</script>");
+	assert.equal((await app.request(url, { headers: { Host: auth.Host } })).status, 401);
+	const unknown = `${BASE}/api/sessions/${id}/attachments/not-an-attachment`;
+	assert.equal((await app.request(unknown, { headers: auth })).status, 404);
+});
+
 test("paths can't escape the sessions folder", async () => {
 	const dataDir = await tempDir();
 	const app = createApp({ engine: createScriptedEngine([]), dataDir, token: TOKEN });

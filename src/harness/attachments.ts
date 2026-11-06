@@ -186,9 +186,14 @@ export class AttachmentStore {
 		return item && { id: item.id, name: item.name, kind: item.kind, size: item.size };
 	}
 
-	image(id: string): { bytes: Buffer; mimeType: string } | undefined {
-		const image = this.items.get(id)?.image;
-		return image && { bytes: Buffer.from(image.data, "base64"), mimeType: image.mimeType };
+	/** The file as it was uploaded, with the type found when it was checked. */
+	async original(id: string): Promise<{ bytes: Buffer; mimeType: string } | undefined> {
+		const item = this.items.get(id);
+		if (!item) return undefined;
+		const mimeType =
+			item.image?.mimeType ??
+			(item.kind === "pdf" ? "application/pdf" : "text/plain; charset=utf-8");
+		return { bytes: await readFile(join(this.dir, id)), mimeType };
 	}
 
 	imageData(id: string): string | undefined {

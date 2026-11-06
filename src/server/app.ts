@@ -138,12 +138,12 @@ export function createApp({ engine, dataDir, token, webRoot }: AppOptions): Hono
 	});
 
 	app.get("/api/sessions/:id/attachments/:attachmentId", async (c) => {
-		const image = (await store.get(c.req.param("id")))?.attachments.image(
-			c.req.param("attachmentId"),
-		);
-		if (!image) return c.json({ error: "Image not found." }, 404);
-		return c.body(new Uint8Array(image.bytes), 200, {
-			"Content-Type": image.mimeType,
+		const original = await (
+			await store.get(c.req.param("id"))
+		)?.attachments.original(c.req.param("attachmentId"));
+		if (!original) return c.json({ error: "Attachment not found." }, 404);
+		return c.body(new Uint8Array(original.bytes), 200, {
+			"Content-Type": original.mimeType,
 			"X-Content-Type-Options": "nosniff",
 		});
 	});

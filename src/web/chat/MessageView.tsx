@@ -22,9 +22,11 @@ function TextBlock({ text, role }: { text: string; role: TranscriptMessage["role
 function SentAttachments({
 	attachments,
 	sessionId,
+	onOpen,
 }: {
 	attachments: AttachmentInfo[];
 	sessionId: string;
+	onOpen: (attachment: AttachmentInfo) => void;
 }) {
 	const images = attachments.filter(({ kind }) => kind === "image");
 	const documents = attachments.filter((item) => item.kind !== "image" && isDocument(item));
@@ -35,7 +37,11 @@ function SentAttachments({
 				<ul className="flex flex-wrap justify-end gap-2">
 					{images.map((attachment) => (
 						<li key={attachment.id}>
-							<SavedImage sessionId={sessionId} attachment={attachment} />
+							<SavedImage
+								sessionId={sessionId}
+								attachment={attachment}
+								onOpen={() => onOpen(attachment)}
+							/>
 						</li>
 					))}
 				</ul>
@@ -44,7 +50,7 @@ function SentAttachments({
 				<ul className="flex flex-col items-end gap-2">
 					{documents.map((attachment) => (
 						<li key={attachment.id}>
-							<SentDocument attachment={attachment} />
+							<SentDocument attachment={attachment} onOpen={() => onOpen(attachment)} />
 						</li>
 					))}
 				</ul>
@@ -53,7 +59,7 @@ function SentAttachments({
 				<ul className="flex flex-wrap justify-end gap-2">
 					{files.map((attachment) => (
 						<li key={attachment.id}>
-							<SentFile name={attachment.name} />
+							<SentFile name={attachment.name} onOpen={() => onOpen(attachment)} />
 						</li>
 					))}
 				</ul>
@@ -62,17 +68,41 @@ function SentAttachments({
 	);
 }
 
+function ReplyNotice({ message, onRetry }: { message: TranscriptMessage; onRetry?: () => void }) {
+	if (!message.notice) return null;
+	return (
+		<Notice
+			error={message.failed}
+			action={
+				onRetry && (
+					<Button
+						variant="outline"
+						className="h-7 px-2.5 py-0 text-[13px] leading-[18px] font-medium text-foreground"
+						onClick={onRetry}
+					>
+						Retry
+					</Button>
+				)
+			}
+		>
+			{message.notice}
+		</Notice>
+	);
+}
+
 export function MessageView({
 	message,
 	sessionId,
 	onRetry,
 	liveSince,
+	onOpenAttachment,
 }: {
 	message: TranscriptMessage;
 	sessionId: string;
 	onRetry?: () => void;
 	/** When this reply's run started, while it's still running. */
 	liveSince?: number;
+	onOpenAttachment: (attachment: AttachmentInfo) => void;
 }) {
 	const learner = message.role === "user";
 	const showActivity = !learner && hasActivity(message, liveSince);
@@ -82,13 +112,17 @@ export function MessageView({
 		<article
 			className={
 				learner
-					? "flex max-w-[min(440px,92%)] flex-col items-end gap-2 self-end"
+					? "flex max-w-[min(440px,92%)] flex-col items-end gap-2 self-end in-data-compact:max-w-[400px]"
 					: "flex flex-col gap-5"
 			}
 		>
 			{showActivity && <ActivityBlock message={message} liveSince={liveSince} />}
 			{message.attachments && message.attachments.length > 0 && (
-				<SentAttachments attachments={message.attachments} sessionId={sessionId} />
+				<SentAttachments
+					attachments={message.attachments}
+					sessionId={sessionId}
+					onOpen={onOpenAttachment}
+				/>
 			)}
 			{hasBody && (
 				<div
@@ -99,24 +133,7 @@ export function MessageView({
 					{texts.map((text, index) => (
 						<TextBlock text={text} role={message.role} key={index} />
 					))}
-					{message.notice && (
-						<Notice
-							error={message.failed}
-							action={
-								onRetry && (
-									<Button
-										variant="outline"
-										className="h-7 px-2.5 py-0 text-[13px] leading-[18px] font-medium text-foreground"
-										onClick={onRetry}
-									>
-										Retry
-									</Button>
-								)
-							}
-						>
-							{message.notice}
-						</Notice>
-					)}
+					<ReplyNotice message={message} onRetry={onRetry} />
 				</div>
 			)}
 		</article>

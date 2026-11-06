@@ -50,6 +50,7 @@ Preferences live in `preferences.json` in the same folder. The desktop app's ser
 
 - **Local server:** it listens only on `127.0.0.1`, requires a secret token created at each launch, and rejects requests aimed at other hostnames. Other programs on the computer can reach the port, so the token is what protects it.
 - **Attachments:** their contents are marked as material to work with, not as instructions to the tutor. Prompt injection is still possible, because that marking only guides the model.
+- **PDFs:** pdf.js draws pages to canvases in a worker, under the same content security policy as the app. Links, forms, and scripts inside a PDF aren't rendered or run.
 - **Electron window:** the page has no Node access, runs sandboxed, and can't navigate away from the local server. Web links open in the system browser.
 
 ## Not built yet

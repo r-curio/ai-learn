@@ -137,7 +137,7 @@ function Sidebar({ className, children, ...props }: ComponentProps<"div">) {
 				// Off-screen controls must not stay reachable by keyboard.
 				inert={collapsed}
 				className={cn(
-					"fixed inset-y-0 z-10 flex w-(--sidebar-width) transition-[left] motion-surface",
+					"fixed inset-y-0 z-10 flex w-(--sidebar-width) transition-[left,width] motion-surface",
 					collapsed ? "left-[calc(var(--rail-width)-var(--sidebar-width))]" : "left-(--rail-width)",
 					className,
 				)}
