@@ -1,7 +1,7 @@
 import type { StreamFn, ThinkingLevel } from "@earendil-works/pi-agent-core";
 import type { AuthContext, Model } from "@earendil-works/pi-ai";
 import { builtinModels } from "@earendil-works/pi-ai/providers/all";
-import type { EngineStatus, ModelSelection } from "../shared/protocol.ts";
+import type { EngineStatus, ModelRef, ModelSelection } from "../shared/protocol.ts";
 import { engineFromModels } from "./model-catalog.ts";
 import { ProviderKeyStore, type KeyCipher } from "./provider-keys.ts";
 
@@ -16,6 +16,8 @@ export interface Engine {
 	status(): Promise<EngineStatus>;
 	/** What to run a learner's choice on, or nothing if that choice can't be used. */
 	resolve(selection: ModelSelection): Promise<ResolvedModel | undefined>;
+	/** A model's context window. It works without a key, so old chats can still be measured. */
+	contextLimit(model: ModelRef): number | undefined;
 	saveKey(providerId: string, key: string): Promise<void>;
 	removeKey(providerId: string): Promise<void>;
 }

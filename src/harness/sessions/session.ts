@@ -24,7 +24,8 @@ import { createTools, toolLabels } from "../tools.ts";
 import {
 	addUsage,
 	buildTranscript,
-	INTERRUPTED_NOTICE,
+	contextOf,
+	markInterrupted,
 	titleOf,
 	usageOf,
 	searchTextOf,
@@ -58,6 +59,7 @@ export class Session {
 	readonly attachments: AttachmentStore;
 	/** Called after each saved summary, so the session index can stay current. */
 	onSummary?: (summary: SessionSummary) => void;
+	private readonly engine: Engine;
 	private readonly dir: string;
 	private readonly log: LogWriter;
 	private readonly agent: Agent;
@@ -68,6 +70,7 @@ export class Session {
 	private running = false;
 
 	constructor(engine: Engine, dataDir: string, restored?: Restored) {
+		this.engine = engine;
 		this.id = restored?.id ?? randomUUID();
 		this.dir = join(dataDir, "sessions", this.id);
 		this.attachments = restored?.attachments ?? new AttachmentStore(join(this.dir, "attachments"));
@@ -172,18 +175,13 @@ export class Session {
 	view(): SessionView {
 		const messages = buildTranscript(this.entries, (id) => this.attachments.info(id));
 		const canRetry = this.canRetry;
-		const tail = messages.at(-1);
-		if (canRetry && !isFailedReply(this.messages.at(-1))) {
-			if (tail?.role === "assistant") tail.notice = INTERRUPTED_NOTICE;
-			else
-				messages.push({
-					id: "interrupted",
-					role: "assistant",
-					blocks: [],
-					notice: INTERRUPTED_NOTICE,
-				});
-		}
-		return { id: this.id, title: this.title(), messages, canRetry, usage: { ...this.usage } };
+		if (canRetry && !isFailedReply(this.messages.at(-1))) markInterrupted(messages);
+		const usage = { ...this.usage };
+		return { id: this.id, title: this.title(), messages, canRetry, usage, context: this.context() };
+	}
+
+	private context() {
+		return contextOf(this.entries, (model) => this.engine.contextLimit(model));
 	}
 
 	private async run(start: () => Promise<void>, onEvent: (event: RunEvent) => void): Promise<void> {
@@ -262,6 +260,7 @@ export class Session {
 			errorMessage: failure ?? last?.errorMessage,
 			usage: runUsage,
 			sessionUsage: { ...this.usage },
+			context: this.context(),
 		});
 	}
 

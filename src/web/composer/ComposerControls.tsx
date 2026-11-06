@@ -1,8 +1,9 @@
 import { ArrowUp, Plus } from "lucide-react";
-import { useRef } from "react";
-import type { ProviderOption } from "../../shared/protocol.ts";
+import { useRef, type RefObject } from "react";
+import type { ContextUsage, ProviderOption } from "../../shared/protocol.ts";
 import { Button } from "../components/button.tsx";
 import { IconButton } from "../components/IconButton.tsx";
+import { ContextMeter } from "./ContextMeter.tsx";
 import { EffortMenu } from "./EffortMenu.tsx";
 import { ModelPicker } from "./ModelPicker.tsx";
 import type { ModelChoice } from "./useModelChoice.ts";
@@ -13,6 +14,10 @@ interface ComposerControlsProps {
 	running: boolean;
 	providers: ProviderOption[];
 	modelChoice: ModelChoice;
+	context?: ContextUsage;
+	/** The composer's card, which the context details float above. */
+	card: RefObject<HTMLDivElement | null>;
+	onNewChat: () => void;
 	/** The app can't reply yet, so there's nothing to choose for. */
 	menusDisabled: boolean;
 	onAddProvider: () => void;
@@ -20,15 +25,13 @@ interface ComposerControlsProps {
 	onStop: () => void;
 }
 
-/** The row under the message box: Attach on the left, then the menus and Send or Stop on the right. */
-export function ComposerControls(props: ComposerControlsProps) {
-	const { canAttach, canSend, running, providers, modelChoice, menusDisabled } = props;
-	const { onAddProvider, onAddFiles, onStop } = props;
+function AttachButton({
+	canAttach,
+	onAddFiles,
+}: Pick<ComposerControlsProps, "canAttach" | "onAddFiles">) {
 	const fileInput = useRef<HTMLInputElement>(null);
-	const row = useRef<HTMLDivElement>(null);
-
 	return (
-		<div ref={row} className="mt-[22px] flex items-center justify-between">
+		<>
 			<IconButton
 				aria-label="Attach files"
 				// The plus sits centred in its hover shape, and the margin keeps it lined up with the text.
@@ -48,6 +51,30 @@ export function ComposerControls(props: ComposerControlsProps) {
 					event.target.value = "";
 				}}
 			/>
+		</>
+	);
+}
+
+/** The row under the message box: Attach and context on the left, then the menus and Send or Stop on the right. */
+export function ComposerControls(props: ComposerControlsProps) {
+	const { canAttach, canSend, running, providers, modelChoice, menusDisabled } = props;
+	const { context, card, onNewChat, onAddProvider, onAddFiles, onStop } = props;
+	const row = useRef<HTMLDivElement>(null);
+
+	return (
+		<div ref={row} className="mt-[22px] flex items-center justify-between">
+			<div className="flex min-w-0 items-center">
+				<AttachButton canAttach={canAttach} onAddFiles={onAddFiles} />
+				<ContextMeter
+					context={context}
+					// The next call runs on the composer's model, so that's the limit that matters.
+					limit={modelChoice.model?.contextWindow ?? context?.limit}
+					card={card}
+					disabled={menusDisabled}
+					running={running}
+					onNewChat={onNewChat}
+				/>
+			</div>
 			<div className="flex items-center gap-1">
 				<ModelPicker
 					providers={providers}

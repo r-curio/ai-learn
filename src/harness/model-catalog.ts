@@ -129,6 +129,7 @@ export function engineFromModels(models: Models, sources?: KeySources): Engine {
 		streamFn: models.streamSimple.bind(models),
 		resolve: (selection) => resolveSelection(models, selection),
 		status: () => readStatus(models, sources),
+		contextLimit: ({ provider, id }) => models.getModel(provider, id)?.contextWindow,
 		saveKey: (id, key) => saveKey(models, sources, id, key),
 		removeKey: async (id) => {
 			await sources?.keys.remove(id);

@@ -24,6 +24,7 @@ It also holds each chat's visible text for search, built from what the learner s
 7. **Timing sits beside a reply, not in it.** A reply's record can carry `workedMs`, how long the run had taken when its text started, because that moment can't be worked out afterward. It's never sent to the model. Older records don't have it, so the transcript estimates from saved timestamps when the reply has an Activity trace. Tool durations come from what Pi already saves on each tool result.
 
 8. **A chat's type is set once, in the header.** Each message carries the learner's choice, because a first send can fail before anything is saved. The session only uses it while its log is empty, so later turns can't change it. Logs from before chat types have no value and count as Learning, so old logs stay byte-identical and need no version bump. `summary.json` and the index only copy it.
+9. **How full a chat is comes from the log.** It's the input size in the last saved reply that reported one, against that reply's model limit, so nothing extra is saved and older chats work too. The composer shows the limit of the model it has selected, since that's where the next call goes.
 
 ## Three views of one log
 

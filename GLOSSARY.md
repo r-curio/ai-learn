@@ -54,6 +54,10 @@ _Avoid_: Transcript, history
 A SQLite file that copies session summaries and each chat's visible text for fast lookups and search. It can always be rebuilt from the session folders, so nothing is stored only there.
 _Avoid_: Database, session store
 
+**Context**:
+How full a session is: the size of the last model call's input against the model's limit. It's not the running token total shown in the top bar.
+_Avoid_: Memory, usage
+
 ## How a reply can end
 
 **Stopped reply**:
