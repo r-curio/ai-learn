@@ -193,6 +193,8 @@ test("a question with an extra argument gets an error, even after a reload", asy
 	assert.ok(reply?.blocks.some((block) => block.kind === "tool" && block.state === "failed"));
 	assert.ok(!reply?.blocks.some((block) => block.kind === "question"));
 	assert.equal(reply?.notice, undefined);
+	const reopened = await Session.load(createScriptedEngine([]), dataDir, session.id);
+	assert.equal(reopened.pendingQuestion, undefined);
 });
 
 test("the answer route accepts only answers that fit the waiting question", async () => {
