@@ -398,7 +398,7 @@ The product's signature component, which replaces the composer while a question 
 
 - **Structure:** the question, then choices A–D, then I don't know and Type my own answer, the confidence slider, reasoning, and a full-width Submit answer. Model, effort, and context move to a row beneath it.
 - **Choices:** 38px rows with a 22px letter chip. Selected rows use Lavender Wash, a 1.5px indigo border, and an indigo chip.
-- **Slider:** a 4px track and a 16px handle. Issue #25 covers its unset and "Not needed" states.
+- **Slider:** a 4px track and a 16px handle. Until it's moved, the handle is hollow in the middle and reads "Not set". For "I don't know", it stays that way, dimmed, and reads "Not needed".
 - **Steadiness:** the card's top edge doesn't move between states, except when the reasoning text grows.
 
 ### Model and Effort menus

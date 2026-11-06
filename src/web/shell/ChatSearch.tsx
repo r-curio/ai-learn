@@ -2,7 +2,7 @@ import { Search, X } from "lucide-react";
 import { useRef } from "react";
 import type { SearchResult, SnippetPart } from "../../shared/protocol.ts";
 import { IconButton } from "../components/IconButton.tsx";
-import { Input } from "../components/input.tsx";
+import { Input } from "../components/form/input.tsx";
 
 export function ChatSearchField({
 	value,

@@ -12,6 +12,7 @@ import { test } from "node:test";
 import { createScriptedEngine } from "../src/harness/fake-engine.ts";
 import type { LogEntry, LogMessage } from "../src/harness/sessions/log.ts";
 import { Session } from "../src/harness/sessions/session.ts";
+import { buildTranscript } from "../src/harness/sessions/transcript.ts";
 import { createApp } from "../src/server/app.ts";
 import type { RunEvent, SessionView } from "../src/shared/protocol.ts";
 import { FAKE_CHOICE, tempDir } from "./helpers.ts";
@@ -246,4 +247,21 @@ test("the answer route accepts only answers that fit the waiting question", asyn
 	assert.match(await accepted.text(), /Thanks/);
 	assert.equal((await view()).pendingQuestion, undefined);
 	assert.equal((await post({ answer: { kind: "unknown" } })).status, 409);
+});
+
+test("the transcript removes a made-up citation from a question, and the log keeps it", () => {
+	const question = 'Which vector asks?<cite attachment="a" page="4">a made-up quote</cite>';
+	const reply = fauxAssistantMessage(
+		fauxToolCall("ask_question", { question, choices: ["Yes", "No"] }),
+		{ stopReason: "toolUse" },
+	);
+	const entry = { type: "message", id: "1", timestamp: 1, message: reply } as unknown as LogEntry;
+	const [message] = buildTranscript(
+		[entry],
+		() => undefined,
+		() => false,
+	);
+	const block = message?.blocks.find(({ kind }) => kind === "question");
+	assert.equal(block?.kind === "question" && block.text, "Which vector asks?");
+	assert.ok(JSON.stringify(entry).includes("<cite"));
 });

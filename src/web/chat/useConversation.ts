@@ -43,6 +43,7 @@ export function useConversation(onRunEnd: () => void) {
 	const [usage, setUsage] = useState<UsageSummary>();
 	const [context, setContext] = useState<ContextUsage>();
 	const [pendingQuestion, setPendingQuestion] = useState<Question>();
+	const [refusedAnswer, setRefusedAnswer] = useState<{ answer: QuestionAnswer; message: string }>();
 	const [running, setRunning] = useState(false);
 	const [runStartedAt, setRunStartedAt] = useState(0);
 
@@ -53,6 +54,7 @@ export function useConversation(onRunEnd: () => void) {
 		setUsage(view.usage);
 		setContext(view.context);
 		setPendingQuestion(view.pendingQuestion);
+		setRefusedAnswer(undefined);
 	}, []);
 
 	const showEmpty = useCallback((id: string) => {
@@ -62,12 +64,18 @@ export function useConversation(onRunEnd: () => void) {
 		setUsage(undefined);
 		setContext(undefined);
 		setPendingQuestion(undefined);
+		setRefusedAnswer(undefined);
 	}, []);
 
 	const update = (id: string, change: (message: TranscriptMessage) => TranscriptMessage) =>
 		setMessages((current) => current.map((item) => (item.id === id ? change(item) : item)));
 
-	async function follow(replyId: string, startRun: StartRun) {
+	/** `recover` can take over from a failure, by returning true once it has put things right. */
+	async function follow(
+		replyId: string,
+		startRun: StartRun,
+		recover?: (message: string) => Promise<boolean>,
+	) {
 		const id = sessionId!;
 		setRunning(true);
 		setRunStartedAt(Date.now());
@@ -86,6 +94,7 @@ export function useConversation(onRunEnd: () => void) {
 			showView(keepingReplyKey(await getSession(id), replyId));
 		} catch (cause) {
 			const notice = (cause as Error).message;
+			if (await recover?.(notice)) return;
 			update(replyId, (message) => ({ ...message, notice, failed: true }));
 		} finally {
 			setRunning(false);
@@ -142,14 +151,30 @@ export function useConversation(onRunEnd: () => void) {
 	function answer(question: Question, given: QuestionAnswer, model: ModelSelection) {
 		const replyId = makeKey();
 		const text = answerText(question.choices, given);
+		const id = sessionId!;
 		setPendingQuestion(undefined);
+		setRefusedAnswer(undefined);
 		setMessages((current) => [
 			...current,
-			{ id: makeKey(), role: "user", blocks: [{ kind: "text", text }] },
+			{
+				id: makeKey(),
+				role: "user",
+				blocks: [{ kind: "text", text }],
+				...("confidence" in given ? { confidence: given.confidence } : {}),
+			},
 			{ id: replyId, role: "assistant", blocks: [] },
 		]);
 		const body = { questionId: question.id, answer: given, model };
-		void follow(replyId, (onEvent) => answerQuestion(sessionId!, body, onEvent));
+		// If the question is still waiting, nothing was saved, so the learner gets their card back.
+		const bringBackCard = async (message: string) => {
+			const view = await getSession(id).catch(() => undefined);
+			if (view && view.pendingQuestion?.id !== question.id) return false;
+			setMessages((current) => current.slice(0, -2));
+			setPendingQuestion(question);
+			setRefusedAnswer({ answer: given, message });
+			return true;
+		};
+		void follow(replyId, (onEvent) => answerQuestion(id, body, onEvent), bringBackCard);
 	}
 
 	const stop = () => {
@@ -163,6 +188,7 @@ export function useConversation(onRunEnd: () => void) {
 		usage,
 		context,
 		pendingQuestion,
+		refusedAnswer,
 		running,
 		runStartedAt,
 		showView,

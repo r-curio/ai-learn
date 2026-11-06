@@ -1,7 +1,7 @@
 import { Search } from "lucide-react";
 import { useState, type FormEvent, type ReactNode } from "react";
 import { Button } from "../components/button.tsx";
-import { Input } from "../components/input.tsx";
+import { Input } from "../components/form/input.tsx";
 import { Notice } from "../components/Notice.tsx";
 import type { AddableProvider, ConnectedRow } from "./useProviders.ts";
 

@@ -1,6 +1,7 @@
 import { cn } from "cn";
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import type { ChatType } from "../shared/protocol.ts";
+import { AnswerCard } from "./answer/AnswerCard.tsx";
 import { ChatView } from "./chat/ChatView.tsx";
 import { useChat } from "./chat/useChat.ts";
 import { Composer } from "./composer/Composer.tsx";
@@ -44,23 +45,21 @@ export function App() {
 	const hasModel = Boolean(modelChoice.selection);
 	const providers = useProviders(status, chat.refreshStatus);
 	const setupNeeded = status?.ready === false;
+	const waitingQuestion = running ? undefined : chat.pendingQuestion;
+	const [cardHasShown, setCardHasShown] = useState(false);
+	if (waitingQuestion && !cardHasShown) setCardHasShown(true);
+	const canAddFiles = Boolean(sessionId && !setupNeeded && hasModel && !waitingQuestion);
 
 	const attach = useCallback(
 		(dropped: File[]) => {
-			if (sessionId && !setupNeeded && hasModel) addFiles(sessionId, dropped);
+			if (sessionId && canAddFiles) addFiles(sessionId, dropped);
 		},
-		[addFiles, sessionId, setupNeeded, hasModel],
+		[addFiles, sessionId, canAddFiles],
 	);
 	const { dragging, dropHandlers } = useFileDrop(attach);
 	const hasContent = Boolean(text.trim() || files.attachments.length > 0);
 	const canSend = Boolean(
-		sessionId &&
-		status?.ready &&
-		hasModel &&
-		!running &&
-		!files.uploading &&
-		!chat.pendingQuestion &&
-		hasContent,
+		sessionId && status?.ready && hasModel && !running && !files.uploading && hasContent,
 	);
 
 	// The box can't hold focus while it's disabled, so give it focus once a saved model has loaded.
@@ -141,14 +140,7 @@ export function App() {
 								running={running}
 								runStartedAt={chat.runStartedAt}
 								canRetry={chat.canRetry}
-								pendingQuestion={chat.pendingQuestion}
-								onDontKnow={() => {
-									const question = chat.pendingQuestion;
-									if (!status?.ready || running || !question) return;
-									if (modelChoice.selection)
-										chat.answer(question, { kind: "unknown" }, modelChoice.selection);
-									else modelChoice.setPickerOpen(true);
-								}}
+								pendingQuestionId={waitingQuestion?.id}
 								chatType={chatType}
 								onChatTypeChange={setChatType}
 								onRetry={() => {
@@ -167,33 +159,52 @@ export function App() {
 										pane.show({ sessionId, attachment, citation: { ...citation } });
 								}}
 							/>
-							<Composer
-								text={text}
-								onTextChange={setText}
-								textArea={textArea}
-								isNewChat={chat.messages.length === 0}
-								drafts={files.drafts}
-								canAttach={Boolean(sessionId) && !setupNeeded && hasModel}
-								canSend={canSend}
-								running={running}
-								providers={status?.providers ?? []}
-								modelChoice={modelChoice}
-								context={chat.context}
-								onNewChat={() => void chat.startNewChat()}
-								onAddProvider={() => setView("settings")}
-								dimmed={setupNeeded}
-								needsModel={!setupNeeded && !hasModel}
-								questionPending={Boolean(chat.pendingQuestion) && !running}
-								onAddFiles={attach}
-								onRemoveDraft={files.removeDraft}
-								onSend={send}
-								onStop={chat.stop}
-								openPage={
-									openPdf && openPage
-										? { name: openPdf.attachment.name, page: openPage }
-										: undefined
-								}
-							/>
+							{waitingQuestion ? (
+								<AnswerCard
+									key={waitingQuestion.id}
+									question={waitingQuestion}
+									refused={chat.refusedAnswer}
+									dimmed={setupNeeded}
+									providers={status?.providers ?? []}
+									modelChoice={modelChoice}
+									context={chat.context}
+									onSubmit={(answer) => {
+										if (modelChoice.selection)
+											chat.answer(waitingQuestion, answer, modelChoice.selection);
+										else modelChoice.setPickerOpen(true);
+									}}
+									onNewChat={() => void chat.startNewChat()}
+									onAddProvider={() => setView("settings")}
+								/>
+							) : (
+								<Composer
+									text={text}
+									onTextChange={setText}
+									textArea={textArea}
+									isNewChat={chat.messages.length === 0}
+									drafts={files.drafts}
+									canAttach={canAddFiles}
+									canSend={canSend}
+									running={running}
+									providers={status?.providers ?? []}
+									modelChoice={modelChoice}
+									context={chat.context}
+									onNewChat={() => void chat.startNewChat()}
+									onAddProvider={() => setView("settings")}
+									dimmed={setupNeeded}
+									needsModel={!setupNeeded && !hasModel}
+									swappingIn={cardHasShown}
+									onAddFiles={attach}
+									onRemoveDraft={files.removeDraft}
+									onSend={send}
+									onStop={chat.stop}
+									openPage={
+										openPdf && openPage
+											? { name: openPdf.attachment.name, page: openPage }
+											: undefined
+									}
+								/>
+							)}
 						</div>
 						<AttachmentPane
 							target={pane.target}
@@ -208,7 +219,7 @@ export function App() {
 					</div>
 				)}
 			</SidebarInset>
-			{dragging && !setupNeeded && (
+			{dragging && canAddFiles && (
 				<div
 					className="pointer-events-none absolute inset-2.5 grid place-items-center rounded-[14px] border-2 border-dashed border-primary bg-background/88 font-semibold"
 					aria-hidden="true"

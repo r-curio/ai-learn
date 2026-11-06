@@ -1,8 +1,10 @@
+import { cn } from "cn";
 import type { MouseEvent } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { parseCitations, type Citation } from "../../shared/citations.ts";
 import type { AttachmentInfo, TranscriptMessage } from "../../shared/protocol.ts";
+import { AnsweredConfidence } from "../answer/AnsweredConfidence.tsx";
 import { Button } from "../components/button.tsx";
 import { Notice } from "../components/Notice.tsx";
 import { ActivityBlock, hasActivity } from "./ActivityBlock.tsx";
@@ -135,11 +137,26 @@ function ReplyNotice({ message, onRetry }: { message: TranscriptMessage; onRetry
 	);
 }
 
+/** The waiting question is left out, because the answer card shows it. */
+function visibleTexts(message: TranscriptMessage, pendingQuestionId?: string) {
+	return message.blocks.flatMap((block) => {
+		if (block.kind === "question") return block.id === pendingQuestionId ? [] : [block.text];
+		return block.kind === "text" ? [block.text] : [];
+	});
+}
+
+const learnerBubble = (isAnswer: boolean) =>
+	cn(
+		"rounded-2xl bg-accent px-4 py-2.5 leading-[23px]",
+		isAnswer && "flex items-center gap-4 font-medium",
+	);
+
 export function MessageView({
 	message,
 	sessionId,
 	onRetry,
 	liveSince,
+	pendingQuestionId,
 	onOpenAttachment,
 	onOpenCitation,
 }: {
@@ -148,14 +165,14 @@ export function MessageView({
 	onRetry?: () => void;
 	/** When this reply's run started, while it's still running. */
 	liveSince?: number;
+	pendingQuestionId?: string;
 	onOpenAttachment: (attachment: AttachmentInfo) => void;
 	onOpenCitation: (citation: Citation) => void;
 }) {
 	const learner = message.role === "user";
 	const showActivity = !learner && hasActivity(message, liveSince);
-	const texts = message.blocks.flatMap((block) =>
-		block.kind === "text" || block.kind === "question" ? [block.text] : [],
-	);
+	const texts = visibleTexts(message, pendingQuestionId);
+	const { confidence } = message;
 	const hasBody = texts.length > 0 || Boolean(message.notice);
 	return (
 		<article
@@ -174,11 +191,7 @@ export function MessageView({
 				/>
 			)}
 			{hasBody && (
-				<div
-					className={
-						learner ? "rounded-2xl bg-accent px-4 py-2.5 leading-[23px]" : "flex flex-col gap-3"
-					}
-				>
+				<div className={learner ? learnerBubble(confidence !== undefined) : "flex flex-col gap-3"}>
 					{texts.map((text, index) => (
 						<MessageText
 							text={text}
@@ -188,6 +201,7 @@ export function MessageView({
 							key={index}
 						/>
 					))}
+					{learner && confidence !== undefined && <AnsweredConfidence confidence={confidence} />}
 					<ReplyNotice message={message} onRetry={onRetry} />
 				</div>
 			)}

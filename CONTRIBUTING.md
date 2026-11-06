@@ -86,7 +86,7 @@ We follow the [Next.js guidance](https://nextjs.org/docs/app/getting-started/css
 - **`src/web/globals.css`** is the only global stylesheet, imported once in `main.tsx`. Add to it only what applies to the whole app.
 - **CSS Modules** (`name.module.css`) are for what classes can't reach, like Markdown output.
 
-Put a component in `src/web/components/` when more than one feature could use it and it knows nothing about any feature. Everything else stays in its feature folder, like `chat/` or `composer/`.
+Put a component in `src/web/components/` when more than one feature could use it and it knows nothing about any feature. Fields the learner fills in go in its `form/` subfolder, so move a new one there after adding it. Everything else stays in its feature folder, like `chat/` or `composer/`.
 
 Build every control from a [shadcn/ui](https://ui.shadcn.com) component, and add one with `npx shadcn add <name>`. `DESIGN.md` holds the design rules, including which component each element uses and how it moves. Those files keep shadcn's lowercase names, like `button.tsx`, and our own components are PascalCase, like `Notice.tsx`. After adding one:
 
