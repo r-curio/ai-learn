@@ -11,6 +11,7 @@ import {
 } from "@earendil-works/pi-ai";
 import type { Engine } from "./engine.ts";
 import { engineFromModels } from "./model-catalog.ts";
+import { ASK_QUESTION } from "./tools.ts";
 
 const FAKE_INPUT: ("text" | "image")[] = ["text", "image"];
 const FAKE_MODELS = [
@@ -53,6 +54,17 @@ function createForcedReplies() {
 				`The model compares each query with every key. ${tag} Want to try it?`,
 			);
 		}
+		if (text.includes("fake:ask"))
+			return fauxAssistantMessage(
+				[
+					fauxText("Before we do, a quick check."),
+					fauxToolCall(ASK_QUESTION, {
+						question: 'In "the bank of the river", which vector says what "bank" is looking for?',
+						choices: ["The key", "The query", "The value", "Its position in the sentence"],
+					}),
+				],
+				{ stopReason: "toolUse" },
+			);
 		if (text.includes("fake:plain")) return fauxAssistantMessage("**Fake model** plain reply.");
 		if (text.includes("fake:long"))
 			return fauxAssistantMessage(Array(16).fill(LONG_PARAGRAPH).join("\n\n"));
@@ -80,6 +92,8 @@ export function createDemoEngine(): Engine {
 	const forcedReply = createForcedReplies();
 	const respond: FauxResponseFactory = (context) => {
 		const last = context.messages.at(-1);
+		if (last?.role === "toolResult" && last.toolName === ASK_QUESTION)
+			return fauxAssistantMessage("Thanks for answering. **Fake model** reply.");
 		if (last?.role === "toolResult")
 			return fauxAssistantMessage("I read that attachment with a tool. **Fake model** reply.");
 		const parts = last?.role === "user" && Array.isArray(last.content) ? last.content : [];

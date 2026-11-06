@@ -29,6 +29,8 @@ interface ComposerProps {
 	dimmed: boolean;
 	/** Nothing can be written until a model is chosen. The model menu stays usable. */
 	needsModel: boolean;
+	/** The tutor is waiting on an answer, so a new message can't be written. */
+	questionPending: boolean;
 	onAddFiles: (files: File[]) => void;
 	onRemoveDraft: (key: string) => void;
 	onSend: () => void;
@@ -68,12 +70,13 @@ const attachPastedFiles =
 export function Composer(props: ComposerProps) {
 	const { text, onTextChange, textArea, isNewChat, drafts, canAttach, canSend, running } = props;
 	const { providers, modelChoice, context, onNewChat, onAddProvider, dimmed, needsModel } = props;
-	const { onAddFiles, onRemoveDraft } = props;
+	const { onAddFiles, onRemoveDraft, questionPending } = props;
 	const { onSend, onStop, openPage } = props;
 
 	const card = useRef<HTMLDivElement>(null);
 	const prompt = isNewChat ? "Ask the tutor anything" : "Reply to the tutor";
-	const placeholder = needsModel ? "Choose a model to start" : prompt;
+	const waitingPrompt = questionPending ? "Answer the tutor's question first" : prompt;
+	const placeholder = needsModel ? "Choose a model to start" : waitingPrompt;
 
 	return (
 		<form
@@ -97,7 +100,7 @@ export function Composer(props: ComposerProps) {
 					className="block max-h-[200px] min-h-0 resize-none rounded-none border-0 p-0 text-[15px] leading-[18px] transition-none focus-visible:ring-0 disabled:bg-transparent disabled:opacity-100"
 					aria-label="Message"
 					rows={1}
-					disabled={dimmed || needsModel}
+					disabled={dimmed || needsModel || questionPending}
 					placeholder={placeholder}
 					value={text}
 					onChange={(event) => onTextChange(event.target.value)}

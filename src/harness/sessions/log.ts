@@ -8,7 +8,7 @@ import type {
 } from "@earendil-works/pi-ai";
 import { appendFile, mkdir, readFile, truncate } from "node:fs/promises";
 import { dirname } from "node:path";
-import type { ChatType } from "../../shared/protocol.ts";
+import type { ChatType, QuestionAnswer } from "../../shared/protocol.ts";
 import type { AttachmentStore } from "../attachments.ts";
 
 export const LOG_VERSION = 1;
@@ -35,6 +35,8 @@ export interface LogMessage {
 	display?: { text: string; attachmentIds: string[] };
 	/** On a reply with text: how long the run had taken when that text started. Never sent to the model. */
 	workedMs?: number;
+	/** On the result of a question: the learner's answer, as they gave it. The model gets the result's text. */
+	answer?: QuestionAnswer;
 }
 
 /** Marks a failed reply as replaced, so it's no longer shown or resent. */

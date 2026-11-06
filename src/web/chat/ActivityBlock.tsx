@@ -20,7 +20,9 @@ type TraceBlock = Exclude<TranscriptBlock, { kind: "text" }>;
 type ToolBlock = Extract<TranscriptBlock, { kind: "tool" }>;
 
 const traceOf = (message: TranscriptMessage) =>
-	message.blocks.filter((block): block is TraceBlock => block.kind !== "text");
+	message.blocks.filter(
+		(block): block is TraceBlock => block.kind !== "text" && block.kind !== "question",
+	);
 
 /** A plain reply saved before this block existed has nothing to report, so it shows nothing. */
 export const hasActivity = (message: TranscriptMessage, liveSince?: number) =>

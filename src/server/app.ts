@@ -40,6 +40,29 @@ const messageInput = z.object({
 
 const retryInput = z.object({ model: modelSelection });
 
+const confidence = z.number().int().min(0).max(100);
+const reasoning = z.string().max(200_000).optional();
+
+const answerInput = z.object({
+	questionId: z.string(),
+	answer: z.discriminatedUnion("kind", [
+		z.strictObject({
+			kind: z.literal("choice"),
+			choice: z.number().int().min(0),
+			confidence,
+			reasoning,
+		}),
+		z.strictObject({
+			kind: z.literal("own"),
+			text: z.string().trim().min(1).max(200_000),
+			confidence,
+			reasoning,
+		}),
+		z.strictObject({ kind: z.literal("unknown"), reasoning }),
+	]),
+	model: modelSelection,
+});
+
 const UNAVAILABLE_MODEL = "That model or effort isn't available.";
 
 const CSP =
@@ -207,6 +230,24 @@ export function createApp({ engine, dataDir, token, webRoot }: AppOptions): Hono
 		const choice = await engine.resolve(parsed.data.model);
 		if (!choice) return c.json({ error: UNAVAILABLE_MODEL }, 400);
 		return streamRun(c, session, (onEvent) => session.retry(onEvent, choice));
+	});
+
+	app.post("/api/sessions/:id/answer", async (c) => {
+		const session = await store.get(c.req.param("id"));
+		if (!session) return c.json({ error: "Session not found." }, 404);
+		const status = await engine.status();
+		if (!status.ready) return c.json({ error: status.reason }, 503);
+		const parsed = answerInput.safeParse(await c.req.json().catch(() => undefined));
+		if (!parsed.success) return c.json({ error: "Invalid answer." }, 400);
+		const { questionId, answer, model } = parsed.data;
+		const question = session.pendingQuestion;
+		if (question?.id !== questionId)
+			return c.json({ error: "That question isn't waiting for an answer." }, 409);
+		if (answer.kind === "choice" && answer.choice >= question.choices.length)
+			return c.json({ error: "Invalid answer." }, 400);
+		const choice = await engine.resolve(model);
+		if (!choice) return c.json({ error: UNAVAILABLE_MODEL }, 400);
+		return streamRun(c, session, (onEvent) => session.answer(questionId, answer, onEvent, choice));
 	});
 
 	app.post("/api/sessions/:id/abort", async (c) => {

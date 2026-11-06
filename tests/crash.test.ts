@@ -88,3 +88,72 @@ test(
 		}
 	},
 );
+
+test("a question survives a crash, and so does the answer to it", { timeout: 30_000 }, async () => {
+	const dataDir = await tempDir();
+	const url = (id: string, path = "") => `${BASE}/api/sessions/${id}${path}`;
+	const read = async (id: string) =>
+		(await (await fetch(url(id), { headers })).json()) as {
+			canRetry: boolean;
+			pendingQuestion?: { id: string; choices: string[] };
+			messages: { role: string; blocks: { text?: string }[] }[];
+		};
+
+	const first = await startServer(dataDir);
+	let id: string;
+	try {
+		id = (
+			(await (await fetch(`${BASE}/api/sessions`, { method: "POST", headers })).json()) as {
+				id: string;
+			}
+		).id;
+		const asked = await fetch(url(id, "/messages"), {
+			method: "POST",
+			headers,
+			body: JSON.stringify({ text: "fake:ask", model: FAKE_MODEL }),
+		});
+		await asked.text();
+	} finally {
+		first.kill("SIGKILL");
+		await once(first, "exit");
+	}
+
+	const second = await startServer(dataDir);
+	try {
+		const waiting = await read(id);
+		assert.equal(waiting.pendingQuestion?.choices[1], "The query");
+		assert.equal(waiting.canRetry, false);
+		const answering = await fetch(url(id, "/answer"), {
+			method: "POST",
+			headers,
+			body: JSON.stringify({
+				questionId: waiting.pendingQuestion?.id,
+				answer: { kind: "choice", choice: 1, confidence: 70 },
+				model: FAKE_MODEL,
+			}),
+		});
+		// The answer is saved before the reply starts, so a crash here can't lose it.
+		await answering.body!.getReader().read();
+	} finally {
+		second.kill("SIGKILL");
+		await once(second, "exit");
+	}
+
+	const third = await startServer(dataDir);
+	try {
+		const interrupted = await read(id);
+		assert.equal(interrupted.pendingQuestion, undefined);
+		assert.equal(interrupted.canRetry, true);
+		assert.equal(interrupted.messages[2]?.blocks[0]?.text, "The query");
+		const retried = await fetch(url(id, "/retry"), {
+			method: "POST",
+			headers,
+			body: JSON.stringify({ model: FAKE_MODEL }),
+		});
+		assert.match(await retried.text(), /"stopReason":"stop"/);
+		assert.equal((await read(id)).canRetry, false);
+	} finally {
+		third.kill("SIGKILL");
+		await once(third, "exit");
+	}
+});

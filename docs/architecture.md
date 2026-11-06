@@ -31,7 +31,8 @@ Files and SQLite index       Model provider, through Pi
 2. The learner sends a message, and the server hands it to the session.
 3. The session saves the message to the session log before calling the model.
 4. Pi runs the model and any tools. Text streams to the UI as it arrives, and each finished reply and tool result is saved before the next step starts.
-5. When the run ends, the UI replaces its streamed copy with the server's transcript, which is built from the log.
+5. If the tutor asks a question, the run ends there. The learner's answer is saved, and a new run continues the same turn.
+6. When the run ends, the UI replaces its streamed copy with the server's transcript, which is built from the log.
 
 ## Where things live
 

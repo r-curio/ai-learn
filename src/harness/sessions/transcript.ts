@@ -3,13 +3,15 @@ import type {
 	AttachmentInfo,
 	ContextUsage,
 	ModelRef,
+	QuestionAnswer,
 	TranscriptBlock,
 	TranscriptMessage,
 	UsageSummary,
 } from "../../shared/protocol.ts";
 import { keepCitations, stripCitations, type Citation } from "../../shared/citations.ts";
-import { noticeFor } from "../../shared/protocol.ts";
+import { answerText, noticeFor } from "../../shared/protocol.ts";
 import type { LogEntry } from "./log.ts";
+import { questionIn } from "./questions.ts";
 import { toolLabels } from "../tools.ts";
 
 const INTERRUPTED_NOTICE = "The app closed before this reply finished.";
@@ -19,16 +21,19 @@ type ToolBlock = Extract<TranscriptBlock, { kind: "tool" }>;
 /** Add one model step's reasoning, text, and tool calls. Redacted reasoning has no text to show. */
 function addReplyParts(
 	blocks: TranscriptBlock[],
-	content: AssistantMessage["content"],
+	reply: AssistantMessage,
 	toolBlocks: Map<string, ToolBlock>,
 	attachmentInfo: (id: string) => AttachmentInfo | undefined,
 	citationIsReal: (citation: Citation) => boolean,
 ): void {
-	for (const part of content) {
+	const question = questionIn(reply);
+	for (const part of reply.content) {
 		if (part.type === "text" && part.text) {
 			blocks.push({ kind: "text", text: keepCitations(part.text, citationIsReal) });
 		} else if (part.type === "thinking" && part.thinking.trim()) {
 			blocks.push({ kind: "reasoning", text: part.thinking });
+		} else if (part.type === "toolCall" && part.id === question?.id) {
+			blocks.push({ kind: "question", ...question });
 		} else if (part.type === "toolCall") {
 			const { label } = toolLabels(part.name, part.arguments, (id) => attachmentInfo(id)?.name);
 			const block: ToolBlock = { kind: "tool", id: part.id, label, state: "running" };
@@ -38,13 +43,34 @@ function addReplyParts(
 	}
 }
 
+/** A learner's answer as they see it, using the choices from the reply that asked. */
+function answerMessage(
+	id: string,
+	questionId: string,
+	answer: QuestionAnswer,
+	asked: TranscriptMessage | undefined,
+): TranscriptMessage {
+	const question = asked?.blocks.find(
+		(block) => block.kind === "question" && block.id === questionId,
+	);
+	const choices = question?.kind === "question" ? question.choices : [];
+	return {
+		id,
+		role: "user",
+		blocks: [{ kind: "text", text: answerText(choices, answer) }],
+		...("confidence" in answer ? { confidence: answer.confidence } : {}),
+	};
+}
+
 /** Replies saved before `workedMs` was recorded estimate it, but only if there's a trace to head. */
 function setWorkedTime(
 	message: TranscriptMessage,
 	saved: number | undefined,
 	turn: { start: number; end: number },
 ): void {
-	const hasTrace = message.blocks.some((block) => block.kind !== "text");
+	const hasTrace = message.blocks.some(
+		(block) => block.kind !== "text" && block.kind !== "question",
+	);
 	const workedMs = saved ?? (hasTrace ? turn.end - turn.start : undefined);
 	if (workedMs === undefined) delete message.workedMs;
 	else message.workedMs = workedMs;
@@ -96,6 +122,16 @@ export function buildTranscript(
 			return;
 		}
 
+		// An answer sits between two parts of a turn, so the tutor's next words start a new reply.
+		if (message.role === "toolResult" && entry.answer) {
+			messages.push(answerMessage(`m${index}`, message.toolCallId, entry.answer, current));
+			current = undefined;
+			failedFrom = undefined;
+			toolBlocks = new Map();
+			turn.start = turn.end = message.timestamp;
+			return;
+		}
+
 		if (!current) {
 			current = { id: `m${index}`, role: "assistant", blocks: [] };
 			messages.push(current);
@@ -103,7 +139,7 @@ export function buildTranscript(
 
 		if (message.role === "assistant") {
 			const start = current.blocks.length;
-			addReplyParts(current.blocks, message.content, toolBlocks, attachmentInfo, citationIsReal);
+			addReplyParts(current.blocks, message, toolBlocks, attachmentInfo, citationIsReal);
 			turn.end = message.timestamp + (message.durationMs ?? 0);
 			const ending = noticeFor(message.stopReason, message.errorMessage);
 			if (ending) {
@@ -138,7 +174,9 @@ export function markInterrupted(messages: TranscriptMessage[]): void {
 export function searchTextOf(entries: LogEntry[]): string {
 	return buildTranscript(entries, () => undefined)
 		.flatMap((message) => message.blocks)
-		.flatMap((block) => (block.kind === "text" ? [stripCitations(block.text)] : []))
+		.flatMap((block) =>
+			block.kind === "text" || block.kind === "question" ? [stripCitations(block.text)] : [],
+		)
 		.join("\n");
 }
 

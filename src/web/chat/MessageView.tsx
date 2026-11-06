@@ -153,7 +153,9 @@ export function MessageView({
 }) {
 	const learner = message.role === "user";
 	const showActivity = !learner && hasActivity(message, liveSince);
-	const texts = message.blocks.flatMap((block) => (block.kind === "text" ? [block.text] : []));
+	const texts = message.blocks.flatMap((block) =>
+		block.kind === "text" || block.kind === "question" ? [block.text] : [],
+	);
 	const hasBody = texts.length > 0 || Boolean(message.notice);
 	return (
 		<article

@@ -1,17 +1,20 @@
 import { useCallback, useState } from "react";
 import {
+	answerText,
 	noticeFor,
 	type AttachmentInfo,
 	type ChatType,
 	type ContextUsage,
 	type ModelSelection,
 	type OpenPage,
+	type Question,
+	type QuestionAnswer,
 	type RunEvent,
 	type SessionView,
 	type TranscriptMessage,
 	type UsageSummary,
 } from "../../shared/protocol.ts";
-import { abortRun, getSession, retryRun, sendMessage } from "../api.ts";
+import { abortRun, answerQuestion, getSession, retryRun, sendMessage } from "../api.ts";
 import { applyRunEvent } from "./runEvents.ts";
 
 let nextKey = 0;
@@ -39,6 +42,7 @@ export function useConversation(onRunEnd: () => void) {
 	const [canRetry, setCanRetry] = useState(false);
 	const [usage, setUsage] = useState<UsageSummary>();
 	const [context, setContext] = useState<ContextUsage>();
+	const [pendingQuestion, setPendingQuestion] = useState<Question>();
 	const [running, setRunning] = useState(false);
 	const [runStartedAt, setRunStartedAt] = useState(0);
 
@@ -48,6 +52,7 @@ export function useConversation(onRunEnd: () => void) {
 		setCanRetry(view.canRetry);
 		setUsage(view.usage);
 		setContext(view.context);
+		setPendingQuestion(view.pendingQuestion);
 	}, []);
 
 	const showEmpty = useCallback((id: string) => {
@@ -56,6 +61,7 @@ export function useConversation(onRunEnd: () => void) {
 		setCanRetry(false);
 		setUsage(undefined);
 		setContext(undefined);
+		setPendingQuestion(undefined);
 	}, []);
 
 	const update = (id: string, change: (message: TranscriptMessage) => TranscriptMessage) =>
@@ -133,6 +139,19 @@ export function useConversation(onRunEnd: () => void) {
 		void follow(replyId, (onEvent) => retryRun(sessionId!, model, onEvent));
 	}
 
+	function answer(question: Question, given: QuestionAnswer, model: ModelSelection) {
+		const replyId = makeKey();
+		const text = answerText(question.choices, given);
+		setPendingQuestion(undefined);
+		setMessages((current) => [
+			...current,
+			{ id: makeKey(), role: "user", blocks: [{ kind: "text", text }] },
+			{ id: replyId, role: "assistant", blocks: [] },
+		]);
+		const body = { questionId: question.id, answer: given, model };
+		void follow(replyId, (onEvent) => answerQuestion(sessionId!, body, onEvent));
+	}
+
 	const stop = () => {
 		if (sessionId) void abortRun(sessionId);
 	};
@@ -143,12 +162,14 @@ export function useConversation(onRunEnd: () => void) {
 		canRetry,
 		usage,
 		context,
+		pendingQuestion,
 		running,
 		runStartedAt,
 		showView,
 		showEmpty,
 		send,
 		retry,
+		answer,
 		stop,
 	};
 }
