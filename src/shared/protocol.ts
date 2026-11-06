@@ -85,10 +85,19 @@ export interface EngineStatus {
 	reason?: string;
 }
 
+export const CHAT_TYPES = ["learning", "practice"] as const;
+export type ChatType = (typeof CHAT_TYPES)[number];
+
+/** The type of a saved chat. Chats from before types existed have none, and count as Learning. */
+export function chatTypeOf(saved: unknown): ChatType {
+	return saved === "practice" ? "practice" : "learning";
+}
+
 export interface SessionSummary {
 	id: string;
 	title: string;
 	updatedAt: number;
+	chatType: ChatType;
 }
 
 export interface SnippetPart {

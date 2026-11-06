@@ -1,5 +1,6 @@
 import { cn } from "cn";
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import type { ChatType } from "../shared/protocol.ts";
 import { ChatView } from "./chat/ChatView.tsx";
 import { useChat } from "./chat/useChat.ts";
 import { Composer } from "./composer/Composer.tsx";
@@ -25,6 +26,7 @@ export function App() {
 	const textArea = useRef<HTMLTextAreaElement>(null);
 	const files = useDrafts();
 	const [view, setView] = useState<RailView>("chat");
+	const [chatType, setChatType] = useState<ChatType>("learning");
 	const { clearDrafts, addFiles } = files;
 	const pane = useAttachmentPane();
 	const { close: closePane } = pane;
@@ -32,6 +34,7 @@ export function App() {
 	const onChatChange = useCallback(() => {
 		clearDrafts();
 		setText("");
+		setChatType("learning");
 		closePane();
 	}, [clearDrafts, closePane]);
 	const onReady = useCallback(() => textArea.current?.focus(), []);
@@ -61,7 +64,7 @@ export function App() {
 
 	function send() {
 		if (!canSend || !modelChoice.selection) return;
-		chat.send(text, files.attachments, modelChoice.selection);
+		chat.send(text, files.attachments, modelChoice.selection, chatType);
 		setText("");
 		clearDrafts();
 	}
@@ -126,6 +129,8 @@ export function App() {
 								running={running}
 								runStartedAt={chat.runStartedAt}
 								canRetry={chat.canRetry}
+								chatType={chatType}
+								onChatTypeChange={setChatType}
 								onRetry={() => {
 									if (!status?.ready || running) return;
 									if (modelChoice.selection) chat.retry(modelChoice.selection);

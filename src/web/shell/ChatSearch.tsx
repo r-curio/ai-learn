@@ -65,9 +65,12 @@ export function ChatSnippet({ parts }: { parts: SnippetPart[] }) {
 export function SearchStatus({
 	failed,
 	found,
+	typeLabel,
 }: {
 	failed: boolean;
 	found?: { query: string; results: SearchResult[] };
+	/** Set while the chat type filter narrows the results. */
+	typeLabel?: string;
 }) {
 	const className = "px-2.5 text-[14px] leading-[18px] text-muted-foreground";
 	if (failed)
@@ -81,7 +84,7 @@ export function SearchStatus({
 	if (count === 0)
 		return (
 			<p role="status" className={className}>
-				No chats match "{found.query}".
+				No {typeLabel ? `${typeLabel} ` : ""}chats match "{found.query}".
 			</p>
 		);
 	return (

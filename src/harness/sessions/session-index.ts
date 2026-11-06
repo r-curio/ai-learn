@@ -1,13 +1,14 @@
 import { mkdirSync, rmSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import { join } from "node:path";
-import type { SearchResult, SessionSummary } from "../../shared/protocol.ts";
+import { chatTypeOf, type SearchResult, type SessionSummary } from "../../shared/protocol.ts";
 import { MATCH_END, MATCH_START, snippetParts, stripMatchMarkers } from "./session-search.ts";
 
 const SCHEMA = `CREATE TABLE IF NOT EXISTS sessions (
 	id TEXT PRIMARY KEY,
 	title TEXT NOT NULL,
-	updated_at INTEGER NOT NULL
+	updated_at INTEGER NOT NULL,
+	chat_type TEXT NOT NULL DEFAULT 'learning'
 )`;
 
 /** `updated_at` is the summary date the text was indexed at, so a launch can skip unchanged chats. */
@@ -21,11 +22,19 @@ const SEARCH_SCHEMA = `CREATE VIRTUAL TABLE IF NOT EXISTS session_search USING f
 /** Enough to fill the sidebar's one line after `snippetParts` shortens the start. */
 const SNIPPET_TOKENS = 12;
 
+/** An index from before chat types lacks the column. The launch sync fills it from the folders. */
+function addChatTypeColumn(db: DatabaseSync): void {
+	const columns = db.prepare("PRAGMA table_info(sessions)").all() as unknown as { name: string }[];
+	if (columns.some((column) => column.name === "chat_type")) return;
+	db.exec("ALTER TABLE sessions ADD COLUMN chat_type TEXT NOT NULL DEFAULT 'learning'");
+}
+
 function open(path: string): DatabaseSync {
 	const db = new DatabaseSync(path);
 	try {
 		db.exec(SCHEMA);
 		db.exec(SEARCH_SCHEMA);
+		addChatTypeColumn(db);
 		return db;
 	} catch (error) {
 		db.close();
@@ -56,10 +65,13 @@ export class SessionIndex {
 	upsert(summary: SessionSummary): void {
 		this.db
 			.prepare(
-				`INSERT INTO sessions (id, title, updated_at) VALUES (?, ?, ?)
-				ON CONFLICT (id) DO UPDATE SET title = excluded.title, updated_at = excluded.updated_at`,
+				`INSERT INTO sessions (id, title, updated_at, chat_type) VALUES (?, ?, ?, ?)
+				ON CONFLICT (id) DO UPDATE SET
+					title = excluded.title,
+					updated_at = excluded.updated_at,
+					chat_type = excluded.chat_type`,
 			)
-			.run(summary.id, summary.title, summary.updatedAt);
+			.run(summary.id, summary.title, summary.updatedAt, summary.chatType);
 	}
 
 	remove(id: string): void {
@@ -95,7 +107,7 @@ export class SessionIndex {
 	search(ftsQuery: string): SearchResult[] {
 		const rows = this.db
 			.prepare(
-				`SELECT s.id, s.title, s.updated_at,
+				`SELECT s.id, s.title, s.updated_at, s.chat_type,
 					snippet(session_search, 3, ?, ?, '…', ${SNIPPET_TOKENS}) AS snippet
 				FROM session_search CROSS JOIN sessions s ON s.id = session_search.session_id
 				WHERE session_search MATCH ?
@@ -105,12 +117,14 @@ export class SessionIndex {
 			id: string;
 			title: string;
 			updated_at: number;
+			chat_type: string;
 			snippet: string;
 		}[];
 		return rows.map((row) => ({
 			id: row.id,
 			title: row.title,
 			updatedAt: row.updated_at,
+			chatType: chatTypeOf(row.chat_type),
 			snippet: snippetParts(row.snippet),
 		}));
 	}
@@ -136,8 +150,13 @@ export class SessionIndex {
 
 	list(): SessionSummary[] {
 		const rows = this.db
-			.prepare("SELECT id, title, updated_at FROM sessions ORDER BY updated_at DESC")
-			.all() as unknown as { id: string; title: string; updated_at: number }[];
-		return rows.map((row) => ({ id: row.id, title: row.title, updatedAt: row.updated_at }));
+			.prepare("SELECT id, title, updated_at, chat_type FROM sessions ORDER BY updated_at DESC")
+			.all() as unknown as { id: string; title: string; updated_at: number; chat_type: string }[];
+		return rows.map((row) => ({
+			id: row.id,
+			title: row.title,
+			updatedAt: row.updated_at,
+			chatType: chatTypeOf(row.chat_type),
+		}));
 	}
 }

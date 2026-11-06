@@ -3,7 +3,14 @@ import type { AssistantMessage, Message } from "@earendil-works/pi-ai";
 import { randomUUID } from "node:crypto";
 import { rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { RunEvent, SessionSummary, SessionView, UsageSummary } from "../../shared/protocol.ts";
+import {
+	chatTypeOf,
+	type ChatType,
+	type RunEvent,
+	type SessionSummary,
+	type SessionView,
+	type UsageSummary,
+} from "../../shared/protocol.ts";
 import { AttachmentStore } from "../attachments.ts";
 import type { Engine, ResolvedModel } from "../engine.ts";
 import { LOG_VERSION, LogWriter, readLog, toStored, type LogEntry, type LogHeader } from "./log.ts";
@@ -57,6 +64,7 @@ export class Session {
 	private readonly entries: LogEntry[];
 	private readonly usage: UsageSummary;
 	private readonly systemPrompt: string;
+	private chatType: ChatType;
 	private running = false;
 
 	constructor(engine: Engine, dataDir: string, restored?: Restored) {
@@ -69,6 +77,7 @@ export class Session {
 		const header = this.entries[0] as LogHeader | undefined;
 		// A session keeps the prompt it started with, so old history replays exactly.
 		this.systemPrompt = header?.systemPrompt ?? SYSTEM_PROMPT;
+		this.chatType = chatTypeOf(header?.chatType);
 		this.agent = new Agent({
 			initialState: {
 				systemPrompt: this.systemPrompt,
@@ -117,6 +126,11 @@ export class Session {
 		return this.entries.length > 0;
 	}
 
+	/** Set the type before the first message. It's saved in the header, so it can't change after. */
+	chooseType(chatType: ChatType): void {
+		if (!this.hasContent) this.chatType = chatType;
+	}
+
 	private async record(entry: LogEntry): Promise<void> {
 		if (this.entries.length === 0) {
 			const header: LogHeader = {
@@ -125,6 +139,7 @@ export class Session {
 				id: this.id,
 				createdAt: Date.now(),
 				systemPrompt: this.systemPrompt,
+				chatType: this.chatType,
 			};
 			this.entries.push(header);
 			await this.log.append(header);
@@ -143,7 +158,7 @@ export class Session {
 	}
 
 	summary(): SessionSummary {
-		return { id: this.id, title: this.title(), updatedAt: Date.now() };
+		return { id: this.id, title: this.title(), updatedAt: Date.now(), chatType: this.chatType };
 	}
 
 	searchText(): string {
