@@ -2,10 +2,10 @@ import { cn } from "cn";
 import { FileText } from "lucide-react";
 import { useRef, type ClipboardEvent, type KeyboardEvent, type RefObject } from "react";
 import type { ContextUsage, ProviderOption } from "../../shared/protocol.ts";
-import { Button } from "../components/button.tsx";
 import { Textarea } from "../components/form/textarea.tsx";
-import { Notice } from "../components/Notice.tsx";
+import { useHoldToTalk } from "../voice/useHoldToTalk.ts";
 import type { VoiceRecorder } from "../voice/useVoiceRecorder.ts";
+import { VoiceNotice } from "../voice/VoiceNotice.tsx";
 import { ComposerControls } from "./ComposerControls.tsx";
 import { DraftChip } from "./DraftChip.tsx";
 import type { Draft } from "./useDrafts.ts";
@@ -67,30 +67,6 @@ function DraftList({ drafts, onRemove }: { drafts: Draft[]; onRemove: (key: stri
 	);
 }
 
-/** Why voice didn't work. Set-up problems are muted, with a way to Settings, and failures are red. */
-function VoiceNotice({
-	voice,
-	onOpenSettings,
-}: {
-	voice: VoiceRecorder;
-	onOpenSettings: () => void;
-}) {
-	const { problem } = voice;
-	if (!problem) return null;
-	const action = problem.settings ? (
-		<Button variant="outline" size="xs" onClick={onOpenSettings}>
-			Open Voice settings
-		</Button>
-	) : undefined;
-	return (
-		<div className="mt-3">
-			<Notice error={!problem.settings} action={action}>
-				{problem.message}
-			</Notice>
-		</div>
-	);
-}
-
 const sendOnEnter = (onSend: () => void) => (event: KeyboardEvent<HTMLTextAreaElement>) => {
 	if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
 		event.preventDefault();
@@ -111,8 +87,8 @@ export function Composer(props: ComposerProps) {
 	const { text, onTextChange, textArea, isNewChat, drafts, canAttach, canSend, running } = props;
 	const { providers, modelChoice, context, onNewChat, onAddProvider, dimmed, needsModel } = props;
 	const { onAddFiles, onRemoveDraft, swappingIn, onSend, onStop, openPage, voice } = props;
-
 	const card = useRef<HTMLDivElement>(null);
+	useHoldToTalk({ voice, enabled: !dimmed && !needsModel, fallback: "composer" });
 	const prompt = isNewChat ? "Ask the tutor anything" : "Reply to the tutor";
 
 	return (
@@ -134,6 +110,7 @@ export function Composer(props: ComposerProps) {
 					ref={textArea}
 					className="block max-h-[200px] min-h-0 resize-none rounded-none border-0 p-0 text-[15px] leading-[18px] transition-none focus-visible:ring-0 disabled:bg-transparent disabled:opacity-100"
 					aria-label="Message"
+					data-dictation="composer"
 					rows={1}
 					disabled={dimmed || needsModel}
 					placeholder={needsModel ? "Choose a model to start" : prompt}
@@ -143,7 +120,7 @@ export function Composer(props: ComposerProps) {
 					onPaste={attachPastedFiles(onAddFiles)}
 					autoFocus
 				/>
-				<VoiceNotice voice={voice} onOpenSettings={props.onOpenVoiceSettings} />
+				<VoiceNotice className="mt-3" voice={voice} onOpenSettings={props.onOpenVoiceSettings} />
 				<ComposerControls
 					canAttach={canAttach}
 					canSend={canSend}

@@ -1,6 +1,6 @@
 import { cn } from "cn";
 import { Pencil } from "lucide-react";
-import { useRef } from "react";
+import { useRef, type ReactNode } from "react";
 import { flushSync } from "react-dom";
 import { Button } from "../components/button.tsx";
 import { OwnAnswer } from "./OwnAnswer.tsx";
@@ -12,11 +12,14 @@ const OTHER_ANSWER = "h-[38px] gap-2 px-2.5 text-[14px] leading-[18px] font-norm
 export function OtherAnswers({
 	selection,
 	ownText,
+	recording,
 	onSelect,
 	onOwnTextChange,
 }: {
 	selection: Selection;
 	ownText: string;
+	/** Shown in the own answer while words are spoken into it. */
+	recording?: ReactNode;
 	onSelect: (selection: Selection) => void;
 	onOwnTextChange: (text: string) => void;
 }) {
@@ -33,7 +36,14 @@ export function OtherAnswers({
 	}
 
 	if (selection === "own")
-		return <OwnAnswer text={ownText} onTextChange={onOwnTextChange} onClose={closeOwnAnswer} />;
+		return (
+			<OwnAnswer
+				text={ownText}
+				recording={recording}
+				onTextChange={onOwnTextChange}
+				onClose={closeOwnAnswer}
+			/>
+		);
 
 	return (
 		<div className="grid flex-none grid-cols-2 gap-1.5">

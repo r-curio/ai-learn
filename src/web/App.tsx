@@ -17,14 +17,10 @@ import { TopBar } from "./shell/TopBar.tsx";
 import { useSidebarPreference } from "./shell/useSidebarPreference.ts";
 import { AttachmentPane } from "./viewer/AttachmentPane.tsx";
 import { useAttachmentPane } from "./viewer/useAttachmentPane.ts";
-import { useVoiceRecorder } from "./voice/useVoiceRecorder.ts";
+import { addWords, useVoiceRecorder } from "./voice/useVoiceRecorder.ts";
 
 /** The sidebar narrows while an attachment is open, to leave room for the chat and the page. */
 const NARROW_SIDEBAR = { "--sidebar-width": "216px" } as CSSProperties;
-
-/** Spoken words go at the end of the box, a space after anything already there. */
-const addWords = (text: string, words: string) =>
-	!text || /\s$/.test(text) ? text + words : `${text} ${words}`;
 
 export function App() {
 	const [text, setText] = useState("");
@@ -98,6 +94,11 @@ export function App() {
 		setText("");
 		clearDrafts();
 		voice.dismiss();
+	}
+
+	function openVoiceSettings() {
+		setSettingsPage("voice");
+		setView("settings");
 	}
 
 	function openProviders() {
@@ -199,6 +200,8 @@ export function App() {
 									}}
 									onNewChat={() => void chat.startNewChat()}
 									onAddProvider={openProviders}
+									voiceEngines={status?.voice ?? []}
+									onOpenVoiceSettings={openVoiceSettings}
 								/>
 							) : (
 								<Composer
@@ -216,10 +219,7 @@ export function App() {
 									onNewChat={() => void chat.startNewChat()}
 									onAddProvider={openProviders}
 									voice={voice}
-									onOpenVoiceSettings={() => {
-										setSettingsPage("voice");
-										setView("settings");
-									}}
+									onOpenVoiceSettings={openVoiceSettings}
 									dimmed={setupNeeded}
 									needsModel={!setupNeeded && !hasModel}
 									swappingIn={cardHasShown}

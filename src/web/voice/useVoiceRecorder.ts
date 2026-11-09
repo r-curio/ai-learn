@@ -9,6 +9,10 @@ const silence = () => Array<number>(BARS).fill(0);
 
 export type VoicePhase = "idle" | "starting" | "recording" | "finishing";
 
+/** Spoken words go at the end of the box, a space after anything already there. */
+export const addWords = (text: string, words: string) =>
+	!text || /\s$/.test(text) ? text + words : `${text} ${words}`;
+
 /** Something the learner should know about voice. `settings` means Settings → Voice can fix it. */
 export interface VoiceProblem {
 	message: string;
