@@ -23,6 +23,9 @@ async function call(path: string, apiKey: string, init: RequestInit = {}): Promi
 	return response.json().catch(() => undefined);
 }
 
+/** Deepgram also lists retired and test models, so only the current families are offered. */
+const CURRENT_FAMILY = /^(nova|whisper)-/;
+
 /** The models that transcribe recordings, rather than only live audio, with the default first. */
 export async function deepgramModels(apiKey: string): Promise<VoiceModels> {
 	if (modelList && Date.now() - modelList.at < MODEL_LIST_TTL_MS)
@@ -31,7 +34,8 @@ export async function deepgramModels(apiKey: string): Promise<VoiceModels> {
 	if (!Array.isArray(body?.stt)) throw deepgramFailure(502);
 	const found = (body.stt as { canonical_name?: unknown; batch?: unknown }[])
 		.filter((model) => model.batch === true && typeof model.canonical_name === "string")
-		.map((model) => model.canonical_name as string);
+		.map((model) => model.canonical_name as string)
+		.filter((name) => CURRENT_FAMILY.test(name));
 	const models = [...new Set([DEFAULT_MODEL, ...found.sort()])];
 	modelList = { at: Date.now(), models };
 	return { models, defaultModel: DEFAULT_MODEL };
