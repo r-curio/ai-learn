@@ -73,7 +73,11 @@ async function fetchPublic(
 		const response = await fetch(url, {
 			redirect: "manual",
 			signal: combined,
-			headers: { Accept: "text/html,application/xhtml+xml,text/plain;q=0.9" },
+			headers: {
+				Accept: "text/html,application/xhtml+xml,text/plain;q=0.9",
+				// Some sites refuse requests that don't name a browser-like client.
+				"User-Agent": "Mozilla/5.0 (compatible; ai-learn; +https://github.com/r-curio/ai-learn)",
+			},
 		}).catch(() => {
 			throw new WebToolError(`Couldn't load ${url.hostname}.`);
 		});
@@ -116,14 +120,25 @@ const tidy = (text: string) =>
 		.replace(/\n{3,}/g, "\n\n")
 		.trim();
 
+const BLOCKS =
+	"p, div, li, tr, br, h1, h2, h3, h4, h5, h6, pre, blockquote, figcaption, table, dt, dd";
+
+/** An element's text with a line break after each block, so paragraphs and table rows don't run together. */
+function textOf(html: string): string {
+	const { document } = parseHTML(`<!doctype html><html><body>${html}</body></html>`);
+	for (const element of document.querySelectorAll(BLOCKS)) element.after("\n");
+	for (const cell of document.querySelectorAll("td, th")) cell.after(" ");
+	return tidy(document.body?.textContent ?? "");
+}
+
 /** The page's main text, as Firefox's reader view finds it, or all its text if that finds nothing. */
 export function readableText(html: string): { title: string; text: string } {
 	const { document } = parseHTML(html);
 	const fallbackTitle = document.title ?? "";
 	const article = new Readability(document).parse();
-	if (article?.textContent?.trim())
-		return { title: article.title || fallbackTitle, text: tidy(article.textContent) };
-	return { title: fallbackTitle, text: tidy(document.body?.textContent ?? "") };
+	if (article?.content && article.textContent?.trim())
+		return { title: article.title || fallbackTitle, text: textOf(article.content) };
+	return { title: fallbackTitle, text: textOf(parseHTML(html).document.body?.innerHTML ?? "") };
 }
 
 export interface ReadPage {
