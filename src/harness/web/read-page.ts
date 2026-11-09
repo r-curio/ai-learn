@@ -74,7 +74,7 @@ async function fetchPublic(
 			redirect: "manual",
 			signal: combined,
 			headers: {
-				Accept: "text/html,application/xhtml+xml,text/plain;q=0.9",
+				Accept: "text/html,application/xhtml+xml,text/plain;q=0.9,application/json;q=0.8",
 				// Some sites refuse requests that don't name a browser-like client.
 				"User-Agent": "Mozilla/5.0 (compatible; ai-learn; +https://github.com/r-curio/ai-learn)",
 			},
@@ -131,6 +131,15 @@ function textOf(html: string): string {
 	return tidy(document.body?.textContent ?? "");
 }
 
+/** JSON from a data address, like a package registry, laid out one field per line so it reads well in parts. */
+function indented(body: string): string {
+	try {
+		return JSON.stringify(JSON.parse(body), null, 2);
+	} catch {
+		return body.trim();
+	}
+}
+
 /** The page's main text, as Firefox's reader view finds it, or all its text if that finds nothing. */
 export function readableText(html: string): { title: string; text: string } {
 	const { document } = parseHTML(html);
@@ -157,6 +166,10 @@ export async function readPage(raw: string, signal?: AbortSignal): Promise<ReadP
 	const contentType = response.headers.get("content-type") ?? "";
 	const body = decode(await readBody(response), contentType);
 	if (/html|xml/i.test(contentType)) return { url: url.href, ...readableText(body) };
+	// Some data addresses, like npm's registry, label JSON as plain text.
+	const json = /[/+]json\b/i.test(contentType) || /^\s*[[{]/.test(body);
+	if (json && /json|^text\//i.test(contentType))
+		return { url: url.href, title: "", text: indented(body) };
 	if (/^text\//i.test(contentType)) return { url: url.href, title: "", text: tidy(body) };
-	throw new WebToolError("That page isn't a web page or plain text, so it can't be read.");
+	throw new WebToolError("That page isn't a web page, plain text or JSON, so it can't be read.");
 }

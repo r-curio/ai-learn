@@ -61,3 +61,31 @@ test("a long page is read in parts, each saying where to go on from", () => {
 	assert.match(webPageText(page, 50_000), /The page has only 45000 characters\./);
 	assert.doesNotMatch(webPageText({ ...page, text: "Short." }), /\[/);
 });
+
+test("read_page reads JSON, like a package registry's answer, one field per line", async () => {
+	globalThis.fetch = async () =>
+		new Response('{"name":"react","version":"19.3.1"}', {
+			headers: { "content-type": "application/json; charset=utf-8" },
+		});
+	const page = await readPage("http://93.184.216.34/react/latest");
+	assert.equal(page.text, '{\n  "name": "react",\n  "version": "19.3.1"\n}');
+
+	// npm's registry labels its JSON as plain text when asked for text first.
+	globalThis.fetch = async () =>
+		new Response('{"version":"7.0.2"}', { headers: { "content-type": "text/plain" } });
+	assert.equal(
+		(await readPage("http://93.184.216.34/typescript/latest")).text,
+		'{\n  "version": "7.0.2"\n}',
+	);
+
+	globalThis.fetch = async () =>
+		new Response("not json {", { headers: { "content-type": "application/vnd.api+json" } });
+	assert.equal((await readPage("http://93.184.216.34/broken")).text, "not json {");
+
+	globalThis.fetch = async () =>
+		new Response(new Uint8Array([0x89, 0x50]), { headers: { "content-type": "image/png" } });
+	await assert.rejects(
+		readPage("http://93.184.216.34/image"),
+		/isn't a web page, plain text or JSON/,
+	);
+});
