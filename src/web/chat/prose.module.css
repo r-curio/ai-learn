@@ -1,12 +1,14 @@
 /*
  * The tutor's replies are rendered Markdown, so their tags can't carry Tailwind classes.
  * Tailwind's reset strips headings, lists, and spacing, and `revert` brings back the browser's.
+ * KaTeX's maths is left alone, since its own stylesheet lays it out. `:where` keeps this the
+ * weakest rule here, so the rules below still win.
  */
 .prose {
 	overflow-wrap: anywhere;
 }
 
-.prose * {
+.prose :where(:not(.katex-display, .katex, .katex *, .katex-error)) {
 	all: revert;
 	box-sizing: border-box;
 }
@@ -72,4 +74,42 @@
 	font-weight: 500;
 	text-decoration-thickness: 1px;
 	white-space: nowrap;
+}
+
+/* Display maths is a block of its own, and a wide formula scrolls rather than widening the reply. */
+.prose :global(.katex-display) {
+	margin-block: 12px;
+	overflow-x: auto;
+	overflow-y: hidden;
+	padding-block: 2px;
+}
+
+.prose :global(.katex) {
+	font-size: 1.1em;
+}
+
+/* A key idea the tutor marks with `> [!IMPORTANT]`. */
+.prose blockquote[data-callout="important"] {
+	margin-inline: 0;
+	padding: 10px 14px;
+	border-left: 3px solid var(--primary);
+	border-radius: 8px;
+	background: var(--accent);
+}
+
+.prose blockquote[data-callout="important"]::before {
+	content: "Important";
+	display: block;
+	margin-bottom: 4px;
+	color: var(--primary);
+	font-size: 13px;
+	font-weight: 500;
+}
+
+.prose blockquote[data-callout="important"] > :first-child {
+	margin-top: 0;
+}
+
+.prose blockquote[data-callout="important"] > :last-child {
+	margin-bottom: 0;
 }
