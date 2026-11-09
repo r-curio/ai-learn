@@ -34,7 +34,8 @@ export type RunEvent =
 	/** The reply's text is starting, so the Activity block collapses and its time stops here. */
 	| { type: "reply_start"; workedMs: number }
 	| { type: "tool_start"; id: string; name: string; label: string; runningLabel: string }
-	| { type: "tool_end"; id: string; isError: boolean; durationMs?: number }
+	/** A `label` replaces the one from `tool_start`, when how the call ended changes what it should say. */
+	| { type: "tool_end"; id: string; isError: boolean; durationMs?: number; label?: string }
 	/** A quiz's answer is saved, so the learner can now see how it went. */
 	| { type: "graded"; grade: QuizGrade }
 	| {
@@ -115,6 +116,14 @@ export interface VoiceEngineOption {
 	wantsWav?: true;
 }
 
+/** A web search service. The tutor is offered `web_search` only while one is connected. */
+export interface SearchServiceOption {
+	id: string;
+	label: string;
+	connected: boolean;
+	keySource?: "saved" | "environment";
+}
+
 /** A voice engine's models. The learner can pick any of them, and the default is listed first. */
 export interface VoiceModels {
 	models: string[];
@@ -130,6 +139,7 @@ export interface EngineStatus {
 	keysUnavailable?: string;
 	reason?: string;
 	voice: VoiceEngineOption[];
+	search: SearchServiceOption[];
 }
 
 export const CHAT_TYPES = ["learning", "practice"] as const;

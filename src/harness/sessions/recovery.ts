@@ -10,6 +10,7 @@ export function messagesFromLog(entries: LogEntry[], attachments: AttachmentStor
 	const messages: Message[] = [];
 	for (const entry of entries) {
 		if (entry.type === "message") messages.push(fromStored(entry.message, attachments));
+		else if (entry.type === "tools") messages.push(entry.message);
 		else if (entry.type === "retry" && isFailedReply(messages.at(-1))) messages.pop();
 	}
 	return messages;

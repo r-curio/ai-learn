@@ -13,6 +13,8 @@ import type { Engine } from "./engine.ts";
 import { engineFromModels } from "./model-catalog.ts";
 import { ASK_QUESTION, isQuestionTool, QUIZ } from "./tools.ts";
 import { VoiceError } from "./voice/voice-error.ts";
+import type { SearchService } from "./web/search-service.ts";
+import { WEB_SEARCH } from "./web/web-tools.ts";
 
 const FAKE_INPUT: ("text" | "image")[] = ["text", "image"];
 const FAKE_MODELS = [
@@ -122,6 +124,7 @@ function createForcedReplies() {
 				],
 				{ stopReason: "toolUse" },
 			);
+		if (text.includes("fake:search")) return fakeSearchCall();
 		if (text.includes("fake:plain")) return fauxAssistantMessage("**Fake model** plain reply.");
 		if (text.includes("fake:long"))
 			return fauxAssistantMessage(Array(16).fill(LONG_PARAGRAPH).join("\n\n"));
@@ -144,6 +147,30 @@ function createForcedReplies() {
 	};
 }
 
+const fakeSearchCall = () =>
+	fauxAssistantMessage(
+		[
+			fauxThinking(FAKE_REASONING),
+			fauxToolCall(WEB_SEARCH, { query: "attention is all you need" }),
+		],
+		{ stopReason: "toolUse" },
+	);
+const FAKE_SEARCH_ANSWER =
+	"I searched the web. The paper is [Attention Is All You Need](https://arxiv.org/abs/1706.03762). **Fake model** reply.";
+const FAKE_SEARCH_OPTION = { id: "fake-search", label: "Fake search", connected: true };
+
+/** Offline search results, so the search tools can be tried for free. */
+const FAKE_SEARCH: SearchService = {
+	label: "Fake search",
+	search: async (query) => [
+		{
+			title: "Attention Is All You Need",
+			url: "https://arxiv.org/abs/1706.03762",
+			snippet: `A fake result for "${query}". The transformer paper, from 2017.`,
+		},
+	],
+};
+
 const FAKE_VOICE = { id: "fake-voice", label: "Fake voice", connected: true };
 const FAKE_DEFAULT_MODEL = "fake-speech-fast";
 const FAKE_VOICE_MODELS = [FAKE_DEFAULT_MODEL, "fake-speech-accurate"];
@@ -156,6 +183,8 @@ export function createDemoEngine(): Engine {
 		const last = context.messages.at(-1);
 		if (last?.role === "toolResult" && isQuestionTool(last.toolName))
 			return fauxAssistantMessage("Thanks for answering. **Fake model** reply.");
+		if (last?.role === "toolResult" && last.toolName === WEB_SEARCH)
+			return fauxAssistantMessage(FAKE_SEARCH_ANSWER);
 		if (last?.role === "toolResult")
 			return fauxAssistantMessage("I read that attachment with a tool. **Fake model** reply.");
 		const parts = last?.role === "user" && Array.isArray(last.content) ? last.content : [];
@@ -181,7 +210,12 @@ export function createDemoEngine(): Engine {
 	const engine = createScriptedEngine([], 60);
 	return {
 		...engine,
-		status: async () => ({ ...(await engine.status()), voice: [FAKE_VOICE] }),
+		status: async () => ({
+			...(await engine.status()),
+			voice: [FAKE_VOICE],
+			search: [FAKE_SEARCH_OPTION],
+		}),
+		searchService: async () => FAKE_SEARCH,
 		voiceModels: async (engineId) => {
 			if (engineId !== FAKE_VOICE.id)
 				throw new VoiceError("That voice engine isn't available.", 409);

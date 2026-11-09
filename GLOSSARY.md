@@ -54,6 +54,10 @@ _Avoid_: Transcript, history
 A SQLite file that copies session summaries and each chat's visible text for fast lookups and search. It can always be rebuilt from the session folders, so nothing is stored only there.
 _Avoid_: Database, session store
 
+**Search service**:
+The outside service behind the tutor's `web_search` tool, like Tavily. The learner adds its key in Settings → Web search, and without one the tutor can't search but can still read a page with `read_page`.
+_Avoid_: Search provider, search engine
+
 **Question**:
 Something the tutor asks the learner, with 2 to 4 choices, through `ask_question` when there's no right answer or `quiz` when there is. A run ends when it asks one.
 _Avoid_: Prompt

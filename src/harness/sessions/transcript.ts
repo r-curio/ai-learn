@@ -13,6 +13,7 @@ import { answerText, noticeFor } from "../../shared/protocol.ts";
 import type { LogEntry } from "./log.ts";
 import { askedIn, gradeOf, type QuizKey } from "./questions.ts";
 import { toolLabels } from "../tools.ts";
+import { isSearchLimit, SEARCH_LIMIT_LABEL } from "../web/web-tools.ts";
 
 const INTERRUPTED_NOTICE = "The app closed before this reply finished.";
 
@@ -45,6 +46,12 @@ function addReplyParts(
 			toolBlocks.set(part.id, block);
 		}
 	}
+}
+
+/** A finished tool call. A search the guard stopped says so, in place of what it searched for. */
+function settleTool(block: ToolBlock, result: { isError: boolean; content: { type: string }[] }) {
+	block.state = result.isError ? "failed" : "done";
+	if (isSearchLimit(result)) block.label = SEARCH_LIMIT_LABEL;
 }
 
 /** A learner's answer as they see it, using the choices from the reply that asked, and how a quiz went. */
@@ -157,7 +164,7 @@ export function buildTranscript(
 			}
 		} else if (message.role === "toolResult") {
 			const block = toolBlocks.get(message.toolCallId);
-			if (block) block.state = message.isError ? "failed" : "done";
+			if (block) settleTool(block, message);
 			// A tool cut off by a crash is settled at the next launch, so its time says nothing.
 			if (message.durationMs !== undefined) {
 				if (block) block.durationMs = message.durationMs;
@@ -171,11 +178,10 @@ export function buildTranscript(
 }
 
 /** Say the app stopped partway, on the unfinished reply or in place of one that never started. */
-export function markInterrupted(messages: TranscriptMessage[]): void {
+export function markInterrupted(messages: TranscriptMessage[], notice = INTERRUPTED_NOTICE): void {
 	const tail = messages.at(-1);
-	if (tail?.role === "assistant") tail.notice = INTERRUPTED_NOTICE;
-	else
-		messages.push({ id: "interrupted", role: "assistant", blocks: [], notice: INTERRUPTED_NOTICE });
+	if (tail?.role === "assistant") tail.notice = notice;
+	else messages.push({ id: "interrupted", role: "assistant", blocks: [], notice });
 }
 
 /** The words the learner can see in a chat. Attachments aren't read, so their contents aren't included. */

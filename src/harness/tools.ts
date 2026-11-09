@@ -1,6 +1,15 @@
-import type { AgentTool } from "@earendil-works/pi-agent-core";
+import type { AgentMessage, AgentTool } from "@earendil-works/pi-agent-core";
+import {
+	createInitialSystemMessage,
+	getCurrentTools,
+	getToolStateChanges,
+	toToolDeclaration,
+	type SystemMessage,
+} from "@earendil-works/pi-ai";
 import { z } from "zod";
 import { INLINE_TEXT_CHARS, type AttachmentStore } from "./attachments.ts";
+import type { SearchService } from "./web/search-service.ts";
+import { webLabels, webTools } from "./web/web-tools.ts";
 
 const readAttachmentInput = z.object({
 	id: z.string().describe("The attachment id from its <attachment> tag."),
@@ -61,6 +70,8 @@ export function toolLabels(
 	attachmentName: (id: string) => string | undefined,
 ): { label: string; runningLabel: string } {
 	if (isQuestionTool(name)) return { label: "Ask a question", runningLabel: "Asking a question" };
+	const web = webLabels(name, args);
+	if (web) return web;
 	if (name !== "read_attachment") return { label: name, runningLabel: name };
 	const id = (args as { id?: unknown } | undefined)?.id;
 	const target = (typeof id === "string" && attachmentName(id)) || "attachment";
@@ -73,7 +84,8 @@ const waitForLearner = async () => ({
 	details: undefined,
 });
 
-export function createTools(attachments: AttachmentStore): AgentTool[] {
+/** The tutor's tools. Without a connected search service, `web_search` isn't offered. */
+export function createTools(attachments: AttachmentStore, search?: SearchService): AgentTool[] {
 	return [
 		{
 			name: "read_attachment",
@@ -110,5 +122,38 @@ export function createTools(attachments: AttachmentStore): AgentTool[] {
 				return waitForLearner();
 			},
 		},
+		...webTools(search),
 	];
+}
+
+/** A session's first message: its prompt, and the tools every session starts with. It's rebuilt on each load. */
+export function initialSystemMessage(
+	prompt: string,
+	attachments: AttachmentStore,
+): SystemMessage[] {
+	const message = createInitialSystemMessage(
+		prompt,
+		createTools(attachments).map(toToolDeclaration),
+	);
+	return message ? [message] : [];
+}
+
+/**
+ * The message that tells the model its tools changed, shaped as Pi makes it, or nothing if they
+ * didn't. The session saves it, so a reloaded chat sends the same history as the live one.
+ */
+export function toolChange(
+	messages: readonly AgentMessage[],
+	tools: AgentTool[],
+): SystemMessage | undefined {
+	const current = getCurrentTools(messages);
+	const { toolsAdded, toolsRemoved } = getToolStateChanges(current, tools.map(toToolDeclaration));
+	if (toolsAdded.length === 0 && toolsRemoved.length === 0) return undefined;
+	return {
+		role: "system",
+		content: "",
+		timestamp: Date.now(),
+		...(toolsAdded.length > 0 ? { toolsAdded } : {}),
+		...(toolsRemoved.length > 0 ? { toolsRemoved } : {}),
+	};
 }

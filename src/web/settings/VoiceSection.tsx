@@ -33,7 +33,7 @@ function ChoiceRow(props: { value: string; label: string; hint: string; disabled
 }
 
 /** Add a missing key, or for a voice-only engine, remove a saved one or say it's from the environment. */
-function KeyAction(props: {
+export function KeyAction(props: {
 	engine: VoiceEngineOption;
 	canAddKey: boolean;
 	onAdd: () => void;

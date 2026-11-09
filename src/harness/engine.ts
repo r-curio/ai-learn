@@ -5,6 +5,7 @@ import type { EngineStatus, ModelRef, ModelSelection, VoiceModels } from "../sha
 import { engineFromModels } from "./model-catalog.ts";
 import { ProviderKeyStore, type KeyCipher } from "./provider-keys.ts";
 import type { Recording } from "./voice/voice-error.ts";
+import type { SearchService } from "./web/search-service.ts";
 
 export interface ResolvedModel {
 	model: Model<string>;
@@ -25,6 +26,8 @@ export interface Engine {
 	voiceModels(engineId: string): Promise<VoiceModels>;
 	/** Turn a recording into text with a voice engine, on its default model unless one is named. Throws `VoiceError`. */
 	transcribe(engineId: string, recording: Recording, model?: string): Promise<string>;
+	/** The web search service with a key, or nothing. Asked before each run, so a new key works on the next message. */
+	searchService(): Promise<SearchService | undefined>;
 }
 
 export interface EngineOptions {

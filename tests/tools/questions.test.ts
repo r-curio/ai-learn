@@ -9,13 +9,13 @@ import { readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { test } from "node:test";
-import { createScriptedEngine } from "../src/harness/fake-engine.ts";
-import type { LogEntry, LogMessage } from "../src/harness/sessions/log.ts";
-import { Session } from "../src/harness/sessions/session.ts";
-import { buildTranscript } from "../src/harness/sessions/transcript.ts";
-import { createApp } from "../src/server/app.ts";
-import type { QuestionAnswer, RunEvent, SessionView } from "../src/shared/protocol.ts";
-import { FAKE_CHOICE, tempDir } from "./helpers.ts";
+import { createScriptedEngine } from "../../src/harness/fake-engine.ts";
+import type { LogEntry, LogMessage } from "../../src/harness/sessions/log.ts";
+import { Session } from "../../src/harness/sessions/session.ts";
+import { buildTranscript } from "../../src/harness/sessions/transcript.ts";
+import { createApp } from "../../src/server/app.ts";
+import type { QuestionAnswer, RunEvent, SessionView } from "../../src/shared/protocol.ts";
+import { FAKE_CHOICE, tempDir } from "../helpers.ts";
 
 const QUESTION = { question: "Which vector asks?", choices: ["The key", "The query"] };
 const ask = (...extra: ReturnType<typeof fauxToolCall>[]) =>

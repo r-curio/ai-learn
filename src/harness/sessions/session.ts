@@ -1,4 +1,4 @@
-import { Agent, type AgentEvent } from "@earendil-works/pi-agent-core";
+import type { Agent, AgentEvent } from "@earendil-works/pi-agent-core";
 import type { AssistantMessage, Message } from "@earendil-works/pi-ai";
 import { randomUUID } from "node:crypto";
 import { rename, writeFile } from "node:fs/promises";
@@ -27,12 +27,12 @@ import {
 	answerResult,
 	gradeOf,
 	pendingQuestionIn,
-	questionHooks,
 	questionPlaceholder,
 	waitingIn,
 } from "./questions.ts";
 import { runProgress } from "./run-progress.ts";
-import { createTools } from "../tools.ts";
+import { createTutorAgent, offerTools } from "../tutor-agent.ts";
+import { searchLimitNotice } from "../web/web-tools.ts";
 import { SYSTEM_PROMPT, viewingTag } from "./tutor-prompt.ts";
 import {
 	addUsage,
@@ -76,6 +76,7 @@ export class Session {
 	private readonly systemPrompt: string;
 	private chatType: ChatType;
 	private running = false;
+	private readonly offerTools: () => Promise<void>;
 
 	constructor(engine: Engine, dataDir: string, restored?: Restored) {
 		this.engine = engine;
@@ -89,17 +90,15 @@ export class Session {
 		// A session keeps the prompt it started with, so old history replays exactly.
 		this.systemPrompt = header?.systemPrompt ?? SYSTEM_PROMPT;
 		this.chatType = chatTypeOf(header?.chatType);
-		this.agent = new Agent({
-			initialState: {
-				systemPrompt: this.systemPrompt,
-				tools: createTools(this.attachments),
-				messages: restored?.messages ?? [],
-			},
-			streamFn: engine.streamFn,
-			...questionHooks,
+		this.agent = createTutorAgent({
 			sessionId: this.id,
-			identity: { attribution: { name: "ai-learn", url: "https://github.com/r-curio/ai-learn" } },
+			systemPrompt: this.systemPrompt,
+			attachments: this.attachments,
+			messages: restored?.messages ?? [],
+			streamFn: engine.streamFn,
 		});
+		this.offerTools = () =>
+			offerTools(this.agent.state, this.attachments, engine, (e) => this.record(e));
 	}
 
 	/** Rebuild a session from disk and settle anything a crash left unfinished. */
@@ -123,9 +122,7 @@ export class Session {
 	}
 
 	private get messages(): Message[] {
-		return this.agent.state.messages.filter(
-			(message): message is Message => message.role !== ("system" as string),
-		);
+		return this.agent.state.messages.filter((m): m is Message => m.role !== ("system" as string));
 	}
 
 	/** A reply can be retried if it failed, or if the tail shows the app stopped partway through. */
@@ -198,7 +195,8 @@ export class Session {
 			(citation) => this.attachments.hasCitation(citation),
 		);
 		const canRetry = this.canRetry;
-		if (canRetry && !isFailedReply(this.messages.at(-1))) markInterrupted(messages);
+		const tail = this.messages.at(-1);
+		if (canRetry && !isFailedReply(tail)) markInterrupted(messages, searchLimitNotice(tail));
 		const usage = { ...this.usage };
 		return {
 			id: this.id,
@@ -310,6 +308,7 @@ export class Session {
 	): Promise<void> {
 		this.running = true;
 		try {
+			if (entry.type === "message" && entry.message.role === "user") await this.offerTools();
 			await this.record(entry);
 		} catch (error) {
 			this.running = false;
@@ -335,7 +334,7 @@ export class Session {
 			// The answer is on disk now, so the learner can see how a quiz went before the tutor replies.
 			if (asked.key) onEvent({ type: "graded", grade: gradeOf(asked.key, answer) });
 			this.agent.state.messages.push(result);
-			return this.agent.continue();
+			return this.offerTools().then(() => this.agent.continue());
 		};
 		await this.saveThenRun({ type: "message", message: result, answer }, start, onEvent);
 	}
@@ -351,6 +350,7 @@ export class Session {
 				await this.record({ type: "retry", timestamp: Date.now() });
 				this.agent.state.messages = this.agent.state.messages.slice(0, -1);
 			}
+			await this.offerTools();
 		} catch (error) {
 			this.running = false;
 			throw error;
