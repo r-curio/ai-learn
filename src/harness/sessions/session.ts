@@ -70,6 +70,7 @@ export class Session {
 	private readonly systemPrompt: string;
 	private chatType: ChatType;
 	private running = false;
+	private readonly offerTools: () => Promise<void>;
 
 	constructor(engine: Engine, dataDir: string, restored?: Restored) {
 		this.engine = engine;
@@ -90,6 +91,8 @@ export class Session {
 			messages: restored?.messages ?? [],
 			streamFn: engine.streamFn,
 		});
+		this.offerTools = () =>
+			offerTools(this.agent.state, this.attachments, engine, (e) => this.record(e));
 	}
 
 	/** Rebuild a session from disk and settle anything a crash left unfinished. */
@@ -113,9 +116,7 @@ export class Session {
 	}
 
 	private get messages(): Message[] {
-		return this.agent.state.messages.filter(
-			(message): message is Message => message.role !== ("system" as string),
-		);
+		return this.agent.state.messages.filter((m): m is Message => m.role !== ("system" as string));
 	}
 
 	/** A reply can be retried if it failed, or if the tail shows the app stopped partway through. */
@@ -294,12 +295,6 @@ export class Session {
 		await this.saveThenRun(entry, () => this.agent.prompt(message), onEvent, true);
 	}
 
-	private declareTools(): Promise<void> {
-		return offerTools(this.agent.state, this.attachments, this.engine, (entry) =>
-			this.record(entry),
-		);
-	}
-
 	private async saveThenRun(
 		entry: LogEntry,
 		start: () => Promise<void>,
@@ -308,7 +303,7 @@ export class Session {
 	): Promise<void> {
 		this.running = true;
 		try {
-			if (toolsFirst) await this.declareTools();
+			if (toolsFirst) await this.offerTools();
 			await this.record(entry);
 		} catch (error) {
 			this.running = false;
@@ -332,7 +327,7 @@ export class Session {
 		const result = answerResult(question, answer);
 		const start = async () => {
 			this.agent.state.messages.push(result);
-			await this.declareTools();
+			await this.offerTools();
 			return this.agent.continue();
 		};
 		await this.saveThenRun({ type: "message", message: result, answer }, start, onEvent);
@@ -349,7 +344,7 @@ export class Session {
 				await this.record({ type: "retry", timestamp: Date.now() });
 				this.agent.state.messages = this.agent.state.messages.slice(0, -1);
 			}
-			await this.declareTools();
+			await this.offerTools();
 		} catch (error) {
 			this.running = false;
 			throw error;
