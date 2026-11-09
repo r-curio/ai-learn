@@ -2,7 +2,10 @@ import { cn } from "cn";
 import { FileText } from "lucide-react";
 import { useRef, type ClipboardEvent, type KeyboardEvent, type RefObject } from "react";
 import type { ContextUsage, ProviderOption } from "../../shared/protocol.ts";
+import { Button } from "../components/button.tsx";
 import { Textarea } from "../components/form/textarea.tsx";
+import { Notice } from "../components/Notice.tsx";
+import type { VoiceRecorder } from "../voice/useVoiceRecorder.ts";
 import { ComposerControls } from "./ComposerControls.tsx";
 import { DraftChip } from "./DraftChip.tsx";
 import type { Draft } from "./useDrafts.ts";
@@ -37,6 +40,8 @@ interface ComposerProps {
 	onStop: () => void;
 	/** The PDF page open in the attachment pane, which the tutor is told about. */
 	openPage?: { name: string; page: number };
+	voice: VoiceRecorder;
+	onOpenVoiceSettings: () => void;
 }
 
 /** It tucks behind the card, which is why the card sits above it. */
@@ -47,6 +52,41 @@ function OpenPageTray({ name, page }: { name: string; page: number }) {
 			<span className="truncate">
 				{name} · page {page}
 			</span>
+		</div>
+	);
+}
+
+function DraftList({ drafts, onRemove }: { drafts: Draft[]; onRemove: (key: string) => void }) {
+	if (drafts.length === 0) return null;
+	return (
+		<ul className="mb-3 flex [scrollbar-width:none] gap-2 overflow-x-auto">
+			{drafts.map((draft) => (
+				<DraftChip draft={draft} key={draft.key} onRemove={() => onRemove(draft.key)} />
+			))}
+		</ul>
+	);
+}
+
+/** Why voice didn't work. Set-up problems are muted, with a way to Settings, and failures are red. */
+function VoiceNotice({
+	voice,
+	onOpenSettings,
+}: {
+	voice: VoiceRecorder;
+	onOpenSettings: () => void;
+}) {
+	const { problem } = voice;
+	if (!problem) return null;
+	const action = problem.settings ? (
+		<Button variant="outline" size="xs" onClick={onOpenSettings}>
+			Open Voice settings
+		</Button>
+	) : undefined;
+	return (
+		<div className="mt-3">
+			<Notice error={!problem.settings} action={action}>
+				{problem.message}
+			</Notice>
 		</div>
 	);
 }
@@ -70,12 +110,10 @@ const attachPastedFiles =
 export function Composer(props: ComposerProps) {
 	const { text, onTextChange, textArea, isNewChat, drafts, canAttach, canSend, running } = props;
 	const { providers, modelChoice, context, onNewChat, onAddProvider, dimmed, needsModel } = props;
-	const { onAddFiles, onRemoveDraft, swappingIn } = props;
-	const { onSend, onStop, openPage } = props;
+	const { onAddFiles, onRemoveDraft, swappingIn, onSend, onStop, openPage, voice } = props;
 
 	const card = useRef<HTMLDivElement>(null);
 	const prompt = isNewChat ? "Ask the tutor anything" : "Reply to the tutor";
-	const placeholder = needsModel ? "Choose a model to start" : prompt;
 
 	return (
 		<form
@@ -91,26 +129,21 @@ export function Composer(props: ComposerProps) {
 		>
 			{openPage && <OpenPageTray {...openPage} />}
 			<div ref={card} className={cn(CARD, "relative", dimmed && "opacity-50")}>
-				{drafts.length > 0 && (
-					<ul className="mb-3 flex [scrollbar-width:none] gap-2 overflow-x-auto">
-						{drafts.map((draft) => (
-							<DraftChip draft={draft} key={draft.key} onRemove={() => onRemoveDraft(draft.key)} />
-						))}
-					</ul>
-				)}
+				<DraftList drafts={drafts} onRemove={onRemoveDraft} />
 				<Textarea
 					ref={textArea}
 					className="block max-h-[200px] min-h-0 resize-none rounded-none border-0 p-0 text-[15px] leading-[18px] transition-none focus-visible:ring-0 disabled:bg-transparent disabled:opacity-100"
 					aria-label="Message"
 					rows={1}
 					disabled={dimmed || needsModel}
-					placeholder={placeholder}
+					placeholder={needsModel ? "Choose a model to start" : prompt}
 					value={text}
 					onChange={(event) => onTextChange(event.target.value)}
 					onKeyDown={sendOnEnter(onSend)}
 					onPaste={attachPastedFiles(onAddFiles)}
 					autoFocus
 				/>
+				<VoiceNotice voice={voice} onOpenSettings={props.onOpenVoiceSettings} />
 				<ComposerControls
 					canAttach={canAttach}
 					canSend={canSend}
@@ -124,6 +157,8 @@ export function Composer(props: ComposerProps) {
 					onAddProvider={onAddProvider}
 					onAddFiles={onAddFiles}
 					onStop={onStop}
+					voice={voice}
+					voiceDisabled={dimmed || needsModel}
 				/>
 			</div>
 		</form>
