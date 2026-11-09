@@ -3,6 +3,7 @@ import type { AssistantMessage, Message } from "@earendil-works/pi-ai";
 import { randomUUID } from "node:crypto";
 import { rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import type { DrawingEdit } from "../../shared/drawing.ts";
 import {
 	chatTypeOf,
 	type ChatType,
@@ -15,6 +16,7 @@ import {
 	type UsageSummary,
 } from "../../shared/protocol.ts";
 import { AttachmentStore } from "../attachments.ts";
+import { drawingFromCall, editContent } from "../drawings/edits.ts";
 import type { Engine, ResolvedModel } from "../engine.ts";
 import { LOG_VERSION, LogWriter, readLog, toStored, type LogEntry, type LogHeader } from "./log.ts";
 import {
@@ -279,17 +281,21 @@ export class Session {
 
 	/** Run one learner turn to completion. The message is saved before the model is called. */
 	async send(
-		input: { text: string; attachmentIds: string[]; viewing?: OpenPage },
+		input: { text: string; attachmentIds: string[]; viewing?: OpenPage; edit?: DrawingEdit },
 		onEvent: (event: RunEvent) => void,
 		choice: ResolvedModel,
 	): Promise<void> {
 		if (this.running) throw new SessionBusyError();
 		if (this.pendingQuestion) throw new SessionStateError("Answer the tutor's question first.");
 		this.use(choice);
-		const { text, attachmentIds, viewing } = input;
+		const { text, attachmentIds, viewing, edit } = input;
+		const edited = edit && drawingFromCall(this.messages, edit.callId);
+		if (edit && !edited) throw new SessionStateError("That drawing isn't in this chat.");
+		const seesImages = choice.model.input.includes("image");
 		const content = [
 			...this.attachments.toContent(attachmentIds),
 			...(viewing ? [{ type: "text" as const, text: viewingTag(viewing) }] : []),
+			...(edit && edited ? editContent(edited, edit, this.attachments, seesImages) : []),
 			...(text.trim() ? [{ type: "text" as const, text }] : []),
 		];
 		const message: Message = { role: "user", content, timestamp: Date.now() };
@@ -297,6 +303,7 @@ export class Session {
 			type: "message",
 			message: toStored(message, this.attachments),
 			display: { text, attachmentIds },
+			...(edit ? { drawingEdit: { callId: edit.callId, elements: edit.elements } } : {}),
 		};
 		await this.saveThenRun(entry, () => this.agent.prompt(message), onEvent);
 	}

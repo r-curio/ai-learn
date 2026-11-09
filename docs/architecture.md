@@ -62,7 +62,6 @@ Preferences live in `preferences.json` in the same folder. The desktop app's ser
 These are planned in the roadmap and aren't part of the current architecture:
 
 - The teaching engine (#5)
-- Learner edits to diagrams (#6). The tutor can already draw them.
 - Knowledge memory across sessions (#7)
 
 ## Decisions

@@ -90,6 +90,10 @@ _Avoid_: Memory, usage
 A diagram the tutor draws in the chat with its `draw` tool, or the lesson plan. The tutor describes boxes, arrows and groups, and the app places them. Drawing again with the same id makes a new version.
 _Avoid_: Sketch, canvas, chart
 
+**Drawing edit**:
+The learner's change to one of the tutor's drawings, made in the full-size editor and sent with their next message. The tutor reads what changed.
+_Avoid_: Annotation, correction, markup
+
 **Lesson plan**:
 The drawing of what a chat will cover, with the goal at the top and foundations at the bottom. A chat has one, and the tutor's `plan` tool replaces it with a new version.
 _Avoid_: Roadmap, curriculum, plan diagram

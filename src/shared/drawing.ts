@@ -33,3 +33,28 @@ export interface Drawing {
 	arrows: DrawingArrow[];
 	groups: DrawingGroup[];
 }
+
+/** One element of an Excalidraw scene, as saved. Only the fields the app reads are named. */
+export interface SceneElement {
+	id: string;
+	type: string;
+	x: number;
+	y: number;
+	width: number;
+	height: number;
+	isDeleted?: boolean;
+	text?: string;
+	containerId?: string | null;
+	startBinding?: { elementId: string } | null;
+	endBinding?: { elementId: string } | null;
+	[key: string]: unknown;
+}
+
+/** A learner's edit of one of the tutor's drawings, sent with their next message. */
+export interface DrawingEdit {
+	/** The `draw` or `plan` call that made the version they edited. */
+	callId: string;
+	elements: SceneElement[];
+	/** A picture of the edit, uploaded as an attachment, when it has freehand marks. */
+	pictureId?: string;
+}

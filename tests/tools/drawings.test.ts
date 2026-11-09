@@ -6,8 +6,8 @@ import {
 } from "@earendil-works/pi-ai";
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { layOut } from "../../src/harness/drawing-layout.ts";
-import { DRAW, PLAN } from "../../src/harness/drawing-tools.ts";
+import { layOut } from "../../src/harness/drawings/layout.ts";
+import { DRAW, PLAN } from "../../src/harness/drawings/tools.ts";
 import { createScriptedEngine } from "../../src/harness/fake-engine.ts";
 import { Session } from "../../src/harness/sessions/session.ts";
 import type { RunEvent } from "../../src/shared/protocol.ts";

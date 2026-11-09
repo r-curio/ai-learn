@@ -1,7 +1,7 @@
 import type { AgentEvent } from "@earendil-works/pi-agent-core";
 import type { TextContent } from "@earendil-works/pi-ai";
 import type { RunEvent } from "../../shared/protocol.ts";
-import { drawingIn } from "../drawing-tools.ts";
+import { drawingIn } from "../drawings/tools.ts";
 import { isQuestionTool, toolLabels } from "../tools.ts";
 import { isSearchLimit, SEARCH_LIMIT_LABEL } from "../web/web-tools.ts";
 

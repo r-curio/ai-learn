@@ -1,7 +1,7 @@
 import type { AgentTool } from "@earendil-works/pi-agent-core";
 import { z } from "zod";
-import type { Drawing } from "../shared/drawing.ts";
-import { layOut, type DrawingDescription } from "./drawing-layout.ts";
+import type { Drawing } from "../../shared/drawing.ts";
+import { layOut, type DrawingDescription } from "./layout.ts";
 
 export const DRAW = "draw";
 export const PLAN = "plan";

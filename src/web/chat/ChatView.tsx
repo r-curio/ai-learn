@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, type ReactNode } from "react";
 import type { Citation } from "../../shared/citations.ts";
+import type { Drawing } from "../../shared/drawing.ts";
 import type {
 	AttachmentInfo,
 	ChatType,
@@ -16,6 +17,8 @@ interface ChatViewProps {
 	error?: string;
 	sessionId?: string;
 	messages: TranscriptMessage[];
+	/** Opens one of the tutor's drawings in the editor. Missing while the learner can't send. */
+	onEditDrawing?: (callId: string, drawing: Drawing) => void;
 	running: boolean;
 	runStartedAt: number;
 	canRetry: boolean;
@@ -86,7 +89,7 @@ function Messages(props: ChatViewProps & { sessionId: string }) {
 				message={message}
 				sessionId={sessionId}
 				pendingQuestionId={props.pendingQuestionId}
-				drawingVersion={(callId) => versions.get(callId) ?? 1}
+				drawings={{ version: (callId) => versions.get(callId) ?? 1, onEdit: props.onEditDrawing }}
 				liveSince={running && index === last ? runStartedAt : undefined}
 				onRetry={canRetry && !running && index === last ? onRetry : undefined}
 				onOpenAttachment={props.onOpenAttachment}

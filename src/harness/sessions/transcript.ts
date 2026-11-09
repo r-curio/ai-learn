@@ -10,11 +10,11 @@ import type {
 } from "../../shared/protocol.ts";
 import { keepCitations, stripCitations, type Citation } from "../../shared/citations.ts";
 import { answerText, noticeFor, placeDrawing } from "../../shared/protocol.ts";
-import type { LogEntry } from "./log.ts";
+import type { LogEntry, LogMessage } from "./log.ts";
 import { askedIn, gradeOf, type QuizKey } from "./questions.ts";
 import { toolLabels } from "../tools.ts";
 import { isSearchLimit, SEARCH_LIMIT_LABEL } from "../web/web-tools.ts";
-import { drawingIn } from "../drawing-tools.ts";
+import { drawingIn } from "../drawings/tools.ts";
 
 const INTERRUPTED_NOTICE = "The app closed before this reply finished.";
 
@@ -53,6 +53,30 @@ function addReplyParts(
 function settleTool(block: ToolBlock, result: { isError: boolean; content: { type: string }[] }) {
 	block.state = result.isError ? "failed" : "done";
 	if (isSearchLimit(result)) block.label = SEARCH_LIMIT_LABEL;
+}
+
+/** A learner's message as they see it: their words, any edited drawing, and their attachments. */
+function learnerMessage(
+	entry: LogMessage,
+	id: string,
+	attachmentInfo: (id: string) => AttachmentInfo | undefined,
+	earlier: TranscriptMessage[],
+): TranscriptMessage {
+	const text = entry.display?.text ?? "";
+	const edit = entry.drawingEdit;
+	const drawn = earlier
+		.flatMap((message) => message.blocks)
+		.find((block) => block.kind === "drawing" && block.id === edit?.callId);
+	const title = drawn?.kind === "drawing" ? drawn.drawing.title : "Drawing";
+	return {
+		id,
+		role: "user",
+		blocks: [
+			...(edit ? [{ kind: "drawing-edit" as const, ...edit, title }] : []),
+			...(text.trim() ? [{ kind: "text" as const, text }] : []),
+		],
+		attachments: (entry.display?.attachmentIds ?? []).flatMap((item) => attachmentInfo(item) ?? []),
+	};
 }
 
 /** A learner's answer as they see it, using the choices from the reply that asked, and how a quiz went. */
@@ -124,13 +148,7 @@ export function buildTranscript(
 		const { message } = entry;
 
 		if (message.role === "user") {
-			const text = entry.display?.text ?? "";
-			messages.push({
-				id: `m${index}`,
-				role: "user",
-				blocks: text.trim() ? [{ kind: "text", text }] : [],
-				attachments: (entry.display?.attachmentIds ?? []).flatMap((id) => attachmentInfo(id) ?? []),
-			});
+			messages.push(learnerMessage(entry, `m${index}`, attachmentInfo, messages));
 			current = undefined;
 			failedFrom = undefined;
 			toolBlocks = new Map();

@@ -6,6 +6,8 @@ import { Textarea } from "../components/form/textarea.tsx";
 import { useHoldToTalk } from "../voice/useHoldToTalk.ts";
 import type { VoiceRecorder } from "../voice/useVoiceRecorder.ts";
 import { VoiceNotice } from "../voice/VoiceNotice.tsx";
+import { EditChip } from "../diagram/EditChip.tsx";
+import type { EditDraft } from "../diagram/useDrawingEdit.ts";
 import { ComposerControls } from "./ComposerControls.tsx";
 import { DraftChip } from "./DraftChip.tsx";
 import type { Draft } from "./useDrafts.ts";
@@ -20,6 +22,8 @@ interface ComposerProps {
 	textArea: RefObject<HTMLTextAreaElement | null>;
 	isNewChat: boolean;
 	drafts: Draft[];
+	/** The learner's edit of a drawing, sent with this message. */
+	edit?: { draft: EditDraft; onRemove: () => void };
 	canAttach: boolean;
 	canSend: boolean;
 	running: boolean;
@@ -56,10 +60,19 @@ function OpenPageTray({ name, page }: { name: string; page: number }) {
 	);
 }
 
-function DraftList({ drafts, onRemove }: { drafts: Draft[]; onRemove: (key: string) => void }) {
-	if (drafts.length === 0) return null;
+function DraftList({
+	drafts,
+	onRemove,
+	edit,
+}: {
+	drafts: Draft[];
+	onRemove: (key: string) => void;
+	edit?: { draft: EditDraft; onRemove: () => void };
+}) {
+	if (drafts.length === 0 && !edit) return null;
 	return (
 		<ul className="mb-3 flex [scrollbar-width:none] gap-2 overflow-x-auto">
+			{edit && <EditChip draft={edit.draft} onRemove={edit.onRemove} />}
 			{drafts.map((draft) => (
 				<DraftChip draft={draft} key={draft.key} onRemove={() => onRemove(draft.key)} />
 			))}
@@ -105,7 +118,7 @@ export function Composer(props: ComposerProps) {
 		>
 			{openPage && <OpenPageTray {...openPage} />}
 			<div ref={card} className={cn(CARD, "relative", dimmed && "opacity-50")}>
-				<DraftList drafts={drafts} onRemove={onRemoveDraft} />
+				<DraftList drafts={drafts} onRemove={onRemoveDraft} edit={props.edit} />
 				<Textarea
 					ref={textArea}
 					className="block max-h-[200px] min-h-0 resize-none rounded-none border-0 p-0 text-[15px] leading-[18px] transition-none focus-visible:ring-0 disabled:bg-transparent disabled:opacity-100"

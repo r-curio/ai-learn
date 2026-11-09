@@ -1,3 +1,4 @@
+import type { DrawingEdit } from "../../shared/drawing.ts";
 import { useCallback, useState } from "react";
 import {
 	answerText,
@@ -108,9 +109,13 @@ export function useConversation(onRunEnd: () => void) {
 		model: ModelSelection,
 		chatType: ChatType,
 		viewing?: OpenPage,
+		edit?: DrawingEdit & { title: string },
 	) {
 		const replyId = makeKey();
-		const blocks: TranscriptMessage["blocks"] = text.trim() ? [{ kind: "text", text }] : [];
+		const blocks: TranscriptMessage["blocks"] = [
+			...(edit ? [{ kind: "drawing-edit" as const, ...edit }] : []),
+			...(text.trim() ? [{ kind: "text" as const, text }] : []),
+		];
 		setMessages((current) => [
 			...current,
 			{ id: makeKey(), role: "user", blocks, attachments },
@@ -123,6 +128,7 @@ export function useConversation(onRunEnd: () => void) {
 			viewing,
 			model,
 			chatType,
+			edit: edit && { callId: edit.callId, elements: edit.elements, pictureId: edit.pictureId },
 		};
 		void follow(replyId, (onEvent) => sendMessage(sessionId!, body, onEvent));
 	}
