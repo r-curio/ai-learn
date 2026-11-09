@@ -46,6 +46,7 @@ export function SettingsView({ status, providers, page, onPageChange }: Settings
 						addable={providers.available}
 						keysUnavailable={status?.keysUnavailable}
 						onConnect={providers.connect}
+						onDisconnect={providers.disconnect}
 					/>
 				)}
 			</main>

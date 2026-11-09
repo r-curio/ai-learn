@@ -2,7 +2,9 @@ import type { Models } from "@earendil-works/pi-ai";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createDemoEngine } from "../src/harness/fake-engine.ts";
-import { cloudVoiceModels, transcribeInCloud, VoiceError } from "../src/harness/transcription.ts";
+import { cloudVoiceModels, transcribeInCloud } from "../src/harness/voice/openai-compatible.ts";
+import { transcribeWithDeepgram } from "../src/harness/voice/deepgram.ts";
+import { VoiceError } from "../src/harness/voice/voice-error.ts";
 import { createApp } from "../src/server/app.ts";
 import { tempDir } from "./helpers.ts";
 
@@ -89,6 +91,35 @@ test("a provider's error reply never reaches the learner, even when it repeats t
 		});
 	} finally {
 		stub.restore();
+	}
+});
+
+test("Deepgram gets the raw recording with its own key header, and its text comes back", async () => {
+	const reply = {
+		results: { channels: [{ alternatives: [{ transcript: " Hello, Deepgram. " }] }] },
+	};
+	const stub = stubFetch(Response.json(reply));
+	try {
+		assert.equal(await transcribeWithDeepgram(KEY, RECORDING), "Hello, Deepgram.");
+		assert.equal(
+			stub.sent[0]?.url,
+			"https://api.deepgram.com/v1/listen?model=nova-3&smart_format=true",
+		);
+		assert.deepEqual(stub.sent[0]?.init?.headers, {
+			"Content-Type": "audio/webm",
+			Authorization: `Token ${KEY}`,
+		});
+	} finally {
+		stub.restore();
+	}
+	const echo = JSON.stringify({ err_code: "INVALID_AUTH", err_msg: `Invalid credentials: ${KEY}` });
+	const rejected = stubFetch(new Response(echo, { status: 401 }));
+	try {
+		await assert.rejects(transcribeWithDeepgram(KEY, RECORDING), {
+			message: "Deepgram rejected the key. Check it in Settings.",
+		});
+	} finally {
+		rejected.restore();
 	}
 });
 

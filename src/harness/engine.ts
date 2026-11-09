@@ -4,7 +4,7 @@ import { builtinModels } from "@earendil-works/pi-ai/providers/all";
 import type { EngineStatus, ModelRef, ModelSelection, VoiceModels } from "../shared/protocol.ts";
 import { engineFromModels } from "./model-catalog.ts";
 import { ProviderKeyStore, type KeyCipher } from "./provider-keys.ts";
-import type { Recording } from "./transcription.ts";
+import type { Recording } from "./voice/voice-error.ts";
 
 export interface ResolvedModel {
 	model: Model<string>;
@@ -44,5 +44,8 @@ export function createEngine({ dataDir, cipher, authContext }: EngineOptions): E
 		async (id) => (await environment.getAuth(id).catch(() => undefined)) !== undefined,
 	);
 	const models = builtinModels({ authContext, credentials: keys });
-	return engineFromModels(models, { keys, environment });
+	const env = authContext
+		? (name: string) => authContext.env(name)
+		: async (name: string) => process.env[name];
+	return engineFromModels(models, { keys, environment, env });
 }

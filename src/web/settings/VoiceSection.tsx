@@ -32,11 +32,48 @@ function ChoiceRow(props: { value: string; label: string; hint: string; disabled
 	);
 }
 
+/** Add a missing key, or for a voice-only engine, remove a saved one or say it's from the environment. */
+function KeyAction(props: {
+	engine: VoiceEngineOption;
+	canAddKey: boolean;
+	onAdd: () => void;
+	onRemove: () => void;
+}) {
+	const { engine } = props;
+	if (!engine.connected)
+		return props.canAddKey ? (
+			<Button
+				variant="outline"
+				size="sm"
+				className="h-8 px-2.5 text-foreground"
+				aria-label={`Add ${engine.label} key`}
+				onClick={props.onAdd}
+			>
+				Add key
+			</Button>
+		) : null;
+	if (!engine.ownKey) return null;
+	if (engine.keySource === "environment")
+		return <span className={`${HINT} px-2.5`}>From environment</span>;
+	return (
+		<Button
+			variant="ghost"
+			size="sm"
+			className="h-8 px-2.5 text-muted-foreground"
+			aria-label={`Remove ${engine.label} key`}
+			onClick={props.onRemove}
+		>
+			Remove
+		</Button>
+	);
+}
+
 /** A cloud engine. Without a key it can't be chosen, and offers to add one in place. Once chosen, it offers its models. */
 function EngineRow(props: {
 	engine: VoiceEngineOption;
 	canAddKey: boolean;
 	onConnect: (key: string) => Promise<void>;
+	onDisconnect: () => void;
 	/** Only the chosen engine has a model menu. */
 	model?: { current?: string; onChoose: (model: string) => void };
 }) {
@@ -61,17 +98,12 @@ function EngineRow(props: {
 				hint={`Sends your recording to ${engine.label}.`}
 				disabled={!engine.connected}
 			/>
-			{!engine.connected && props.canAddKey && (
-				<Button
-					variant="outline"
-					size="sm"
-					className="h-8 px-2.5 text-foreground"
-					aria-label={`Add ${engine.label} key`}
-					onClick={() => setAdding(true)}
-				>
-					Add key
-				</Button>
-			)}
+			<KeyAction
+				engine={engine}
+				canAddKey={props.canAddKey}
+				onAdd={() => setAdding(true)}
+				onRemove={props.onDisconnect}
+			/>
 			{props.model && (
 				<VoiceModelMenu
 					engineId={engine.id}
@@ -89,10 +121,12 @@ interface VoiceSectionProps {
 	addable: AddableProvider[];
 	keysUnavailable?: string;
 	onConnect: (id: string, key: string) => Promise<void>;
+	onDisconnect: (id: string) => void;
 }
 
 /** How the learner's speech becomes text. The recording goes to the engine chosen here. */
-export function VoiceSection({ engines, addable, keysUnavailable, onConnect }: VoiceSectionProps) {
+export function VoiceSection(props: VoiceSectionProps) {
+	const { engines, addable, keysUnavailable, onConnect, onDisconnect } = props;
 	const voice = useVoiceChoice(engines);
 
 	return (
@@ -119,8 +153,11 @@ export function VoiceSection({ engines, addable, keysUnavailable, onConnect }: V
 						<EngineRow
 							key={engine.id}
 							engine={engine}
-							canAddKey={!keysUnavailable && addable.some(({ id }) => id === engine.id)}
+							canAddKey={
+								!keysUnavailable && (engine.ownKey || addable.some(({ id }) => id === engine.id))
+							}
 							onConnect={(key) => onConnect(engine.id, key)}
+							onDisconnect={() => onDisconnect(engine.id)}
 							model={
 								engine.id === voice.engine
 									? { current: voice.model, onChoose: voice.chooseModel }

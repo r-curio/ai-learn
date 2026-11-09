@@ -10,10 +10,17 @@ import type {
 import { EFFORTS } from "../shared/protocol.ts";
 import type { Engine, ResolvedModel } from "./engine.ts";
 import { ProviderKeyError, type ProviderKeyStore } from "./provider-keys.ts";
-import { cloudVoiceEngines, cloudVoiceModels, transcribeInCloud } from "./transcription.ts";
+import {
+	hasVoiceEnvironmentKey,
+	isVoiceOnly,
+	transcribe,
+	voiceEngines,
+	voiceModels,
+	type VoiceKeySources,
+} from "./voice/engines.ts";
 
 /** How an engine's Pi providers get their keys. The fake model has neither. */
-export interface KeySources {
+export interface KeySources extends VoiceKeySources {
 	keys: ProviderKeyStore;
 	/** The same providers, without the saved keys. */
 	environment: Models;
@@ -110,7 +117,7 @@ async function readStatus(models: Models, sources?: KeySources): Promise<EngineS
 		ready: catalog.providers.length > 0,
 		...catalog,
 		keysUnavailable,
-		voice: sources ? await cloudVoiceEngines(models) : [],
+		voice: sources ? await voiceEngines(models, sources) : [],
 		...(catalog.providers.length > 0 ? {} : { reason: notReadyReason(keysUnavailable) }),
 	};
 }
@@ -118,9 +125,13 @@ async function readStatus(models: Models, sources?: KeySources): Promise<EngineS
 async function saveKey(models: Models, sources: KeySources | undefined, id: string, key: string) {
 	const reason = sources ? sources.keys.unavailableReason() : NO_FAKE_KEYS;
 	if (!sources || reason) throw new ProviderKeyError(reason ?? NO_FAKE_KEYS, 503);
-	if (!canSaveKey(models, id))
+	const voiceOnly = isVoiceOnly(id);
+	if (!voiceOnly && !canSaveKey(models, id))
 		throw new ProviderKeyError("That provider can't use a saved key.", 400);
-	if (await isConfigured(sources.environment, id))
+	const fromEnvironment = voiceOnly
+		? await hasVoiceEnvironmentKey(sources, id)
+		: await isConfigured(sources.environment, id);
+	if (fromEnvironment)
 		throw new ProviderKeyError("This provider's key already comes from the environment.", 409);
 	await sources.keys.save(id, key);
 }
@@ -136,8 +147,8 @@ export function engineFromModels(models: Models, sources?: KeySources): Engine {
 		removeKey: async (id) => {
 			await sources?.keys.remove(id);
 		},
-		voiceModels: (engineId) => cloudVoiceModels(models, engineId),
+		voiceModels: (engineId) => voiceModels(models, sources, engineId),
 		transcribe: (engineId, recording, model) =>
-			transcribeInCloud(models, engineId, recording, model),
+			transcribe(models, sources, engineId, recording, model),
 	};
 }

@@ -204,3 +204,32 @@ test("key requests need the token, a real provider, and a clean key", async () =
 	}
 	assert.ok(!(await readdir(dataDir)).includes(FILE));
 });
+
+test("a voice-only key is saved, removed, and never sent back, and the environment wins", async () => {
+	const dataDir = await tempDir();
+	const { app } = appFor(dataDir, testCipher());
+	const deepgram = async (target: App) =>
+		(await statusOf(target)).voice.find(({ id }) => id === "deepgram");
+	assert.deepEqual(await deepgram(app), {
+		id: "deepgram",
+		label: "Deepgram",
+		connected: false,
+		ownKey: true,
+	});
+
+	assert.equal((await saveKey(app, "deepgram", SECRET)).status, 200);
+	const status = await app.request(`${BASE}/api/status`, { headers: auth });
+	const body = await status.text();
+	assert.ok(!body.includes(SECRET));
+	assert.equal((await deepgram(app))?.keySource, "saved");
+	assert.ok(!(await readFile(join(dataDir, FILE), "utf8")).includes(SECRET));
+	// Deepgram has no chat models, so it never turns up as a chat provider.
+	assert.ok(!(await statusOf(app)).providers.some(({ id }) => id === "deepgram"));
+
+	await app.request(`${BASE}/api/providers/deepgram/key`, { method: "DELETE", headers: auth });
+	assert.equal((await deepgram(app))?.connected, false);
+
+	const fromEnv = appFor(await tempDir(), testCipher(), { DEEPGRAM_API_KEY: "dg-from-env" }).app;
+	assert.equal((await deepgram(fromEnv))?.keySource, "environment");
+	assert.equal((await saveKey(fromEnv, "deepgram", SECRET)).status, 409);
+});
