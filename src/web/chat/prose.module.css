@@ -8,7 +8,8 @@
 	overflow-wrap: anywhere;
 }
 
-.prose :where(:not(.katex-display, .katex, .katex *, .katex-error)) {
+.prose
+	:where(:not(:global(.katex-display), :global(.katex), :global(.katex) *, :global(.katex-error))) {
 	all: revert;
 	box-sizing: border-box;
 }
