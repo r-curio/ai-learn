@@ -3,6 +3,8 @@ import { useRef, type RefObject } from "react";
 import type { ContextUsage, ProviderOption } from "../../shared/protocol.ts";
 import { Button } from "../components/button.tsx";
 import { IconButton } from "../components/IconButton.tsx";
+import type { VoiceRecorder } from "../voice/useVoiceRecorder.ts";
+import { VoiceControl } from "../voice/VoiceControl.tsx";
 import { ContextMeter } from "./ContextMeter.tsx";
 import { EffortMenu } from "./EffortMenu.tsx";
 import { ModelPicker } from "./ModelPicker.tsx";
@@ -23,6 +25,9 @@ interface ComposerControlsProps {
 	onAddProvider: () => void;
 	onAddFiles: (files: File[]) => void;
 	onStop: () => void;
+	voice: VoiceRecorder;
+	/** Words can't go into the box yet. */
+	voiceDisabled: boolean;
 }
 
 function AttachButton({
@@ -55,10 +60,11 @@ function AttachButton({
 	);
 }
 
-/** The row under the message box: Attach and context on the left, then the menus and Send or Stop on the right. */
+/** The row under the message box: Attach and context on the left, then the menus, the mic, and Send or Stop on the right. */
 export function ComposerControls(props: ComposerControlsProps) {
 	const { canAttach, canSend, running, providers, modelChoice, menusDisabled } = props;
-	const { context, card, onNewChat, onAddProvider, onAddFiles, onStop } = props;
+	const { context, card, onNewChat, onAddProvider, onAddFiles, onStop, voice, voiceDisabled } =
+		props;
 	const row = useRef<HTMLDivElement>(null);
 
 	return (
@@ -84,6 +90,7 @@ export function ComposerControls(props: ComposerControlsProps) {
 					onAddProvider={onAddProvider}
 				/>
 				<EffortMenu choice={modelChoice} anchor={row} disabled={menusDisabled} />
+				<VoiceControl voice={voice} disabled={voiceDisabled} />
 				{running ? (
 					<Button
 						size="icon"

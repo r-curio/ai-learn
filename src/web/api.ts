@@ -203,3 +203,13 @@ export async function getVoiceModels(engineId: string): Promise<VoiceModels> {
 		await request(`/api/voice/engines/${encodeURIComponent(engineId)}/models`)
 	).json() as Promise<VoiceModels>;
 }
+
+/** Turn one recording into text with the voice engine chosen in Settings. */
+export async function transcribe(recording: Blob): Promise<string> {
+	const response = await request("/api/voice/transcribe", {
+		method: "POST",
+		headers: { "Content-Type": recording.type },
+		body: recording,
+	});
+	return ((await response.json()) as { text: string }).text;
+}

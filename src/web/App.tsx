@@ -10,16 +10,21 @@ import { useFileDrop } from "./composer/useFileDrop.ts";
 import { useModelChoice } from "./composer/useModelChoice.ts";
 import { SidebarInset, SidebarProvider } from "./components/sidebar.tsx";
 import { ChatSidebar } from "./shell/ChatSidebar.tsx";
-import { SettingsView } from "./settings/SettingsView.tsx";
+import { SettingsView, type SettingsPage } from "./settings/SettingsView.tsx";
 import { useProviders } from "./settings/useProviders.ts";
 import { Rail, type RailView } from "./shell/Rail.tsx";
 import { TopBar } from "./shell/TopBar.tsx";
 import { useSidebarPreference } from "./shell/useSidebarPreference.ts";
 import { AttachmentPane } from "./viewer/AttachmentPane.tsx";
 import { useAttachmentPane } from "./viewer/useAttachmentPane.ts";
+import { useVoiceRecorder } from "./voice/useVoiceRecorder.ts";
 
 /** The sidebar narrows while an attachment is open, to leave room for the chat and the page. */
 const NARROW_SIDEBAR = { "--sidebar-width": "216px" } as CSSProperties;
+
+/** Spoken words go at the end of the box, a space after anything already there. */
+const addWords = (text: string, words: string) =>
+	!text || /\s$/.test(text) ? text + words : `${text} ${words}`;
 
 export function App() {
 	const [text, setText] = useState("");
@@ -27,6 +32,7 @@ export function App() {
 	const textArea = useRef<HTMLTextAreaElement>(null);
 	const files = useDrafts();
 	const [view, setView] = useState<RailView>("chat");
+	const [settingsPage, setSettingsPage] = useState<SettingsPage>("providers");
 	const [chatType, setChatType] = useState<ChatType>("learning");
 	const { clearDrafts, addFiles } = files;
 	const pane = useAttachmentPane();
@@ -44,6 +50,12 @@ export function App() {
 	const modelChoice = useModelChoice(status, onReady);
 	const hasModel = Boolean(modelChoice.selection);
 	const providers = useProviders(status, chat.refreshStatus);
+	const voice = useVoiceRecorder(status?.voice ?? [], (words) =>
+		setText((current) => addWords(current, words)),
+	);
+	// Words from one chat's recording never land in another chat's box.
+	const { cancel: cancelVoice } = voice;
+	useEffect(() => cancelVoice(), [sessionId, cancelVoice]);
 	const setupNeeded = status?.ready === false;
 	const waitingQuestion = running ? undefined : chat.pendingQuestion;
 	const [cardHasShown, setCardHasShown] = useState(false);
@@ -58,8 +70,15 @@ export function App() {
 	);
 	const { dragging, dropHandlers } = useFileDrop(attach);
 	const hasContent = Boolean(text.trim() || files.attachments.length > 0);
+	// Recording never sends, and the last words must arrive before the message can go.
 	const canSend = Boolean(
-		sessionId && status?.ready && hasModel && !running && !files.uploading && hasContent,
+		sessionId &&
+		status?.ready &&
+		hasModel &&
+		!running &&
+		!files.uploading &&
+		!voice.busy &&
+		hasContent,
 	);
 
 	// The box can't hold focus while it's disabled, so give it focus once a saved model has loaded.
@@ -78,6 +97,12 @@ export function App() {
 		chat.send(text, files.attachments, modelChoice.selection, chatType, viewing);
 		setText("");
 		clearDrafts();
+		voice.dismiss();
+	}
+
+	function openProviders() {
+		setSettingsPage("providers");
+		setView("settings");
 	}
 
 	const { setOpen: saveSidebarOpen } = sidebar;
@@ -115,7 +140,12 @@ export function App() {
 			)}
 			<SidebarInset>
 				{view === "settings" ? (
-					<SettingsView status={status} providers={providers} />
+					<SettingsView
+						status={status}
+						providers={providers}
+						page={settingsPage}
+						onPageChange={setSettingsPage}
+					/>
 				) : (
 					<div className="flex min-h-0 flex-1">
 						<div
@@ -168,7 +198,7 @@ export function App() {
 										else modelChoice.setPickerOpen(true);
 									}}
 									onNewChat={() => void chat.startNewChat()}
-									onAddProvider={() => setView("settings")}
+									onAddProvider={openProviders}
 								/>
 							) : (
 								<Composer
@@ -184,7 +214,12 @@ export function App() {
 									modelChoice={modelChoice}
 									context={chat.context}
 									onNewChat={() => void chat.startNewChat()}
-									onAddProvider={() => setView("settings")}
+									onAddProvider={openProviders}
+									voice={voice}
+									onOpenVoiceSettings={() => {
+										setSettingsPage("voice");
+										setView("settings");
+									}}
 									dimmed={setupNeeded}
 									needsModel={!setupNeeded && !hasModel}
 									swappingIn={cardHasShown}

@@ -1,11 +1,10 @@
-import { useState } from "react";
 import type { EngineStatus } from "../../shared/protocol.ts";
 import { SegmentedTabs } from "../components/tabs.tsx";
 import { ProvidersView } from "./ProvidersView.tsx";
 import type { useProviders } from "./useProviders.ts";
 import { VoiceSection } from "./VoiceSection.tsx";
 
-type Page = "providers" | "voice";
+export type SettingsPage = "providers" | "voice";
 
 const PAGES = [
 	{ value: "providers", label: "Providers" },
@@ -15,11 +14,13 @@ const PAGES = [
 interface SettingsViewProps {
 	status?: EngineStatus;
 	providers: ReturnType<typeof useProviders>;
+	/** The open tab is kept outside, so the composer can open Voice directly. */
+	page: SettingsPage;
+	onPageChange: (page: SettingsPage) => void;
 }
 
 /** Providers come first, since nothing works without one. The provider list is long, so voice gets its own tab. */
-export function SettingsView({ status, providers }: SettingsViewProps) {
-	const [page, setPage] = useState<Page>("providers");
+export function SettingsView({ status, providers, page, onPageChange }: SettingsViewProps) {
 	return (
 		<div className="flex-1 overflow-y-auto">
 			<div className="h-10 app-drag" />
@@ -29,7 +30,7 @@ export function SettingsView({ status, providers }: SettingsViewProps) {
 					className="w-[240px]"
 					value={page}
 					options={PAGES}
-					onChange={setPage}
+					onChange={onPageChange}
 				/>
 				{page === "providers" ? (
 					<ProvidersView
