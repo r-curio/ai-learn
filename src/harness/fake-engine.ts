@@ -12,6 +12,7 @@ import {
 import type { Engine } from "./engine.ts";
 import { engineFromModels } from "./model-catalog.ts";
 import { ASK_QUESTION } from "./tools.ts";
+import { VoiceError } from "./transcription.ts";
 
 const FAKE_INPUT: ("text" | "image")[] = ["text", "image"];
 const FAKE_MODELS = [
@@ -98,6 +99,11 @@ function createForcedReplies() {
 	};
 }
 
+const FAKE_VOICE = { id: "fake-voice", label: "Fake voice", connected: true };
+const FAKE_DEFAULT_MODEL = "fake-speech-fast";
+const FAKE_VOICE_MODELS = [FAKE_DEFAULT_MODEL, "fake-speech-accurate"];
+const FAKE_SPEECH = "So the query is what the word is looking for.";
+
 /** A free offline stand-in for trying the app without a key (AI_LEARN_FAKE_MODEL=1). */
 export function createDemoEngine(): Engine {
 	const forcedReply = createForcedReplies();
@@ -130,6 +136,22 @@ export function createDemoEngine(): Engine {
 	const engine = createScriptedEngine([], 60);
 	return {
 		...engine,
+		status: async () => ({ ...(await engine.status()), voice: [FAKE_VOICE] }),
+		voiceModels: async (engineId) => {
+			if (engineId !== FAKE_VOICE.id)
+				throw new VoiceError("That voice engine isn't available.", 409);
+			return { models: FAKE_VOICE_MODELS, defaultModel: FAKE_DEFAULT_MODEL };
+		},
+		transcribe: async (engineId, _recording, model) => {
+			if (engineId !== FAKE_VOICE.id)
+				throw new VoiceError("That voice engine isn't available.", 409);
+			if (model !== undefined && !FAKE_VOICE_MODELS.includes(model))
+				throw new VoiceError(
+					"That model isn't available from Fake voice. Choose another in Settings.",
+					409,
+				);
+			return FAKE_SPEECH;
+		},
 		streamFn: (model, context, options) => {
 			engine.faux.appendResponses([respond]);
 			return engine.streamFn(model, context, options);

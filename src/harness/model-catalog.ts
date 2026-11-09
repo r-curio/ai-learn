@@ -10,6 +10,7 @@ import type {
 import { EFFORTS } from "../shared/protocol.ts";
 import type { Engine, ResolvedModel } from "./engine.ts";
 import { ProviderKeyError, type ProviderKeyStore } from "./provider-keys.ts";
+import { cloudVoiceEngines, cloudVoiceModels, transcribeInCloud } from "./transcription.ts";
 
 /** How an engine's Pi providers get their keys. The fake model has neither. */
 export interface KeySources {
@@ -109,6 +110,7 @@ async function readStatus(models: Models, sources?: KeySources): Promise<EngineS
 		ready: catalog.providers.length > 0,
 		...catalog,
 		keysUnavailable,
+		voice: sources ? await cloudVoiceEngines(models) : [],
 		...(catalog.providers.length > 0 ? {} : { reason: notReadyReason(keysUnavailable) }),
 	};
 }
@@ -134,5 +136,8 @@ export function engineFromModels(models: Models, sources?: KeySources): Engine {
 		removeKey: async (id) => {
 			await sources?.keys.remove(id);
 		},
+		voiceModels: (engineId) => cloudVoiceModels(models, engineId),
+		transcribe: (engineId, recording, model) =>
+			transcribeInCloud(models, engineId, recording, model),
 	};
 }

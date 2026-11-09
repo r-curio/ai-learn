@@ -1,9 +1,10 @@
 import type { StreamFn, ThinkingLevel } from "@earendil-works/pi-agent-core";
 import type { AuthContext, Model } from "@earendil-works/pi-ai";
 import { builtinModels } from "@earendil-works/pi-ai/providers/all";
-import type { EngineStatus, ModelRef, ModelSelection } from "../shared/protocol.ts";
+import type { EngineStatus, ModelRef, ModelSelection, VoiceModels } from "../shared/protocol.ts";
 import { engineFromModels } from "./model-catalog.ts";
 import { ProviderKeyStore, type KeyCipher } from "./provider-keys.ts";
+import type { Recording } from "./transcription.ts";
 
 export interface ResolvedModel {
 	model: Model<string>;
@@ -20,6 +21,10 @@ export interface Engine {
 	contextLimit(model: ModelRef): number | undefined;
 	saveKey(providerId: string, key: string): Promise<void>;
 	removeKey(providerId: string): Promise<void>;
+	/** The models a voice engine from `status().voice` offers. Throws `VoiceError`. */
+	voiceModels(engineId: string): Promise<VoiceModels>;
+	/** Turn a recording into text with a voice engine, on its default model unless one is named. Throws `VoiceError`. */
+	transcribe(engineId: string, recording: Recording, model?: string): Promise<string>;
 }
 
 export interface EngineOptions {

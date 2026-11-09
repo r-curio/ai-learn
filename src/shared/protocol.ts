@@ -63,7 +63,17 @@ export interface Preferences {
 	sidebarOpen: boolean;
 	model?: ModelRef;
 	effort?: Effort;
+	/** The voice engine that turns the learner's speech into text. Missing means voice is off. */
+	voice?: string;
+	/** The voice engine's model. Missing means the engine's default. */
+	voiceModel?: string;
 }
+
+/** What the UI sends to change preferences. Settings left out stay as they are, and `null` clears a voice setting. */
+export type PreferencesChange = Partial<Omit<Preferences, "voice" | "voiceModel">> & {
+	voice?: string | null;
+	voiceModel?: string | null;
+};
 
 export interface ModelOption extends ModelRef {
 	label: string;
@@ -90,6 +100,19 @@ export interface AddableProvider {
 	modelCount: number;
 }
 
+/** Something that turns recorded speech into text. Only a connected one can be chosen. */
+export interface VoiceEngineOption {
+	id: string;
+	label: string;
+	connected: boolean;
+}
+
+/** A voice engine's models. The learner can pick any of them, and the default is listed first. */
+export interface VoiceModels {
+	models: string[];
+	defaultModel: string;
+}
+
 export interface EngineStatus {
 	ready: boolean;
 	/** Only the providers that can be used right now. */
@@ -98,6 +121,7 @@ export interface EngineStatus {
 	/** Why keys can't be saved encrypted here. Missing when they can. */
 	keysUnavailable?: string;
 	reason?: string;
+	voice: VoiceEngineOption[];
 }
 
 export const CHAT_TYPES = ["learning", "practice"] as const;

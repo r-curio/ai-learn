@@ -1,4 +1,12 @@
-import { app, BrowserWindow, nativeTheme, safeStorage, session, shell } from "electron";
+import {
+	app,
+	BrowserWindow,
+	nativeTheme,
+	safeStorage,
+	session,
+	shell,
+	systemPreferences,
+} from "electron";
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -44,6 +52,29 @@ async function createWindow() {
 	await window.loadURL(`${origin}/#token=${server.token}`);
 }
 
+/** Only the app's own page may record, and only sound. Everything else stays denied. */
+function isMicrophoneOnly(permission, url, mediaTypes) {
+	const origin = server && `http://127.0.0.1:${server.port}`;
+	const fromApp = origin !== undefined && (url === origin || url.startsWith(`${origin}/`));
+	const audioOnly = mediaTypes?.length > 0 && mediaTypes.every((type) => type === "audio");
+	return permission === "media" && fromApp && audioOnly;
+}
+
+/** macOS asks the learner once. Other systems don't gate the microphone per app. */
+async function microphoneAllowed() {
+	if (process.platform !== "darwin") return true;
+	if (systemPreferences.getMediaAccessStatus("microphone") === "granted") return true;
+	return systemPreferences.askForMediaAccess("microphone");
+}
+
+function allowMicrophoneOnly() {
+	session.defaultSession.setPermissionRequestHandler((_contents, permission, callback, details) => {
+		if (!isMicrophoneOnly(permission, details.requestingUrl, details.mediaTypes))
+			return callback(false);
+		microphoneAllowed().then(callback, () => callback(false));
+	});
+}
+
 const NO_KEYCHAIN =
 	"This computer has no keychain to encrypt keys with, so they can't be saved. Add them to .env.local instead.";
 
@@ -70,9 +101,7 @@ if (!app.requestSingleInstanceLock()) {
 		}
 	});
 	app.whenReady().then(async () => {
-		session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) =>
-			callback(false),
-		);
+		allowMicrophoneOnly();
 		const envFile = join(root, ".env.local");
 		if (existsSync(envFile)) process.loadEnvFile(envFile);
 		const { startServer } = await import("../dist/server/index.mjs");
