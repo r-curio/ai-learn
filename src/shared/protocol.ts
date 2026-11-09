@@ -218,6 +218,19 @@ export type TranscriptBlock =
 			durationMs?: number;
 	  };
 
+/**
+ * Put a drawing just after the tool call that drew it. A question asked in the same step comes
+ * after the call, and the drawing belongs before it.
+ */
+export function placeDrawing(
+	blocks: TranscriptBlock[],
+	drawing: Extract<TranscriptBlock, { kind: "drawing" }>,
+): TranscriptBlock[] {
+	const call = blocks.findIndex((block) => block.kind === "tool" && block.id === drawing.id);
+	blocks.splice(call === -1 ? blocks.length : call + 1, 0, drawing);
+	return blocks;
+}
+
 export interface TranscriptMessage {
 	id: string;
 	role: "user" | "assistant";

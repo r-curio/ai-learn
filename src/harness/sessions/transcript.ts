@@ -9,7 +9,7 @@ import type {
 	UsageSummary,
 } from "../../shared/protocol.ts";
 import { keepCitations, stripCitations, type Citation } from "../../shared/citations.ts";
-import { answerText, noticeFor } from "../../shared/protocol.ts";
+import { answerText, noticeFor, placeDrawing } from "../../shared/protocol.ts";
 import type { LogEntry } from "./log.ts";
 import { askedIn, gradeOf, type QuizKey } from "./questions.ts";
 import { toolLabels } from "../tools.ts";

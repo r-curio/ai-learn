@@ -313,3 +313,21 @@ test("the same description always gets the same layout", async () => {
 	const description = { ...PLAN_INPUT, id: "plan", kind: "plan" as const };
 	assert.deepEqual(await layOut(description), await layOut(description));
 });
+
+test("a drawing comes before a question asked in the same step, live and reopened", async () => {
+	const reply = fauxAssistantMessage(
+		[
+			fauxToolCall(PLAN, PLAN_INPUT),
+			fauxToolCall("ask_question", { question: "Where to start?", choices: ["A", "B"] }),
+		],
+		{ stopReason: "toolUse" },
+	);
+	const dataDir = await tempDir();
+	const session = new Session(createScriptedEngine([reply]), dataDir);
+	await send(session);
+	const kinds = (view: ReturnType<Session["view"]>) =>
+		view.messages.at(-1)!.blocks.map((block) => block.kind);
+	assert.deepEqual(kinds(session.view()), ["tool", "drawing", "question"]);
+	const reopened = await Session.load(createScriptedEngine([]), dataDir, session.id);
+	assert.deepEqual(kinds(reopened.view()), ["tool", "drawing", "question"]);
+});
