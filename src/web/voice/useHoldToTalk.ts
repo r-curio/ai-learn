@@ -69,7 +69,11 @@ export function useHoldToTalk<Target extends string>(options: HoldOptions<Target
 		};
 
 		const onKeyDown = (event: KeyboardEvent) => {
-			if (event.key !== " ") return;
+			if (event.key !== " ") {
+				// Another key before the hold starts means the learner is typing, not talking.
+				if (pending) release();
+				return;
+			}
 			if (pending || holding) {
 				// Key repeat would type more spaces, or press a button again.
 				event.preventDefault();
