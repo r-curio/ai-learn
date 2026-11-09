@@ -138,7 +138,7 @@ export function editTag(drawing: Drawing, elements: SceneElement[], picture: boo
 }
 
 /** The drawing a `draw` or `plan` call in this chat made, if it succeeded. */
-export function drawingFromCall(messages: Message[], callId: string): Drawing | undefined {
+function drawingFromCall(messages: Message[], callId: string): Drawing | undefined {
 	const result = messages.find(
 		(message) => message.role === "toolResult" && message.toolCallId === callId,
 	);
@@ -147,14 +147,16 @@ export function drawingFromCall(messages: Message[], callId: string): Drawing | 
 
 /**
  * What the model gets for an edit: a picture of it when there is one and the model can see
- * images, then the tag.
+ * images, then the tag. Nothing, if the edited drawing isn't in this chat.
  */
 export function editContent(
-	drawing: Drawing,
+	messages: Message[],
 	edit: DrawingEdit,
 	attachments: AttachmentStore,
 	seesImages: boolean,
-): (TextContent | ImageContent)[] {
+): (TextContent | ImageContent)[] | undefined {
+	const drawing = drawingFromCall(messages, edit.callId);
+	if (!drawing) return undefined;
 	const picture =
 		seesImages && edit.pictureId
 			? attachments.toContent([edit.pictureId]).filter((part) => part.type === "image")

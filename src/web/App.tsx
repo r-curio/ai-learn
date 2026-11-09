@@ -80,6 +80,8 @@ export function App() {
 		!running &&
 		!files.uploading &&
 		!drawingEdit.uploading &&
+		// A failed picture must be removed or redone, or the edit would quietly go unsent.
+		drawingEdit.draft?.state !== "failed" &&
 		!voice.busy &&
 		hasContent,
 	);

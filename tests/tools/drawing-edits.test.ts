@@ -153,8 +153,23 @@ test("an edit reaches the model as a tag with a picture, and a reopened chat sho
 		mine?.blocks.map((block) => block.kind),
 		["drawing-edit", "text"],
 	);
-	const reopened = await Session.load(createScriptedEngine([]), dataDir, session.id);
+	// A reopened chat sends the model the same tag it saved, rather than writing a new one.
+	let resent: Message | undefined;
+	const reopened = await Session.load(
+		createScriptedEngine([
+			((context) => {
+				resent = context.messages.findLast(
+					(message) => message.role === "user" && textOf(message).includes("<diagram-edit"),
+				);
+				return fauxAssistantMessage("Again.");
+			}) satisfies FauxResponseFactory,
+		]),
+		dataDir,
+		session.id,
+	);
 	assert.deepEqual(reopened.view().messages, session.view().messages);
+	await reopened.send({ text: "And now?", attachmentIds: [] }, () => undefined, FAKE_CHOICE);
+	assert.equal(textOf(resent), tag);
 });
 
 test("an edit of a drawing that isn't in the chat is refused, and nothing is saved", async () => {
@@ -175,6 +190,22 @@ test("an edit of a drawing that isn't in the chat is refused, and nothing is sav
 });
 
 test("an edit with no changes says so, and a deleted box is reported", async () => {
+	let unchanged: Message | undefined;
+	const first = await chatWithDiagram((context) => {
+		unchanged = context.messages.at(-1);
+		return fauxAssistantMessage("Same as mine.");
+	});
+	await first.session.send(
+		{
+			text: "",
+			attachmentIds: [],
+			edit: { callId: first.callId, elements: sceneOf(first.drawing) },
+		},
+		() => undefined,
+		FAKE_CHOICE,
+	);
+	assert.ok(textOf(unchanged).includes("- Nothing that can be put in words"));
+
 	let sent: Message | undefined;
 	const { session, callId, drawing } = await chatWithDiagram((context) => {
 		sent = context.messages.at(-1);

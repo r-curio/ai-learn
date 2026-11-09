@@ -30,7 +30,8 @@ export function useDrawingEdit() {
 	const initial = editing
 		? (): ExcalidrawElement[] =>
 				draft?.callId === editing.callId
-					? (draft.elements as unknown as ExcalidrawElement[])
+					? // Excalidraw changes elements in place, so a cancelled change mustn't reach the draft.
+						(structuredClone(draft.elements) as unknown as ExcalidrawElement[])
 					: toExcalidraw(editing.drawing, { bind: true })
 		: undefined;
 

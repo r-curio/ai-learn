@@ -16,7 +16,7 @@ import {
 	type UsageSummary,
 } from "../../shared/protocol.ts";
 import { AttachmentStore } from "../attachments.ts";
-import { drawingFromCall, editContent } from "../drawings/edits.ts";
+import { editContent } from "../drawings/edits.ts";
 import type { Engine, ResolvedModel } from "../engine.ts";
 import { LOG_VERSION, LogWriter, readLog, toStored, type LogEntry, type LogHeader } from "./log.ts";
 import {
@@ -289,13 +289,13 @@ export class Session {
 		if (this.pendingQuestion) throw new SessionStateError("Answer the tutor's question first.");
 		this.use(choice);
 		const { text, attachmentIds, viewing, edit } = input;
-		const edited = edit && drawingFromCall(this.messages, edit.callId);
-		if (edit && !edited) throw new SessionStateError("That drawing isn't in this chat.");
 		const seesImages = choice.model.input.includes("image");
+		const edited = edit && editContent(this.messages, edit, this.attachments, seesImages);
+		if (edit && !edited) throw new SessionStateError("That drawing isn't in this chat.");
 		const content = [
 			...this.attachments.toContent(attachmentIds),
 			...(viewing ? [{ type: "text" as const, text: viewingTag(viewing) }] : []),
-			...(edit && edited ? editContent(edited, edit, this.attachments, seesImages) : []),
+			...(edited ?? []),
 			...(text.trim() ? [{ type: "text" as const, text }] : []),
 		];
 		const message: Message = { role: "user", content, timestamp: Date.now() };
