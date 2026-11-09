@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, type ReactNode } from "react";
+import { Fragment, useEffect, useMemo, useRef, type ReactNode } from "react";
 import type { Citation } from "../../shared/citations.ts";
 import type {
 	AttachmentInfo,
@@ -62,16 +62,31 @@ function EmptyScreen({
 	);
 }
 
+/** Drawing again with the same id makes a new version, so versions are counted in transcript order. */
+function drawingVersions(messages: TranscriptMessage[]): Map<string, number> {
+	const counts = new Map<string, number>();
+	const versions = new Map<string, number>();
+	for (const block of messages.flatMap((message) => message.blocks)) {
+		if (block.kind !== "drawing") continue;
+		const version = (counts.get(block.drawing.id) ?? 0) + 1;
+		counts.set(block.drawing.id, version);
+		versions.set(block.id, version);
+	}
+	return versions;
+}
+
 /** Each reply and answer, with a quiz's grade under the answer it belongs to. */
 function Messages(props: ChatViewProps & { sessionId: string }) {
 	const { sessionId, messages, running, runStartedAt, canRetry, onRetry } = props;
 	const last = messages.length - 1;
+	const versions = useMemo(() => drawingVersions(messages), [messages]);
 	return messages.map((message, index) => (
 		<Fragment key={message.id}>
 			<MessageView
 				message={message}
 				sessionId={sessionId}
 				pendingQuestionId={props.pendingQuestionId}
+				drawingVersion={(callId) => versions.get(callId) ?? 1}
 				liveSince={running && index === last ? runStartedAt : undefined}
 				onRetry={canRetry && !running && index === last ? onRetry : undefined}
 				onOpenAttachment={props.onOpenAttachment}

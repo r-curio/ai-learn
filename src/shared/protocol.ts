@@ -1,5 +1,7 @@
 /** The wire contract between the local server and the UI. */
 
+import type { Drawing } from "./drawing.ts";
+
 export type AttachmentKind = "image" | "pdf" | "text";
 
 export interface AttachmentInfo {
@@ -38,6 +40,8 @@ export type RunEvent =
 	| { type: "tool_end"; id: string; isError: boolean; durationMs?: number; label?: string }
 	/** A quiz's answer is saved, so the learner can now see how it went. */
 	| { type: "graded"; grade: QuizGrade }
+	/** A `draw` or `plan` call finished, so its card can show before the reply ends. */
+	| { type: "drawing"; id: string; drawing: Drawing }
 	| {
 			type: "done";
 			stopReason: string;
@@ -202,6 +206,8 @@ export type TranscriptBlock =
 	| { kind: "text"; text: string }
 	| ({ kind: "question" } & Question)
 	| { kind: "reasoning"; text: string }
+	/** `id` is the tool call that drew it. */
+	| { kind: "drawing"; id: string; drawing: Drawing }
 	| {
 			kind: "tool";
 			id: string;

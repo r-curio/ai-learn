@@ -14,6 +14,7 @@ import type { LogEntry } from "./log.ts";
 import { askedIn, gradeOf, type QuizKey } from "./questions.ts";
 import { toolLabels } from "../tools.ts";
 import { isSearchLimit, SEARCH_LIMIT_LABEL } from "../web/web-tools.ts";
+import { drawingIn } from "../drawing-tools.ts";
 
 const INTERRUPTED_NOTICE = "The app closed before this reply finished.";
 
@@ -83,7 +84,7 @@ function setWorkedTime(
 	turn: { start: number; end: number },
 ): void {
 	const hasTrace = message.blocks.some(
-		(block) => block.kind !== "text" && block.kind !== "question",
+		(block) => block.kind === "reasoning" || block.kind === "tool",
 	);
 	const workedMs = saved ?? (hasTrace ? turn.end - turn.start : undefined);
 	if (workedMs === undefined) delete message.workedMs;
@@ -165,6 +166,9 @@ export function buildTranscript(
 		} else if (message.role === "toolResult") {
 			const block = toolBlocks.get(message.toolCallId);
 			if (block) settleTool(block, message);
+			const drawing = drawingIn(message);
+			if (drawing)
+				placeDrawing(current.blocks, { kind: "drawing", id: message.toolCallId, drawing });
 			// A tool cut off by a crash is settled at the next launch, so its time says nothing.
 			if (message.durationMs !== undefined) {
 				if (block) block.durationMs = message.durationMs;
@@ -188,9 +192,12 @@ export function markInterrupted(messages: TranscriptMessage[], notice = INTERRUP
 export function searchTextOf(entries: LogEntry[]): string {
 	return buildTranscript(entries, () => undefined)
 		.flatMap((message) => message.blocks)
-		.flatMap((block) =>
-			block.kind === "text" || block.kind === "question" ? [stripCitations(block.text)] : [],
-		)
+		.flatMap((block) => {
+			if (block.kind === "text" || block.kind === "question") return [stripCitations(block.text)];
+			if (block.kind !== "drawing") return [];
+			const { title, boxes, groups } = block.drawing;
+			return [title, ...[...boxes, ...groups].map((item) => item.label)];
+		})
 		.join("\n");
 }
 

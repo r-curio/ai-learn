@@ -31,6 +31,10 @@ export function applyRunEvent(message: TranscriptMessage, event: RunEvent): Tran
 			blocks: [...message.blocks, { kind: "tool", id, label, runningLabel, state: "running" }],
 		};
 	}
+	if (event.type === "drawing") {
+		const { id, drawing } = event;
+		return { ...message, blocks: [...message.blocks, { kind: "drawing", id, drawing }] };
+	}
 	if (event.type === "tool_end") {
 		return {
 			...message,

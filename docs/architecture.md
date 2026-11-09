@@ -54,6 +54,7 @@ Preferences live in `preferences.json` in the same folder. The desktop app's ser
 - **PDFs:** pdf.js draws pages to canvases in a worker, under the same content security policy as the app. Links, forms, and scripts inside a PDF aren't rendered or run.
 - **Electron window:** the page has no Node access, runs sandboxed, and can't navigate away from the local server. Web links open in the system browser. It may use the microphone, and only from the app's own page. Every other permission is denied.
 - **Web pages and search:** the tutor's `read_page` tool fetches pages from the local server, and refuses addresses on the learner's computer or network, checking again after each redirect. `web_search` sends only the query to the search service the learner added a key for. Both results are marked as material to check, not instructions, and they're saved as tool results, so an old chat replays without fetching again. One run can search at most 25 times.
+- **Diagrams:** Excalidraw's fonts are served by the app. The content security policy blocks Excalidraw's CDN fallback, so drawing makes no outside requests.
 - **Voice:** recordings go to the local server, which sends them to the voice engine the learner chose. The page never holds a key (ADR 0011).
 
 ## Not built yet
@@ -61,7 +62,7 @@ Preferences live in `preferences.json` in the same folder. The desktop app's ser
 These are planned in the roadmap and aren't part of the current architecture:
 
 - The teaching engine (#5)
-- Two-way diagrams (#6)
+- Learner edits to diagrams (#6). The tutor can already draw them.
 - Knowledge memory across sessions (#7)
 
 ## Decisions

@@ -86,6 +86,14 @@ _Avoid_: Explanation, justification
 How full a session is: the size of the last model call's input against the model's limit. It's not the running token total shown in the top bar.
 _Avoid_: Memory, usage
 
+**Drawing**:
+A diagram the tutor draws in the chat with its `draw` tool, or the lesson plan. The tutor describes boxes, arrows and groups, and the app places them. Drawing again with the same id makes a new version.
+_Avoid_: Sketch, canvas, chart
+
+**Lesson plan**:
+The drawing of what a chat will cover, with the goal at the top and foundations at the bottom. A chat has one, and the tutor's `plan` tool replaces it with a new version.
+_Avoid_: Roadmap, curriculum, plan diagram
+
 ## How a reply can end
 
 **Stopped reply**:
