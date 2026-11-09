@@ -109,6 +109,8 @@ export interface VoiceEngineOption {
 	ownKey?: boolean;
 	/** Where a voice-only engine's key comes from, when it has one. */
 	keySource?: "saved" | "environment";
+	/** It only accepts 16 kHz WAV, so the page converts each recording before sending it. */
+	wantsWav?: true;
 }
 
 /** A voice engine's models. The learner can pick any of them, and the default is listed first. */

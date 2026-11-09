@@ -1,6 +1,7 @@
 import type { Credential, Models } from "@earendil-works/pi-ai";
 import type { VoiceEngineOption, VoiceModels } from "../../shared/protocol.ts";
 import { deepgramModels, transcribeWithDeepgram } from "./deepgram.ts";
+import { nvidiaModels, nvidiaVoiceEngine, transcribeWithNvidia } from "./nvidia.ts";
 import { cloudVoiceEngines, cloudVoiceModels, transcribeInCloud } from "./openai-compatible.ts";
 import { VoiceError, type Recording } from "./voice-error.ts";
 
@@ -45,7 +46,7 @@ export async function voiceEngines(
 			return { id, label, connected: key !== undefined, ownKey: true, keySource: key?.keySource };
 		}),
 	);
-	return [...(await cloudVoiceEngines(models)), ...voiceOnly];
+	return [...(await cloudVoiceEngines(models)), await nvidiaVoiceEngine(models), ...voiceOnly];
 }
 
 async function requireKey(sources: VoiceKeySources, id: string): Promise<string> {
@@ -61,6 +62,7 @@ export async function voiceModels(
 	id: string,
 ): Promise<VoiceModels> {
 	if (sources && id === "deepgram") return deepgramModels(await requireKey(sources, id));
+	if (id === "nvidia") return nvidiaModels(models);
 	return cloudVoiceModels(models, id);
 }
 
@@ -73,5 +75,6 @@ export async function transcribe(
 ): Promise<string> {
 	if (sources && id === "deepgram")
 		return transcribeWithDeepgram(await requireKey(sources, id), recording, model);
+	if (id === "nvidia") return transcribeWithNvidia(models, recording, model);
 	return transcribeInCloud(models, id, recording, model);
 }
