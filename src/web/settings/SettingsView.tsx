@@ -23,7 +23,7 @@ interface SettingsViewProps {
 export function SettingsView({ status, providers, page, onPageChange }: SettingsViewProps) {
 	return (
 		<div className="flex-1 overflow-y-auto">
-			<div className="h-10 app-drag" />
+			<div className="h-10" />
 			<main className="chat-column flex flex-col gap-5 pb-5">
 				<SegmentedTabs
 					label="Settings"

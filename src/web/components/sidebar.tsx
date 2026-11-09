@@ -16,10 +16,11 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 
 /*
  * shadcn's sidebar, cut down to the parts this app uses (ADR 0008). It always sits on the left,
- * beside the rail, and slides under the rail to collapse. The caller saves the open state.
+ * beside the rail, inside the panel below the window bar, and slides out of that panel to collapse. The caller saves the open state.
  */
 const SIDEBAR_WIDTH = "272px";
 const RAIL_WIDTH = "56px";
+const WINDOW_BAR_HEIGHT = "44px";
 const KEYBOARD_SHORTCUT = "b";
 
 interface SidebarContextValue {
@@ -88,10 +89,11 @@ function SidebarProvider({
 					{
 						"--sidebar-width": SIDEBAR_WIDTH,
 						"--rail-width": RAIL_WIDTH,
+						"--window-bar-height": WINDOW_BAR_HEIGHT,
 						...style,
 					} as CSSProperties
 				}
-				className={cn("flex h-full w-full", className)}
+				className={cn("flex h-full w-full flex-col", className)}
 				{...props}
 			>
 				{children}
@@ -108,8 +110,14 @@ function Sidebar({ className, children, ...props }: ComponentProps<"div">) {
 			<Sheet open={openMobile} onOpenChange={setOpenMobile}>
 				<SheetContent
 					data-slot="sidebar"
-					className="border-sidebar-border bg-sidebar p-0 text-sidebar-foreground data-[side=left]:left-(--rail-width) data-[side=left]:w-(--sidebar-width) [&>button]:hidden"
-					style={{ "--sidebar-width": SIDEBAR_WIDTH, "--rail-width": RAIL_WIDTH } as CSSProperties}
+					className="border-sidebar-border bg-sidebar p-0 text-sidebar-foreground data-[side=left]:top-(--window-bar-height) data-[side=left]:left-(--rail-width) data-[side=left]:h-auto data-[side=left]:w-(--sidebar-width) data-[side=left]:rounded-tl-xl [&>button]:hidden"
+					style={
+						{
+							"--sidebar-width": SIDEBAR_WIDTH,
+							"--rail-width": RAIL_WIDTH,
+							"--window-bar-height": WINDOW_BAR_HEIGHT,
+						} as CSSProperties
+					}
 					side="left"
 				>
 					<SheetHeader className="sr-only">
@@ -137,8 +145,8 @@ function Sidebar({ className, children, ...props }: ComponentProps<"div">) {
 				// Off-screen controls must not stay reachable by keyboard.
 				inert={collapsed}
 				className={cn(
-					"fixed inset-y-0 z-10 flex w-(--sidebar-width) transition-[left,width] motion-surface",
-					collapsed ? "left-[calc(var(--rail-width)-var(--sidebar-width))]" : "left-(--rail-width)",
+					"absolute inset-y-0 z-10 flex w-(--sidebar-width) transition-[left,width] motion-surface",
+					collapsed ? "left-[calc(-1*var(--sidebar-width))]" : "left-0",
 					className,
 				)}
 				{...props}
