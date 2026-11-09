@@ -269,7 +269,7 @@ A cool, indigo-tinted neutral family with one indigo accent. Amber and red appea
 
 ## Layout
 
-The window is three columns: a **rail** (56px), a **sidebar** (272px, or 216px with a PDF open), and the **chat**. When the sidebar is collapsed, only the rail stays and the chat re-centres in the remaining space.
+A 44px **window bar** in Rail Shade runs across the top. It moves the window and holds the window controls and the sidebar toggle. Below it are three columns: a **rail** (56px), a **sidebar** (272px, or 216px with a PDF open), and the **chat**. The sidebar and chat sit in one panel with a 12px top-left corner and a 1px border, set into the rail and the window bar. When the sidebar is collapsed, it slides out of that panel, and the chat re-centres in the space left.
 
 The chat has a 52px top bar with 24px side padding, with the title on the left and usage on the right. The conversation and composer share a centred 680px column. Turns sit 20px apart, reply paragraphs 12px apart, and the composer keeps 20px below it. Learner messages align right and reach at most 440px.
 
@@ -370,8 +370,9 @@ Use Tailwind transitions and CSS custom properties in `src/web/globals.css` firs
 ### Navigation
 
 - **Rail:** 36px square items with 6px between them. The active item is Clean Sheet with an indigo icon. Settings opens the Providers screen. Home and graphs stay inert until they have somewhere to go.
-- **Sidebar:** logo and name with a collapse button, then New chat, search, filter, and chats. The active row uses Clean Sheet with Title type, and inactive rows use Slate Violet with Label type. New chat is Clean Sheet only while the new chat screen is open.
-- **Window controls:** real system controls, never drawn ones. The frames' three dots are placeholders.
+- **Sidebar:** logo and name, then New chat, search, filter, and chats. The active row uses Clean Sheet with Title type, and inactive rows use Slate Violet with Label type. New chat is Clean Sheet only while the new chat screen is open.
+- **Window controls:** real system controls, never drawn ones. The frames' three dots are placeholders. On macOS they sit at the left of the window bar, 16px in and centred on it, with the sidebar toggle after them. On Windows and Linux they sit at the right of the window bar, and the toggle starts the bar.
+- **Sidebar toggle:** stays in the window bar whether the sidebar is open or collapsed, so it never moves. ⌘B or Ctrl+B also toggles it.
 
 ### Segmented control
 

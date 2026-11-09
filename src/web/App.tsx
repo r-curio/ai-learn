@@ -14,6 +14,7 @@ import { SettingsView, type SettingsPage } from "./settings/SettingsView.tsx";
 import { useProviders } from "./settings/useProviders.ts";
 import { Rail, type RailView } from "./shell/Rail.tsx";
 import { TopBar } from "./shell/TopBar.tsx";
+import { WindowBar } from "./shell/WindowBar.tsx";
 import { useSidebarPreference } from "./shell/useSidebarPreference.ts";
 import { AttachmentPane } from "./viewer/AttachmentPane.tsx";
 import { useAttachmentPane } from "./viewer/useAttachmentPane.ts";
@@ -127,127 +128,132 @@ export function App() {
 			onOpenChange={onSidebarChange}
 			{...(view === "chat" ? dropHandlers : {})}
 		>
-			<Rail view={view} onViewChange={setView} />
-			{view === "chat" && (
-				<ChatSidebar
-					sessions={chat.sessions}
-					activeId={sessionId}
-					onNewChatScreen={chat.messages.length === 0}
-					disabled={running}
-					onNewChat={() => void chat.startNewChat()}
-					onOpen={(id) => void chat.openSession(id)}
-					onDelete={(summary) => void chat.removeSession(summary)}
-				/>
-			)}
-			<SidebarInset>
-				{view === "settings" ? (
-					<SettingsView
-						status={status}
-						providers={providers}
-						page={settingsPage}
-						onPageChange={setSettingsPage}
-					/>
-				) : (
-					<div className="flex min-h-0 flex-1">
-						<div
-							data-compact={pane.open || undefined}
-							className={cn("flex min-w-0 flex-1 flex-col", pane.open && "max-[1100px]:hidden")}
-						>
-							<TopBar
-								title={chat.sessions.find((summary) => summary.id === sessionId)?.title}
-								usage={pane.open ? undefined : chat.usage}
-							/>
-							<ChatView
-								status={status}
-								error={chat.error}
-								sessionId={sessionId}
-								messages={chat.messages}
-								running={running}
-								runStartedAt={chat.runStartedAt}
-								canRetry={chat.canRetry}
-								pendingQuestionId={waitingQuestion?.id}
-								chatType={chatType}
-								onChatTypeChange={setChatType}
-								onRetry={() => {
-									if (!status?.ready || running) return;
-									if (modelChoice.selection) chat.retry(modelChoice.selection);
-									else modelChoice.setPickerOpen(true);
-								}}
-								onOpenAttachment={(attachment) => {
-									if (sessionId) pane.show({ sessionId, attachment });
-								}}
-								onOpenCitation={(citation) => {
-									const attachment = chat.messages
-										.flatMap((message) => message.attachments ?? [])
-										.find(({ id }) => id === citation.attachmentId);
-									if (sessionId && attachment)
-										pane.show({ sessionId, attachment, citation: { ...citation } });
-								}}
-							/>
-							{waitingQuestion ? (
-								<AnswerCard
-									key={waitingQuestion.id}
-									question={waitingQuestion}
-									refused={chat.refusedAnswer}
-									dimmed={setupNeeded}
-									providers={status?.providers ?? []}
-									modelChoice={modelChoice}
-									context={chat.context}
-									onSubmit={(answer) => {
-										if (modelChoice.selection)
-											chat.answer(waitingQuestion, answer, modelChoice.selection);
-										else modelChoice.setPickerOpen(true);
-									}}
-									onNewChat={() => void chat.startNewChat()}
-									onAddProvider={openProviders}
-									voiceEngines={status?.voice ?? []}
-									onOpenVoiceSettings={openVoiceSettings}
-								/>
-							) : (
-								<Composer
-									text={text}
-									onTextChange={setText}
-									textArea={textArea}
-									isNewChat={chat.messages.length === 0}
-									drafts={files.drafts}
-									canAttach={canAddFiles}
-									canSend={canSend}
-									running={running}
-									providers={status?.providers ?? []}
-									modelChoice={modelChoice}
-									context={chat.context}
-									onNewChat={() => void chat.startNewChat()}
-									onAddProvider={openProviders}
-									voice={voice}
-									onOpenVoiceSettings={openVoiceSettings}
-									dimmed={setupNeeded}
-									needsModel={!setupNeeded && !hasModel}
-									swappingIn={cardHasShown}
-									onAddFiles={attach}
-									onRemoveDraft={files.removeDraft}
-									onSend={send}
-									onStop={chat.stop}
-									openPage={
-										openPdf && openPage
-											? { name: openPdf.attachment.name, page: openPage }
-											: undefined
-									}
-								/>
-							)}
-						</div>
-						<AttachmentPane
-							target={pane.target}
-							open={pane.open}
-							usage={chat.usage}
-							onPageChange={pane.setPage}
-							onClose={() => {
-								pane.close();
-								textArea.current?.focus();
-							}}
+			<WindowBar />
+			<div className="flex min-h-0 flex-1 bg-rail">
+				<Rail view={view} onViewChange={setView} />
+				<div className="relative flex min-w-0 flex-1 overflow-hidden rounded-tl-xl border-t border-l border-border">
+					{view === "chat" && (
+						<ChatSidebar
+							sessions={chat.sessions}
+							activeId={sessionId}
+							onNewChatScreen={chat.messages.length === 0}
+							disabled={running}
+							onNewChat={() => void chat.startNewChat()}
+							onOpen={(id) => void chat.openSession(id)}
+							onDelete={(summary) => void chat.removeSession(summary)}
 						/>
-					</div>
-				)}
-			</SidebarInset>
+					)}
+					<SidebarInset>
+						{view === "settings" ? (
+							<SettingsView
+								status={status}
+								providers={providers}
+								page={settingsPage}
+								onPageChange={setSettingsPage}
+							/>
+						) : (
+							<div className="flex min-h-0 flex-1">
+								<div
+									data-compact={pane.open || undefined}
+									className={cn("flex min-w-0 flex-1 flex-col", pane.open && "max-[1100px]:hidden")}
+								>
+									<TopBar
+										title={chat.sessions.find((summary) => summary.id === sessionId)?.title}
+										usage={pane.open ? undefined : chat.usage}
+									/>
+									<ChatView
+										status={status}
+										error={chat.error}
+										sessionId={sessionId}
+										messages={chat.messages}
+										running={running}
+										runStartedAt={chat.runStartedAt}
+										canRetry={chat.canRetry}
+										pendingQuestionId={waitingQuestion?.id}
+										chatType={chatType}
+										onChatTypeChange={setChatType}
+										onRetry={() => {
+											if (!status?.ready || running) return;
+											if (modelChoice.selection) chat.retry(modelChoice.selection);
+											else modelChoice.setPickerOpen(true);
+										}}
+										onOpenAttachment={(attachment) => {
+											if (sessionId) pane.show({ sessionId, attachment });
+										}}
+										onOpenCitation={(citation) => {
+											const attachment = chat.messages
+												.flatMap((message) => message.attachments ?? [])
+												.find(({ id }) => id === citation.attachmentId);
+											if (sessionId && attachment)
+												pane.show({ sessionId, attachment, citation: { ...citation } });
+										}}
+									/>
+									{waitingQuestion ? (
+										<AnswerCard
+											key={waitingQuestion.id}
+											question={waitingQuestion}
+											refused={chat.refusedAnswer}
+											dimmed={setupNeeded}
+											providers={status?.providers ?? []}
+											modelChoice={modelChoice}
+											context={chat.context}
+											onSubmit={(answer) => {
+												if (modelChoice.selection)
+													chat.answer(waitingQuestion, answer, modelChoice.selection);
+												else modelChoice.setPickerOpen(true);
+											}}
+											onNewChat={() => void chat.startNewChat()}
+											onAddProvider={openProviders}
+											voiceEngines={status?.voice ?? []}
+											onOpenVoiceSettings={openVoiceSettings}
+										/>
+									) : (
+										<Composer
+											text={text}
+											onTextChange={setText}
+											textArea={textArea}
+											isNewChat={chat.messages.length === 0}
+											drafts={files.drafts}
+											canAttach={canAddFiles}
+											canSend={canSend}
+											running={running}
+											providers={status?.providers ?? []}
+											modelChoice={modelChoice}
+											context={chat.context}
+											onNewChat={() => void chat.startNewChat()}
+											onAddProvider={openProviders}
+											voice={voice}
+											onOpenVoiceSettings={openVoiceSettings}
+											dimmed={setupNeeded}
+											needsModel={!setupNeeded && !hasModel}
+											swappingIn={cardHasShown}
+											onAddFiles={attach}
+											onRemoveDraft={files.removeDraft}
+											onSend={send}
+											onStop={chat.stop}
+											openPage={
+												openPdf && openPage
+													? { name: openPdf.attachment.name, page: openPage }
+													: undefined
+											}
+										/>
+									)}
+								</div>
+								<AttachmentPane
+									target={pane.target}
+									open={pane.open}
+									usage={chat.usage}
+									onPageChange={pane.setPage}
+									onClose={() => {
+										pane.close();
+										textArea.current?.focus();
+									}}
+								/>
+							</div>
+						)}
+					</SidebarInset>
+				</div>
+			</div>
 			{dragging && canAddFiles && (
 				<div
 					className="pointer-events-none absolute inset-2.5 grid place-items-center rounded-[14px] border-2 border-dashed border-primary bg-background/88 font-semibold"

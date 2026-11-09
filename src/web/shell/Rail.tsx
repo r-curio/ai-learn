@@ -34,7 +34,7 @@ function RailItem({
 	);
 }
 
-/** Always visible, and sits above the sidebar so the sidebar can slide away beneath it. */
+/** Always visible, below the window bar and beside the panel that holds the sidebar and chat. */
 export function Rail({
 	view,
 	onViewChange,
@@ -45,10 +45,8 @@ export function Rail({
 	return (
 		<nav
 			aria-label="Sections"
-			className="relative z-20 flex h-full w-(--rail-width) flex-none flex-col items-center gap-1.5 bg-rail pb-4"
+			className="flex h-full w-(--rail-width) flex-none flex-col items-center gap-1.5 bg-rail pt-1 pb-4"
 		>
-			{/* The window's controls sit here on macOS. */}
-			<div className="h-11 w-full flex-none app-drag" />
 			<RailItem icon={House} label="Home" />
 			<RailItem
 				icon={MessageSquare}

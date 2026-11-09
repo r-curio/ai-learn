@@ -11,7 +11,6 @@ import {
 	SidebarMenuAction,
 	SidebarMenuButton,
 	SidebarMenuItem,
-	SidebarTrigger,
 	useSidebar,
 } from "../components/sidebar.tsx";
 import { ChatSearchField, ChatSnippet, SearchStatus } from "./ChatSearch.tsx";
@@ -74,12 +73,9 @@ function ChatRow({
 
 function SidebarTitleBar() {
 	return (
-		<div className="flex h-7 items-center justify-between pr-1 pl-2 app-drag">
-			<div className="flex items-center gap-2">
-				<Logo />
-				<span className="text-[16px] leading-5 font-semibold tracking-[-0.02em]">ai-learn</span>
-			</div>
-			<SidebarTrigger />
+		<div className="flex h-7 items-center gap-2 pl-2">
+			<Logo />
+			<span className="text-[16px] leading-5 font-semibold tracking-[-0.02em]">ai-learn</span>
 		</div>
 	);
 }

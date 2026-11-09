@@ -8,10 +8,6 @@ import { ImageView, TextView } from "./FileViews.tsx";
 import { PdfView } from "./PdfView.tsx";
 import type { PaneTarget } from "./useAttachmentPane.ts";
 
-/** On Windows and Linux the window controls cover the top right, and this keeps Close clear of them. */
-const CLEAR_WINDOW_CONTROLS =
-	"pr-[calc(100vw-env(titlebar-area-x,0px)-env(titlebar-area-width,100vw)+10px)]";
-
 function PaneContents({
 	target,
 	usage,
@@ -35,9 +31,7 @@ function PaneContents({
 	const file = { sessionId, attachmentId: attachment.id, name: attachment.name };
 	return (
 		<>
-			<header
-				className={`flex h-[52px] flex-none items-center gap-3 border-b border-border pl-4 app-drag ${CLEAR_WINDOW_CONTROLS}`}
-			>
+			<header className="flex h-[52px] flex-none items-center gap-3 border-b border-border pr-2.5 pl-4">
 				<h2 className="min-w-0 truncate text-[14px] leading-[18px] font-medium">
 					{attachment.name}
 				</h2>

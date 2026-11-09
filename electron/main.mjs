@@ -14,11 +14,11 @@ import { fileURLToPath } from "node:url";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 let server;
 
-/** Windows and Linux draw their controls over the page, so they need the page's colours. */
+/** Windows and Linux draw their controls over the window bar, so they need its colours and height. */
 function titleBarOverlay() {
 	return nativeTheme.shouldUseDarkColors
-		? { color: "#1f2030", symbolColor: "#a3a5c0", height: 52 }
-		: { color: "#f6f6f9", symbolColor: "#5e6078", height: 52 };
+		? { color: "#191a28", symbolColor: "#a3a5c0", height: 44 }
+		: { color: "#ececf2", symbolColor: "#5e6078", height: 44 };
 }
 
 async function createWindow() {
@@ -31,7 +31,9 @@ async function createWindow() {
 		title: "ai-learn",
 		backgroundColor: nativeTheme.shouldUseDarkColors ? "#1f2030" : "#f6f6f9",
 		titleBarStyle: "hidden",
-		...(isMac ? { trafficLightPosition: { x: 2, y: 16 } } : { titleBarOverlay: titleBarOverlay() }),
+		...(isMac
+			? { trafficLightPosition: { x: 16, y: 15 } }
+			: { titleBarOverlay: titleBarOverlay() }),
 		webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true },
 	});
 	if (!isMac) {

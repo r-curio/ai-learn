@@ -13,6 +13,7 @@
 /* Radix marks open and closed with `data-state`, and shadcn's classes use these shorter names. */
 @custom-variant data-open (&:where([data-state="open"]));
 @custom-variant data-closed (&:where([data-state="closed"]));
+@custom-variant mac-controls (&:where([data-mac-controls] *));
 
 /* The M1 colours, under shadcn's names so its components work unedited. DESIGN.md lists each role. */
 :root {
