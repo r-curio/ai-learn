@@ -1,4 +1,5 @@
 import type { ExcalidrawElement } from "@excalidraw/excalidraw/element/types";
+import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import { useSyncExternalStore } from "react";
 import type { SceneElement } from "../../shared/drawing.ts";
 import { FONT_NAME } from "./toExcalidraw.ts";
@@ -53,11 +54,23 @@ const FONT_WAIT_MS = 2000;
  * when its element is made. So a canvas mounts empty and gets its elements once the font has
  * loaded. Sized with a fallback font, labels are cut off.
  */
-export async function fontLoaded(): Promise<void> {
+async function fontLoaded(): Promise<void> {
 	const started = Date.now();
 	while (![...document.fonts].some((face) => face.family === FONT_NAME)) {
 		if (Date.now() - started > FONT_WAIT_MS) return;
 		await new Promise((resolve) => setTimeout(resolve, 20));
 	}
 	await document.fonts.load(`16px ${FONT_NAME}`).catch(() => undefined);
+}
+
+/**
+ * Wait until a new canvas can take its elements: its font has loaded, and it has finished setting
+ * up. Elements added before that can lose an arrow's label to another arrow.
+ */
+export async function sceneReady(api: ExcalidrawImperativeAPI): Promise<void> {
+	await fontLoaded();
+	const started = Date.now();
+	while (api.getAppState().isLoading && Date.now() - started < FONT_WAIT_MS)
+		await new Promise((resolve) => setTimeout(resolve, 20));
+	await new Promise((resolve) => setTimeout(resolve, 0));
 }

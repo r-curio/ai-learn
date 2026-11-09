@@ -3,7 +3,7 @@ import { Excalidraw } from "@excalidraw/excalidraw";
 import type { AppState, ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import { useEffect, useRef, useState } from "react";
 import styles from "./scene.module.css";
-import { fontLoaded, UI_OPTIONS, useExcalidrawTheme, type SceneSource } from "./sceneSetup.ts";
+import { sceneReady, UI_OPTIONS, useExcalidrawTheme, type SceneSource } from "./sceneSetup.ts";
 
 const MARGIN = 24;
 
@@ -50,7 +50,7 @@ export default function DrawingScene({ source }: { source: SceneSource }) {
 					initialData={{ appState: { viewBackgroundColor: "transparent", ...view } }}
 					excalidrawAPI={(api) => {
 						setApi(api);
-						void fontLoaded().then(() => api.updateScene({ elements: source.make() }));
+						void sceneReady(api).then(() => api.updateScene({ elements: source.make() }));
 					}}
 					viewModeEnabled
 					zenModeEnabled

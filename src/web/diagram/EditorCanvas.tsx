@@ -3,7 +3,7 @@ import { Excalidraw, exportToBlob as untypedExportToBlob } from "@excalidraw/exc
 import type { ExcalidrawElement } from "@excalidraw/excalidraw/element/types";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import type { SceneElement } from "../../shared/drawing.ts";
-import { fontLoaded, UI_OPTIONS, useExcalidrawTheme } from "./sceneSetup.ts";
+import { sceneReady, UI_OPTIONS, useExcalidrawTheme } from "./sceneSetup.ts";
 
 /** What the learner made: the scene, and a picture of it when it has freehand marks. */
 export interface FinishedEdit {
@@ -47,7 +47,7 @@ export default function EditorCanvas(props: {
 			initialData={{ appState: { viewBackgroundColor: "transparent" } }}
 			excalidrawAPI={(api) => {
 				props.onReady(() => finish(api));
-				void fontLoaded().then(() => {
+				void sceneReady(api).then(() => {
 					api.updateScene({ elements: props.initial() });
 					api.scrollToContent(undefined, { fitToViewport: true, viewportZoomFactor: 0.7 });
 				});
