@@ -136,6 +136,10 @@ _Avoid_: Vendor, backend
 How hard a model works on a reply, from Low to Max. It's Pi's thinking level under a name learners understand.
 _Avoid_: Thinking level (in the UI), reasoning level
 
+**Voice engine**:
+What turns the learner's recording into text: a cloud provider with their key, or a model file on their computer. The learner chooses one in Settings.
+_Avoid_: STT provider, ASR
+
 **Preferences**:
 Settings the learner chooses, like whether the sidebar is open, saved in the app's data folder.
 _Avoid_: Settings file, config

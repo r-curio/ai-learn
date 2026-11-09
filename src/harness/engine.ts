@@ -4,6 +4,7 @@ import { builtinModels } from "@earendil-works/pi-ai/providers/all";
 import type { EngineStatus, ModelRef, ModelSelection } from "../shared/protocol.ts";
 import { engineFromModels } from "./model-catalog.ts";
 import { ProviderKeyStore, type KeyCipher } from "./provider-keys.ts";
+import type { Recording } from "./transcription.ts";
 
 export interface ResolvedModel {
 	model: Model<string>;
@@ -20,6 +21,8 @@ export interface Engine {
 	contextLimit(model: ModelRef): number | undefined;
 	saveKey(providerId: string, key: string): Promise<void>;
 	removeKey(providerId: string): Promise<void>;
+	/** Turn a recording into text with a voice engine from `status().voice`. Throws `VoiceError`. */
+	transcribe(engineId: string, recording: Recording): Promise<string>;
 }
 
 export interface EngineOptions {

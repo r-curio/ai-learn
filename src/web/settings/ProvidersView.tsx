@@ -10,7 +10,7 @@ const ROW =
 const COUNT = "text-[12px] leading-4 text-muted-foreground tabular-nums";
 const MODELS = (count: number) => `${count} ${count === 1 ? "model" : "models"}`;
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+export function Section({ title, children }: { title: string; children: ReactNode }) {
 	return (
 		<section className="flex flex-col gap-1.5">
 			<h2 className="text-[13px] leading-4 font-normal text-muted-foreground">{title}</h2>
@@ -21,12 +21,12 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 	);
 }
 
-function AddKeyRow({
+export function AddKeyRow({
 	provider,
 	onSave,
 	onCancel,
 }: {
-	provider: AddableProvider;
+	provider: { label: string; modelCount?: number };
 	onSave: (key: string) => Promise<void>;
 	onCancel: () => void;
 }) {
@@ -51,7 +51,9 @@ function AddKeyRow({
 		>
 			<div className="flex items-center justify-between pr-1">
 				<span className="text-[14px] leading-[18px] font-medium">{provider.label}</span>
-				<span className={COUNT}>{MODELS(provider.modelCount)}</span>
+				{provider.modelCount !== undefined && (
+					<span className={COUNT}>{MODELS(provider.modelCount)}</span>
+				)}
 			</div>
 			<div className="flex items-center gap-2">
 				<Input
@@ -175,7 +177,7 @@ interface ProvidersViewProps {
 	onDisconnect: (id: string) => void;
 }
 
-/** Settings has one screen so far: connecting the providers whose models the picker lists. */
+/** Connecting the providers whose models the picker lists. */
 export function ProvidersView({
 	connected,
 	available,
@@ -184,25 +186,24 @@ export function ProvidersView({
 	onDisconnect,
 }: ProvidersViewProps) {
 	return (
-		<div className="flex-1 overflow-y-auto">
-			<div className="h-10 app-drag" />
-			<main className="chat-column flex flex-col gap-5 pb-5">
-				<header className="flex flex-col gap-1">
-					<h1 className="text-[17px] leading-[25px] font-medium">Providers</h1>
-					<p className="text-[13px] leading-[18px] text-muted-foreground">
-						Add a key once to use a provider's models. Keys are encrypted with your computer's
-						keychain, stay on this computer, and only go to that provider.
-					</p>
-				</header>
-				{connected.length > 0 && (
-					<ConnectedSection providers={connected} onDisconnect={onDisconnect} />
-				)}
-				{keysUnavailable ? (
-					<Notice>{keysUnavailable}</Notice>
-				) : (
-					<AvailableSection providers={available} onConnect={onConnect} />
-				)}
-			</main>
-		</div>
+		<section aria-labelledby="providers-heading" className="flex flex-col gap-5">
+			<header className="flex flex-col gap-1">
+				<h1 id="providers-heading" className="text-[17px] leading-[25px] font-medium">
+					Providers
+				</h1>
+				<p className="text-[13px] leading-[18px] text-muted-foreground">
+					Add a key once to use a provider's models. Keys are encrypted with your computer's
+					keychain, stay on this computer, and only go to that provider.
+				</p>
+			</header>
+			{connected.length > 0 && (
+				<ConnectedSection providers={connected} onDisconnect={onDisconnect} />
+			)}
+			{keysUnavailable ? (
+				<Notice>{keysUnavailable}</Notice>
+			) : (
+				<AvailableSection providers={available} onConnect={onConnect} />
+			)}
+		</section>
 	);
 }

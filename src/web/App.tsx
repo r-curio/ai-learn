@@ -10,7 +10,7 @@ import { useFileDrop } from "./composer/useFileDrop.ts";
 import { useModelChoice } from "./composer/useModelChoice.ts";
 import { SidebarInset, SidebarProvider } from "./components/sidebar.tsx";
 import { ChatSidebar } from "./shell/ChatSidebar.tsx";
-import { ProvidersView } from "./settings/ProvidersView.tsx";
+import { SettingsView } from "./settings/SettingsView.tsx";
 import { useProviders } from "./settings/useProviders.ts";
 import { Rail, type RailView } from "./shell/Rail.tsx";
 import { TopBar } from "./shell/TopBar.tsx";
@@ -115,13 +115,7 @@ export function App() {
 			)}
 			<SidebarInset>
 				{view === "settings" ? (
-					<ProvidersView
-						connected={providers.connected}
-						available={providers.available}
-						keysUnavailable={status?.keysUnavailable}
-						onConnect={providers.connect}
-						onDisconnect={providers.disconnect}
-					/>
+					<SettingsView status={status} providers={providers} />
 				) : (
 					<div className="flex min-h-0 flex-1">
 						<div

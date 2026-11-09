@@ -63,6 +63,8 @@ export interface Preferences {
 	sidebarOpen: boolean;
 	model?: ModelRef;
 	effort?: Effort;
+	/** The voice engine that turns the learner's speech into text. Missing means voice is off. */
+	voice?: string;
 }
 
 export interface ModelOption extends ModelRef {
@@ -90,6 +92,13 @@ export interface AddableProvider {
 	modelCount: number;
 }
 
+/** Something that turns recorded speech into text. Only a connected one can be chosen. */
+export interface VoiceEngineOption {
+	id: string;
+	label: string;
+	connected: boolean;
+}
+
 export interface EngineStatus {
 	ready: boolean;
 	/** Only the providers that can be used right now. */
@@ -98,6 +107,7 @@ export interface EngineStatus {
 	/** Why keys can't be saved encrypted here. Missing when they can. */
 	keysUnavailable?: string;
 	reason?: string;
+	voice: VoiceEngineOption[];
 }
 
 export const CHAT_TYPES = ["learning", "practice"] as const;

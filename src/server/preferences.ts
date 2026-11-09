@@ -8,6 +8,7 @@ const savedPreferences = z.object({
 	sidebarOpen: z.boolean(),
 	model: z.object({ provider: z.string(), id: z.string() }).optional(),
 	effort: z.enum(EFFORTS).optional(),
+	voice: z.string().max(100).optional(),
 });
 
 /** Each setting saves on its own, without needing the others. */
