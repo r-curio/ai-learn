@@ -4,6 +4,7 @@ import { test } from "node:test";
 import { createDemoEngine } from "../src/harness/fake-engine.ts";
 import { cloudVoiceModels, transcribeInCloud } from "../src/harness/voice/openai-compatible.ts";
 import { transcribeWithDeepgram } from "../src/harness/voice/deepgram.ts";
+import { transcribeWithNvidia } from "../src/harness/voice/nvidia.ts";
 import { VoiceError } from "../src/harness/voice/voice-error.ts";
 import { createApp } from "../src/server/app.ts";
 import { tempDir } from "./helpers.ts";
@@ -152,4 +153,84 @@ test("the transcribe route needs a chosen engine and a supported format, and Off
 	const saved = (await (await choose({ voice: null, voiceModel: null })).json()) as object;
 	assert.deepEqual(saved, { sidebarOpen: true });
 	assert.equal((await transcribe("audio/webm")).status, 409);
+});
+
+const NVIDIA_KEY = "nvapi-test-secret-key";
+const WAV = { audio: new Uint8Array([1, 2, 3]), mimeType: "audio/wav" };
+const FUNCTION_ID = "1598d209-5e27-4d3c-8079-4751568b1081";
+const modelsWithNvidiaKey = {
+	getAuth: async () => ({ auth: { apiKey: NVIDIA_KEY } }),
+} as unknown as Models;
+
+const functionList = (status = "ACTIVE") =>
+	Response.json({ functions: [{ id: FUNCTION_ID, name: "ai-parakeet-ctc-1_1b-asr", status }] });
+
+/** Replace `fetch` with replies given in order, recording what was sent. */
+function stubReplies(...replies: Response[]) {
+	const sent: { url: string; init?: RequestInit }[] = [];
+	const original = globalThis.fetch;
+	globalThis.fetch = async (url, init) => {
+		sent.push({ url: url instanceof Request ? url.url : url.toString(), init });
+		return replies.shift() ?? new Response(null, { status: 500 });
+	};
+	return { sent, restore: () => (globalThis.fetch = original) };
+}
+
+test("NVIDIA gets a WAV with the looked-up function ID and the key, and its text comes back", async () => {
+	const stub = stubReplies(functionList(), Response.json({ text: " Hello, Parakeet. " }));
+	try {
+		assert.equal(await transcribeWithNvidia(modelsWithNvidiaKey, WAV), "Hello, Parakeet.");
+		assert.equal(stub.sent[0]?.url, "https://api.nvcf.nvidia.com/v2/nvcf/functions");
+		assert.equal(stub.sent[1]?.url, "https://grpc.nvcf.nvidia.com/v1/audio/transcriptions");
+		assert.deepEqual(stub.sent[1]?.init?.headers, {
+			"function-id": FUNCTION_ID,
+			Authorization: `Bearer ${NVIDIA_KEY}`,
+		});
+		assert.equal((stub.sent[1]?.init?.body as FormData).get("language"), "en-US");
+	} finally {
+		stub.restore();
+	}
+});
+
+test("a stale function ID shows a safe message, and the next try looks the ID up again", async () => {
+	const stub = stubReplies(
+		new Response("Function not found for account", { status: 404 }),
+		functionList(),
+		Response.json({ text: "Back again." }),
+	);
+	try {
+		// The ID cached by the first test is now stale.
+		await assert.rejects(transcribeWithNvidia(modelsWithNvidiaKey, WAV), {
+			message: "This model isn't available from NVIDIA right now.",
+		});
+		assert.equal(await transcribeWithNvidia(modelsWithNvidiaKey, WAV), "Back again.");
+		assert.equal(stub.sent[1]?.url, "https://api.nvcf.nvidia.com/v2/nvcf/functions");
+	} finally {
+		stub.restore();
+	}
+});
+
+test("a model NVIDIA no longer lists, or a recording that isn't WAV, gets a safe message", async () => {
+	await assert.rejects(transcribeWithNvidia(modelsWithNvidiaKey, WAV, "parakeet-tdt-0.6b-v2"), {
+		message: "This model isn't available from NVIDIA right now.",
+	});
+	await assert.rejects(
+		transcribeWithNvidia(modelsWithNvidiaKey, { ...WAV, mimeType: "audio/webm" }),
+		{
+			message: "NVIDIA needs the recording as WAV. Reload the app and try again.",
+		},
+	);
+});
+
+test("NVIDIA's rejection never reaches the learner, even when it repeats the key", async () => {
+	const echo = `rpc error: code = PermissionDenied desc = Authorization failed for ${NVIDIA_KEY}`;
+	const stub = stubReplies(new Response(echo, { status: 403 }));
+	try {
+		await assert.rejects(transcribeWithNvidia(modelsWithNvidiaKey, WAV), (error: Error) => {
+			assert.equal(error.message, "NVIDIA rejected the key. Check it in Settings.");
+			return true;
+		});
+	} finally {
+		stub.restore();
+	}
 });

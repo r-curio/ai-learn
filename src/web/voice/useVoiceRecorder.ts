@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { VoiceEngineOption } from "../../shared/protocol.ts";
 import { getPreferences, transcribe } from "../api.ts";
 import { openMicrophone, releaseMicrophone, startRecorder, type Recorder } from "./recorder.ts";
+import { toWav } from "./wav.ts";
 
 /** How many recent levels the waveform shows. */
 const BARS = 5;
@@ -19,29 +20,43 @@ export interface VoiceProblem {
 	settings?: boolean;
 }
 
-/** Why voice can't be used with the saved choice, or nothing if it can. */
-async function setupProblem(engines: VoiceEngineOption[]): Promise<VoiceProblem | undefined> {
+/** The chosen engine, or why voice can't be used with the saved choice. */
+async function chosenEngine(
+	engines: VoiceEngineOption[],
+): Promise<
+	{ engine: VoiceEngineOption; problem?: never } | { engine?: never; problem: VoiceProblem }
+> {
 	const { voice } = await getPreferences();
 	const engine = engines.find(({ id }) => id === voice);
 	if (!engine)
-		return { message: "Voice isn't set up. Choose how speech becomes text.", settings: true };
+		return {
+			problem: { message: "Voice isn't set up. Choose how speech becomes text.", settings: true },
+		};
 	if (!engine.connected)
-		return { message: `Add your ${engine.label} key to use voice.`, settings: true };
-	return undefined;
+		return { problem: { message: `Add your ${engine.label} key to use voice.`, settings: true } };
+	return { engine };
 }
 
-/** The microphone, once voice is set up, or what's stopping it. */
-async function openWhenReady(
-	engines: VoiceEngineOption[],
-): Promise<{ stream: MediaStream; problem?: never } | { stream?: never; problem?: VoiceProblem }> {
+type Opened =
+	| { stream: MediaStream; engine: VoiceEngineOption; problem?: never }
+	| { stream?: never; problem?: VoiceProblem };
+
+/** The microphone and the engine, once voice is set up, or what's stopping it. */
+async function openWhenReady(engines: VoiceEngineOption[]): Promise<Opened> {
 	try {
-		const problem = await setupProblem(engines);
-		return problem ? { problem } : { stream: await openMicrophone() };
+		const chosen = await chosenEngine(engines);
+		return chosen.problem ? chosen : { engine: chosen.engine, stream: await openMicrophone() };
 	} catch (error) {
 		// The microphone and the server word their own errors for the learner.
 		return { problem: { message: (error as Error).message } };
 	}
 }
+
+/** Some engines only take WAV. A recording the browser can't decode gets a plain message. */
+const readableAsWav = (audio: Blob) =>
+	toWav(audio).catch(() => {
+		throw new Error("Couldn't read that recording. Try again.");
+	});
 
 /**
  * Transcribes segments one at a time, in the order they were spoken. Each recording gets a new
@@ -60,11 +75,11 @@ function useTranscriptionQueue(onWords: (text: string) => void) {
 			/** Start a new run, which drops anything still coming from earlier ones. */
 			begin: () => ++run.current,
 			isCurrent: (id: number) => id === run.current,
-			enqueue: (id: number, audio: Blob, onFailure: (message: string) => void) => {
+			enqueue: (id: number, audio: Blob, wav: boolean, onFailure: (message: string) => void) => {
 				queue.current = queue.current.then(async () => {
 					if (id !== run.current) return;
 					try {
-						const text = (await transcribe(audio)).trim();
+						const text = (await transcribe(wav ? await readableAsWav(audio) : audio)).trim();
 						if (text && id === run.current) wordsTarget.current(text);
 					} catch (error) {
 						if (id === run.current) onFailure((error as Error).message);
@@ -117,7 +132,7 @@ export function useVoiceRecorder(engines: VoiceEngineOption[], onWords: (text: s
 		}
 		setLevels(silence());
 		const started = startRecorder(opened.stream, {
-			onSegment: (audio) => enqueue(id, audio, fail),
+			onSegment: (audio) => enqueue(id, audio, opened.engine.wantsWav === true, fail),
 			onLevel: (level) => setLevels((previous) => [...previous.slice(1), level]),
 		});
 		recorder.current = { recorder: started, id };
