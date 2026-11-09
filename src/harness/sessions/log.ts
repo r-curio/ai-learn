@@ -2,6 +2,7 @@ import type {
 	AssistantMessage,
 	ImageContent,
 	Message,
+	SystemMessage,
 	TextContent,
 	ToolResultMessage,
 	UserMessage,
@@ -45,7 +46,13 @@ export interface LogRetry {
 	timestamp: number;
 }
 
-export type LogEntry = LogHeader | LogMessage | LogRetry;
+/** Pi's note that the tools changed, like a search key being added. Kept so a reload sends the same history. */
+export interface LogTools {
+	type: "tools";
+	message: SystemMessage;
+}
+
+export type LogEntry = LogHeader | LogMessage | LogRetry | LogTools;
 
 /** An image in the log is a reference to its attachment, which keeps the log small. */
 export interface StoredImage {

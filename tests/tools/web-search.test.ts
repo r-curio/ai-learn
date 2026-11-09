@@ -4,6 +4,7 @@ import {
 	getCurrentTools,
 	type FauxResponseFactory,
 	type FauxResponseStep,
+	type Message,
 } from "@earendil-works/pi-ai";
 import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
@@ -89,6 +90,43 @@ test("an old chat with search results replays without a network call", async () 
 		/^<search_results query="moon distance">\n1\. Moon facts\nhttps:\/\/example\.org\/moon/,
 	);
 	assert.match(replayed, /<\/search_results>$/);
+});
+
+test("a reopened chat sends the same earlier history after a search key comes and goes", async () => {
+	const requests: Message[][] = [];
+	let search: SearchService | undefined;
+	/** Search follows `search`, and each request's history is kept as it leaves the harness. */
+	const recording = (): Engine => {
+		const engine = createScriptedEngine(
+			Array.from({ length: 8 }, () => fauxAssistantMessage("Noted.")),
+		);
+		return {
+			...engine,
+			searchService: async () => search,
+			streamFn: (model, context, options) => {
+				requests.push(structuredClone<Message[]>(context.messages));
+				return engine.streamFn(model, context, options);
+			},
+		};
+	};
+	const dataDir = await tempDir();
+	const live = new Session(recording(), dataDir);
+	await send(live, "No key yet");
+	search = fakeSearch();
+	await send(live, "Key added");
+	search = undefined;
+	await send(live, "Key removed");
+	await send(live, "Last one");
+	const reloaded = await Session.load(recording(), dataDir, live.id);
+	await send(reloaded, "Last one");
+
+	// The reopened request repeats everything the live one sent, then adds the live reply and the new message.
+	const [, , , lastLive = [], lastReloaded = []] = requests;
+	const declares = (name: string) =>
+		lastLive.some((m) => m.role === "system" && m.toolsAdded?.some((tool) => tool.name === name));
+	assert.ok(declares("web_search"));
+	assert.equal(lastReloaded.length, lastLive.length + 2);
+	assert.deepEqual(lastReloaded.slice(0, lastLive.length), lastLive);
 });
 
 test("the runaway guard stops a run that keeps searching, and says why", async () => {

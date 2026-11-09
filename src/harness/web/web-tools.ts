@@ -1,4 +1,5 @@
-import type { AgentTool, BeforeToolCallResult } from "@earendil-works/pi-agent-core";
+import type { AgentOptions, AgentTool, BeforeToolCallResult } from "@earendil-works/pi-agent-core";
+import type { Message } from "@earendil-works/pi-ai";
 import { z } from "zod";
 import { readPage } from "./read-page.ts";
 import type { SearchHit, SearchService } from "./search-service.ts";
@@ -8,7 +9,9 @@ export const READ_PAGE = "read_page";
 
 /** The most searches one run can make. The tutor searches until it's confident, so this only stops a loop. */
 export const SEARCH_LIMIT = 25;
-export const SEARCH_LIMIT_REASON = `Stopped: this reply already ran ${SEARCH_LIMIT} searches, the most one reply can run. Answer with what you've found, and say what you couldn't check.`;
+/** The start of the guard's reason. Saved chats are recognised by it, so it must never change. */
+const SEARCH_LIMIT_MARK = "Stopped: this reply already ran ";
+export const SEARCH_LIMIT_REASON = `${SEARCH_LIMIT_MARK}${SEARCH_LIMIT} searches, the most one reply can run. Answer with what you've found, and say what you couldn't check.`;
 export const SEARCH_LIMIT_LABEL = `Stopped after ${SEARCH_LIMIT} searches`;
 export const SEARCH_LIMIT_NOTICE = `Stopped after ${SEARCH_LIMIT} searches in one reply. Retry to get an answer from what was found.`;
 /** About 5,000 tokens. Pages are long, and the tutor rarely needs all of one. */
@@ -112,7 +115,11 @@ export const isSearchLimit = (result: {
 	content: readonly { type: string; text?: string }[];
 }) =>
 	result.isError &&
-	result.content.some((part) => part.type === "text" && part.text === SEARCH_LIMIT_REASON);
+	result.content.some((part) => part.type === "text" && part.text?.startsWith(SEARCH_LIMIT_MARK));
+
+/** What to say about a run that ended on the guard, or nothing if it didn't. */
+export const searchLimitNotice = (tail: Message | undefined) =>
+	tail?.role === "toolResult" && isSearchLimit(tail) ? SEARCH_LIMIT_NOTICE : undefined;
 
 /**
  * Stops a run that keeps searching. Once a run passes the limit, every later tool call is
@@ -129,6 +136,11 @@ export function searchGuard() {
 		check(toolName: string): BeforeToolCallResult | undefined {
 			if (toolName === WEB_SEARCH && ++searches > SEARCH_LIMIT) tripped = true;
 			return tripped ? { block: true, reason: SEARCH_LIMIT_REASON, terminate: true } : undefined;
+		},
+		/** Another hook's check first, then this one. */
+		after(before: AgentOptions["beforeToolCall"]): AgentOptions["beforeToolCall"] {
+			return async (context, signal) =>
+				(await before?.(context, signal)) ?? this.check(context.toolCall.name);
 		},
 	};
 }

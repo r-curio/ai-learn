@@ -1,4 +1,11 @@
-import type { AgentTool } from "@earendil-works/pi-agent-core";
+import type { AgentMessage, AgentTool } from "@earendil-works/pi-agent-core";
+import {
+	createInitialSystemMessage,
+	getCurrentTools,
+	getToolStateChanges,
+	toToolDeclaration,
+	type SystemMessage,
+} from "@earendil-works/pi-ai";
 import { z } from "zod";
 import { INLINE_TEXT_CHARS, type AttachmentStore } from "./attachments.ts";
 import type { SearchService } from "./web/search-service.ts";
@@ -68,4 +75,36 @@ export function createTools(attachments: AttachmentStore, search?: SearchService
 		},
 		...webTools(search),
 	];
+}
+
+/** A session's first message: its prompt, and the tools every session starts with. It's rebuilt on each load. */
+export function initialSystemMessage(
+	prompt: string,
+	attachments: AttachmentStore,
+): SystemMessage[] {
+	const message = createInitialSystemMessage(
+		prompt,
+		createTools(attachments).map(toToolDeclaration),
+	);
+	return message ? [message] : [];
+}
+
+/**
+ * The message that tells the model its tools changed, shaped as Pi makes it, or nothing if they
+ * didn't. The session saves it, so a reloaded chat sends the same history as the live one.
+ */
+export function toolChange(
+	messages: readonly AgentMessage[],
+	tools: AgentTool[],
+): SystemMessage | undefined {
+	const current = getCurrentTools(messages);
+	const { toolsAdded, toolsRemoved } = getToolStateChanges(current, tools.map(toToolDeclaration));
+	if (toolsAdded.length === 0 && toolsRemoved.length === 0) return undefined;
+	return {
+		role: "system",
+		content: "",
+		timestamp: Date.now(),
+		...(toolsAdded.length > 0 ? { toolsAdded } : {}),
+		...(toolsRemoved.length > 0 ? { toolsRemoved } : {}),
+	};
 }

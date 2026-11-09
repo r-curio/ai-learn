@@ -1,4 +1,4 @@
-import { Agent, type AgentEvent } from "@earendil-works/pi-agent-core";
+import type { Agent, AgentEvent } from "@earendil-works/pi-agent-core";
 import type { AssistantMessage, Message } from "@earendil-works/pi-ai";
 import { randomUUID } from "node:crypto";
 import { rename, writeFile } from "node:fs/promises";
@@ -23,15 +23,10 @@ import {
 	messagesFromLog,
 	unresolvedToolCalls,
 } from "./recovery.ts";
-import {
-	answerResult,
-	pendingQuestionIn,
-	questionHooks,
-	questionPlaceholder,
-} from "./questions.ts";
+import { answerResult, pendingQuestionIn, questionPlaceholder } from "./questions.ts";
 import { runProgress } from "./run-progress.ts";
-import { createTools } from "../tools.ts";
-import { isSearchLimit, searchGuard, SEARCH_LIMIT_NOTICE } from "../web/web-tools.ts";
+import { createTutorAgent, offerTools } from "../tutor-agent.ts";
+import { searchLimitNotice } from "../web/web-tools.ts";
 import { SYSTEM_PROMPT, viewingTag } from "./tutor-prompt.ts";
 import {
 	addUsage,
@@ -75,7 +70,6 @@ export class Session {
 	private readonly systemPrompt: string;
 	private chatType: ChatType;
 	private running = false;
-	private readonly guard = searchGuard();
 
 	constructor(engine: Engine, dataDir: string, restored?: Restored) {
 		this.engine = engine;
@@ -89,19 +83,12 @@ export class Session {
 		// A session keeps the prompt it started with, so old history replays exactly.
 		this.systemPrompt = header?.systemPrompt ?? SYSTEM_PROMPT;
 		this.chatType = chatTypeOf(header?.chatType);
-		this.agent = new Agent({
-			initialState: {
-				systemPrompt: this.systemPrompt,
-				tools: createTools(this.attachments),
-				messages: restored?.messages ?? [],
-			},
-			streamFn: engine.streamFn,
-			...questionHooks,
-			beforeToolCall: async (context, signal) =>
-				(await questionHooks.beforeToolCall?.(context, signal)) ??
-				this.guard.check(context.toolCall.name),
+		this.agent = createTutorAgent({
 			sessionId: this.id,
-			identity: { attribution: { name: "ai-learn", url: "https://github.com/r-curio/ai-learn" } },
+			systemPrompt: this.systemPrompt,
+			attachments: this.attachments,
+			messages: restored?.messages ?? [],
+			streamFn: engine.streamFn,
 		});
 	}
 
@@ -202,9 +189,7 @@ export class Session {
 		);
 		const canRetry = this.canRetry;
 		const tail = this.messages.at(-1);
-		const stopped = tail?.role === "toolResult" && isSearchLimit(tail);
-		if (canRetry && !isFailedReply(tail))
-			markInterrupted(messages, stopped ? SEARCH_LIMIT_NOTICE : undefined);
+		if (canRetry && !isFailedReply(tail)) markInterrupted(messages, searchLimitNotice(tail));
 		const usage = { ...this.usage };
 		return {
 			id: this.id,
@@ -256,10 +241,7 @@ export class Session {
 		});
 
 		let failure: string | undefined;
-		this.guard.reset();
 		try {
-			// Asked each run, so a search key added or removed in Settings counts from the next message.
-			this.agent.state.tools = createTools(this.attachments, await this.engine.searchService());
 			await start();
 			await this.writeSummary();
 		} catch (error) {
@@ -309,16 +291,24 @@ export class Session {
 			message: toStored(message, this.attachments),
 			display: { text, attachmentIds },
 		};
-		await this.saveThenRun(entry, () => this.agent.prompt(message), onEvent);
+		await this.saveThenRun(entry, () => this.agent.prompt(message), onEvent, true);
+	}
+
+	private declareTools(): Promise<void> {
+		return offerTools(this.agent.state, this.attachments, this.engine, (entry) =>
+			this.record(entry),
+		);
 	}
 
 	private async saveThenRun(
 		entry: LogEntry,
 		start: () => Promise<void>,
 		onEvent: (event: RunEvent) => void,
+		toolsFirst = false,
 	): Promise<void> {
 		this.running = true;
 		try {
+			if (toolsFirst) await this.declareTools();
 			await this.record(entry);
 		} catch (error) {
 			this.running = false;
@@ -340,8 +330,9 @@ export class Session {
 			throw new SessionStateError("That question isn't waiting for an answer.");
 		this.use(choice);
 		const result = answerResult(question, answer);
-		const start = () => {
+		const start = async () => {
 			this.agent.state.messages.push(result);
+			await this.declareTools();
 			return this.agent.continue();
 		};
 		await this.saveThenRun({ type: "message", message: result, answer }, start, onEvent);
@@ -358,6 +349,7 @@ export class Session {
 				await this.record({ type: "retry", timestamp: Date.now() });
 				this.agent.state.messages = this.agent.state.messages.slice(0, -1);
 			}
+			await this.declareTools();
 		} catch (error) {
 			this.running = false;
 			throw error;
