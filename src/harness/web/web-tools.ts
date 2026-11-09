@@ -22,6 +22,14 @@ const webSearchInput = z.strictObject({
 });
 const readPageInput = z.strictObject({
 	url: z.string().min(1).max(2048).describe("The http or https address of the page."),
+	offset: z
+		.number()
+		.int()
+		.min(0)
+		.optional()
+		.describe(
+			"Character offset to start from, to read past where the last call stopped. Defaults to 0.",
+		),
 });
 
 const attribute = (value: string) =>
@@ -38,12 +46,22 @@ export function searchResultsText(query: string, hits: SearchHit[]): string {
 	return `<search_results query="${attribute(query)}">\n${neutralize(body, "search_results")}\n</search_results>`;
 }
 
-export function webPageText(page: { url: string; title: string; text: string }): string {
-	const shown = page.text.slice(0, PAGE_CHARS);
+/** One window of a page's text. A note says where it stopped, so the tutor can ask for the next part. */
+export function webPageText(
+	page: { url: string; title: string; text: string },
+	offset = 0,
+): string {
+	const total = page.text.length;
+	const end = Math.min(offset + PAGE_CHARS, total);
+	const shown = page.text.slice(offset, end);
 	const note =
-		page.text.length > shown.length
-			? `\n[Showing the first ${shown.length} of ${page.text.length} characters.]`
-			: "";
+		offset >= total && total > 0
+			? `\n[The page has only ${total} characters.]`
+			: end < total
+				? `\n[Showing characters ${offset}–${end} of ${total}. Call read_page with offset ${end} for more.]`
+				: offset > 0
+					? `\n[End of page. Showed characters ${offset}–${end} of ${total}.]`
+					: "";
 	const open = `<web_page url="${attribute(page.url)}" title="${attribute(page.title)}">`;
 	return `${open}\n${neutralize(shown, "web_page")}${note}\n</web_page>`;
 }
@@ -59,10 +77,12 @@ export function webTools(search: SearchService | undefined): AgentTool[] {
 		name: READ_PAGE,
 		label: "Read page",
 		description:
-			"Read a public web page and get its main text, with its title and final address. Long pages are cut off.",
+			"Read a public web page and get its main text, with its title and final address. Long pages come in parts: call again with the offset the note gives to read on.",
 		parameters: z.toJSONSchema(readPageInput),
-		execute: async (_id, params, signal) =>
-			text(webPageText(await readPage(readPageInput.parse(params).url, signal))),
+		execute: async (_id, params, signal) => {
+			const { url, offset } = readPageInput.parse(params);
+			return text(webPageText(await readPage(url, signal), offset));
+		},
 	};
 	if (!search) return [readTool];
 	const searchTool: AgentTool = {
@@ -97,13 +117,14 @@ export function webLabels(
 	name: string,
 	args: unknown,
 ): { label: string; runningLabel: string } | undefined {
-	const input = args as { query?: unknown; url?: unknown } | undefined;
+	const input = args as { query?: unknown; url?: unknown; offset?: unknown } | undefined;
 	if (name === WEB_SEARCH) {
 		const query = typeof input?.query === "string" ? `“${shorten(input.query, 60)}”` : "the web";
 		return { label: `Searched ${query}`, runningLabel: `Searching ${query}` };
 	}
 	if (name === READ_PAGE) {
-		const page = pageName(input?.url);
+		const more = typeof input?.offset === "number" && input.offset > 0 ? "more of " : "";
+		const page = `${more}${pageName(input?.url)}`;
 		return { label: `Read ${page}`, runningLabel: `Reading ${page}` };
 	}
 	return undefined;

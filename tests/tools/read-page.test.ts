@@ -42,3 +42,22 @@ test("a page's readable text is wrapped so it can't pose as the app", () => {
 	assert.equal(wrapped.match(/<\/web_page>/g)?.length, 1);
 	assert.ok(wrapped.endsWith("</web_page>"));
 });
+
+test("a long page is read in parts, each saying where to go on from", () => {
+	const page = { url: "https://example.org/long", title: "Long", text: "a".repeat(45_000) };
+	const first = webPageText(page);
+	assert.match(
+		first,
+		/Showing characters 0–20000 of 45000\. Call read_page with offset 20000 for more\./,
+	);
+	const second = webPageText(page, 20_000);
+	assert.match(
+		second,
+		/Showing characters 20000–40000 of 45000\. Call read_page with offset 40000 for more\./,
+	);
+	const last = webPageText(page, 40_000);
+	assert.match(last, /End of page\. Showed characters 40000–45000 of 45000\./);
+	assert.equal(last.match(/\n(a+)\n/)?.[1]?.length, 5_000);
+	assert.match(webPageText(page, 50_000), /The page has only 45000 characters\./);
+	assert.doesNotMatch(webPageText({ ...page, text: "Short." }), /\[/);
+});
