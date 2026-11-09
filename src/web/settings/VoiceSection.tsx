@@ -22,10 +22,13 @@ function useVoiceChoice(engines: VoiceEngineOption[]) {
 	}, []);
 	const choose = (id: string) => {
 		const voice = id === OFF ? undefined : id;
+		const previous = chosen;
+		setChosen(voice);
 		setError(undefined);
-		savePreferences({ voice })
-			.then(() => setChosen(voice))
-			.catch((cause: Error) => setError(cause.message));
+		savePreferences({ voice }).catch((cause: Error) => {
+			setChosen(previous);
+			setError(cause.message);
+		});
 	};
 	const usable = engines.some(({ id, connected }) => id === chosen && connected);
 	return { value: usable && chosen ? chosen : OFF, choose, error };
@@ -108,9 +111,9 @@ export function VoiceSection({ engines, addable, keysUnavailable, onConnect }: V
 	return (
 		<section aria-labelledby="voice-heading" className="flex flex-col gap-5">
 			<header className="flex flex-col gap-1">
-				<h2 id="voice-heading" className="text-[17px] leading-[25px] font-medium">
+				<h1 id="voice-heading" className="text-[17px] leading-[25px] font-medium">
 					Voice
-				</h2>
+				</h1>
 				<p className="text-[13px] leading-[18px] text-muted-foreground">
 					Speak instead of typing. Choose where your recording is turned into text.
 				</p>
