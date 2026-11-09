@@ -3,10 +3,17 @@ import type { ExcalidrawElementSkeleton } from "@excalidraw/excalidraw/data/tran
 import type { ExcalidrawElement } from "@excalidraw/excalidraw/element/types";
 import type { Drawing, DrawingArrow } from "../../shared/drawing.ts";
 
-const STROKE = "#5b5fc7";
-const BOX_FILL = "#e6e7f7";
-const GROUP_STROKE = "#8b8da8";
-const TEXT_COLOR = "#23243a";
+/** A drawing's colours, from the `--diagram-*` tokens in globals.css. */
+function diagramColours() {
+	const styles = getComputedStyle(document.documentElement);
+	const token = (name: string) => styles.getPropertyValue(`--diagram-${name}`).trim();
+	return {
+		stroke: token("stroke"),
+		fill: token("fill"),
+		group: token("group"),
+		text: token("text"),
+	};
+}
 export const FONT_NAME = "Excalifont";
 const FONT = { fontFamily: FONT_FAMILY[FONT_NAME], fontSize: 16 };
 
@@ -18,7 +25,11 @@ function seedOf(text: string): number {
 	return (hash >>> 0) % 2 ** 31;
 }
 
-function arrowSkeleton(arrow: DrawingArrow, index: number): ExcalidrawElementSkeleton | [] {
+function arrowSkeleton(
+	arrow: DrawingArrow,
+	index: number,
+	stroke: string,
+): ExcalidrawElementSkeleton | [] {
 	const [start, ...rest] = arrow.points;
 	if (!start || rest.length === 0) return [];
 	const [x, y] = start;
@@ -28,13 +39,14 @@ function arrowSkeleton(arrow: DrawingArrow, index: number): ExcalidrawElementSke
 		x,
 		y,
 		points: arrow.points.map(([px, py]) => [px - x, py - y] as const) as never,
-		strokeColor: STROKE,
+		strokeColor: stroke,
 		roundness: null,
 		...(arrow.label ? { label: { text: arrow.label, ...FONT, fontSize: 14 } } : {}),
 	};
 }
 
 function skeletons(drawing: Drawing): ExcalidrawElementSkeleton[] {
+	const colour = diagramColours();
 	const groups = drawing.groups.flatMap((group): ExcalidrawElementSkeleton[] => [
 		{
 			type: "rectangle",
@@ -43,7 +55,7 @@ function skeletons(drawing: Drawing): ExcalidrawElementSkeleton[] {
 			y: group.y,
 			width: group.width,
 			height: group.height,
-			strokeColor: GROUP_STROKE,
+			strokeColor: colour.group,
 			strokeStyle: "dashed",
 			roundness: { type: 3 },
 		},
@@ -53,7 +65,7 @@ function skeletons(drawing: Drawing): ExcalidrawElementSkeleton[] {
 			x: group.x + 16,
 			y: group.y + 12,
 			text: group.label,
-			strokeColor: GROUP_STROKE,
+			strokeColor: colour.group,
 			...FONT,
 		},
 	]);
@@ -64,13 +76,17 @@ function skeletons(drawing: Drawing): ExcalidrawElementSkeleton[] {
 		y: box.y,
 		width: box.width,
 		height: box.height,
-		strokeColor: STROKE,
-		backgroundColor: BOX_FILL,
+		strokeColor: colour.stroke,
+		backgroundColor: colour.fill,
 		fillStyle: "solid",
 		roundness: { type: 3 },
-		label: { text: box.label, strokeColor: TEXT_COLOR, ...FONT },
+		label: { text: box.label, strokeColor: colour.text, ...FONT },
 	}));
-	return [...groups, ...boxes, ...drawing.arrows.flatMap(arrowSkeleton)];
+	return [
+		...groups,
+		...boxes,
+		...drawing.arrows.flatMap((arrow, index) => arrowSkeleton(arrow, index, colour.stroke)),
+	];
 }
 
 /** Excalidraw gives labels random ids, so they're renamed after their container. */
