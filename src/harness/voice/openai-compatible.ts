@@ -1,5 +1,12 @@
 import type { Models } from "@earendil-works/pi-ai";
-import type { VoiceEngineOption, VoiceModels } from "../shared/protocol.ts";
+import type { VoiceEngineOption, VoiceModels } from "../../shared/protocol.ts";
+import {
+	failureFor,
+	unreachable,
+	VoiceError,
+	VOICE_AUDIO_TYPES,
+	type Recording,
+} from "./voice-error.ts";
 
 /** Cloud providers that turn speech into text with the same key as their chat models. */
 const CLOUD_VOICE: Record<string, { label: string; defaultModel: string; baseUrl: string }> = {
@@ -19,34 +26,6 @@ const CLOUD_VOICE: Record<string, { label: string; defaultModel: string; baseUrl
 const MODEL_LIST_TTL_MS = 10 * 60 * 1000;
 const modelLists = new Map<string, { at: number; models: string[] }>();
 
-/** The audio formats the page can record, which every voice engine accepts. */
-export const VOICE_AUDIO_TYPES: Record<string, string> = {
-	"audio/webm": "webm",
-	"audio/ogg": "ogg",
-	"audio/wav": "wav",
-	"audio/mp4": "mp4",
-	"audio/mpeg": "mp3",
-};
-
-/** The cloud providers' upload limit. */
-export const MAX_VOICE_BYTES = 25 * 1024 * 1024;
-
-export interface Recording {
-	audio: Uint8Array<ArrayBuffer>;
-	/** One of `VOICE_AUDIO_TYPES`. */
-	mimeType: string;
-}
-
-/** A transcription that couldn't be done, with a reason that's safe to show the learner. */
-export class VoiceError extends Error {
-	constructor(
-		message: string,
-		readonly status: 400 | 409 | 502 | 503,
-	) {
-		super(message);
-	}
-}
-
 const isConnected = async (models: Models, id: string) =>
 	(await models.getAuth(id).catch(() => undefined))?.auth.apiKey !== undefined;
 
@@ -58,21 +37,6 @@ export async function cloudVoiceEngines(models: Models): Promise<VoiceEngineOpti
 			connected: await isConnected(models, id),
 		})),
 	);
-}
-
-/** Why the provider said no. Its own reply isn't passed on, since it can repeat the request. */
-function failureFor(status: number, label: string): VoiceError {
-	if (status === 401 || status === 403)
-		return new VoiceError(`${label} rejected the key. Check it in Settings.`, 502);
-	if (status === 404)
-		return new VoiceError(
-			`That model isn't available from ${label}. Choose another in Settings.`,
-			409,
-		);
-	if (status === 413) return new VoiceError("That recording is too long to transcribe.", 400);
-	if (status === 429)
-		return new VoiceError(`${label} is busy or the account is out of credit. Try again soon.`, 503);
-	return new VoiceError(`${label} couldn't transcribe that recording.`, 502);
 }
 
 /** The engine and where to reach it with which key. Throws if it can't be used. */
@@ -105,7 +69,7 @@ export async function cloudVoiceModels(models: Models, engineId: string): Promis
 	const response = await fetch(`${engine.url}/models`, {
 		headers: { Authorization: `Bearer ${engine.apiKey}` },
 	}).catch(() => {
-		throw new VoiceError(`Couldn't reach ${engine.label}. Check your connection.`, 503);
+		throw unreachable(engine.label);
 	});
 	if (!response.ok) throw failureFor(response.status, engine.label);
 	const body = (await response.json().catch(() => undefined)) as { data?: unknown } | undefined;
@@ -135,7 +99,7 @@ export async function transcribeInCloud(
 		headers: { Authorization: `Bearer ${engine.apiKey}` },
 		body: form,
 	}).catch(() => {
-		throw new VoiceError(`Couldn't reach ${engine.label}. Check your connection.`, 503);
+		throw unreachable(engine.label);
 	});
 	if (!response.ok) throw failureFor(response.status, engine.label);
 	const body = (await response.json().catch(() => undefined)) as { text?: unknown } | undefined;

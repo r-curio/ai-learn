@@ -105,6 +105,10 @@ export interface VoiceEngineOption {
 	id: string;
 	label: string;
 	connected: boolean;
+	/** Its key is added and removed in Settings → Voice, since it isn't a chat provider. */
+	ownKey?: boolean;
+	/** Where a voice-only engine's key comes from, when it has one. */
+	keySource?: "saved" | "environment";
 }
 
 /** A voice engine's models. The learner can pick any of them, and the default is listed first. */

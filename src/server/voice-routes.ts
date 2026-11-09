@@ -1,7 +1,7 @@
 import type { Context, Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import type { Engine } from "../harness/engine.ts";
-import { MAX_VOICE_BYTES, VOICE_AUDIO_TYPES, VoiceError } from "../harness/transcription.ts";
+import { MAX_VOICE_BYTES, VOICE_AUDIO_TYPES, VoiceError } from "../harness/voice/voice-error.ts";
 import { readPreferences } from "./preferences.ts";
 
 const VOICE_OFF = "Voice isn't set up. Choose how speech becomes text in Settings.";

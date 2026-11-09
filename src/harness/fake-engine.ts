@@ -12,7 +12,7 @@ import {
 import type { Engine } from "./engine.ts";
 import { engineFromModels } from "./model-catalog.ts";
 import { ASK_QUESTION } from "./tools.ts";
-import { VoiceError } from "./transcription.ts";
+import { VoiceError } from "./voice/voice-error.ts";
 
 const FAKE_INPUT: ("text" | "image")[] = ["text", "image"];
 const FAKE_MODELS = [
