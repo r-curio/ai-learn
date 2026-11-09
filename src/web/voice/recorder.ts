@@ -58,6 +58,11 @@ export async function openMicrophone(): Promise<MediaStream> {
 	}
 }
 
+/** Turn the microphone off, which also clears the system's recording indicator. */
+export function releaseMicrophone(stream: MediaStream | undefined): void {
+	for (const track of stream?.getTracks() ?? []) track.stop();
+}
+
 function loudness(analyser: AnalyserNode, samples: Float32Array<ArrayBuffer>): number {
 	analyser.getFloatTimeDomainData(samples);
 	let sum = 0;
@@ -106,7 +111,7 @@ export function startRecorder(stream: MediaStream, events: RecorderEvents): Reco
 
 	const release = () => {
 		clearInterval(tick);
-		for (const track of stream.getTracks()) track.stop();
+		releaseMicrophone(stream);
 		void audio.close();
 	};
 	return {

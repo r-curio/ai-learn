@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { VoiceEngineOption } from "../../shared/protocol.ts";
 import { getPreferences, transcribe } from "../api.ts";
-import { openMicrophone, startRecorder, type Recorder } from "./recorder.ts";
+import { openMicrophone, releaseMicrophone, startRecorder, type Recorder } from "./recorder.ts";
 
 /** How many recent levels the waveform shows. */
 const BARS = 5;
@@ -24,6 +24,19 @@ async function setupProblem(engines: VoiceEngineOption[]): Promise<VoiceProblem 
 	if (!engine.connected)
 		return { message: `Add your ${engine.label} key to use voice.`, settings: true };
 	return undefined;
+}
+
+/** The microphone, once voice is set up, or what's stopping it. */
+async function openWhenReady(
+	engines: VoiceEngineOption[],
+): Promise<{ stream: MediaStream; problem?: never } | { stream?: never; problem?: VoiceProblem }> {
+	try {
+		const problem = await setupProblem(engines);
+		return problem ? { problem } : { stream: await openMicrophone() };
+	} catch (error) {
+		// The microphone and the server word their own errors for the learner.
+		return { problem: { message: (error as Error).message } };
+	}
 }
 
 /**
@@ -91,31 +104,21 @@ export function useVoiceRecorder(engines: VoiceEngineOption[], onWords: (text: s
 		const id = begin();
 		setProblem(undefined);
 		setPhase("starting");
-		const current = () => isCurrent(id);
-		try {
-			const found = await setupProblem(engines);
-			const stream = found ? undefined : await openMicrophone();
-			if (!current()) {
-				for (const track of stream?.getTracks() ?? []) track.stop();
-				return;
-			}
-			if (!stream) {
-				setPhase("idle");
-				setProblem(found);
-				return;
-			}
-			setLevels(silence());
-			const started = startRecorder(stream, {
-				onSegment: (audio) => enqueue(id, audio, fail),
-				onLevel: (level) => setLevels((previous) => [...previous.slice(1), level]),
-			});
-			recorder.current = { recorder: started, id };
-			setStartedAt(Date.now());
-			setPhase("recording");
-		} catch (error) {
-			// The microphone and the server word their own errors for the learner.
-			if (current()) fail((error as Error).message);
+		const opened = await openWhenReady(engines);
+		if (!isCurrent(id)) return releaseMicrophone(opened.stream);
+		if (!opened.stream) {
+			setPhase("idle");
+			setProblem(opened.problem);
+			return;
 		}
+		setLevels(silence());
+		const started = startRecorder(opened.stream, {
+			onSegment: (audio) => enqueue(id, audio, fail),
+			onLevel: (level) => setLevels((previous) => [...previous.slice(1), level]),
+		});
+		recorder.current = { recorder: started, id };
+		setStartedAt(Date.now());
+		setPhase("recording");
 	}
 
 	/** Stop recording, then wait for the last words before the box can be sent. */
