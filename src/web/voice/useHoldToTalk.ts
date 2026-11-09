@@ -64,8 +64,9 @@ export function useHoldToTalk<Target extends string>(options: HoldOptions<Target
 			holding = false;
 			const { voice } = latest.current;
 			if (voice.phase === "recording") void voice.stop();
-			// Let go while the microphone was still opening, so there's nothing to keep.
-			else if (voice.phase === "starting") voice.cancel();
+			// Let go while the microphone was still opening, so there's nothing to keep. The phase may
+			// still read idle for a frame after starting, and cancelling a truly idle recorder is harmless.
+			else if (voice.phase !== "finishing") voice.cancel();
 		};
 
 		const ready = () =>
