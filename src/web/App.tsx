@@ -100,6 +100,11 @@ export function App() {
 		voice.dismiss();
 	}
 
+	function openProviders() {
+		setSettingsPage("providers");
+		setView("settings");
+	}
+
 	const { setOpen: saveSidebarOpen } = sidebar;
 	const onSidebarChange = useCallback(
 		(open: boolean) => {
@@ -193,7 +198,7 @@ export function App() {
 										else modelChoice.setPickerOpen(true);
 									}}
 									onNewChat={() => void chat.startNewChat()}
-									onAddProvider={() => setView("settings")}
+									onAddProvider={openProviders}
 								/>
 							) : (
 								<Composer
@@ -209,7 +214,7 @@ export function App() {
 									modelChoice={modelChoice}
 									context={chat.context}
 									onNewChat={() => void chat.startNewChat()}
-									onAddProvider={() => setView("settings")}
+									onAddProvider={openProviders}
 									voice={voice}
 									onOpenVoiceSettings={() => {
 										setSettingsPage("voice");

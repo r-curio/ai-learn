@@ -73,7 +73,7 @@ export function VoiceControl({ voice, disabled }: { voice: VoiceRecorder; disabl
 			onClick={() => void voice.start()}
 		>
 			{waiting ? (
-				<LoaderCircle className="size-5 animate-spin" strokeWidth={1.5} />
+				<LoaderCircle className="size-5 motion-safe:animate-spin" strokeWidth={1.5} />
 			) : (
 				<Mic className="size-5" strokeWidth={1.5} />
 			)}
