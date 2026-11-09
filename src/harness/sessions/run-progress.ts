@@ -1,6 +1,8 @@
 import type { AgentEvent } from "@earendil-works/pi-agent-core";
+import type { TextContent } from "@earendil-works/pi-ai";
 import type { RunEvent } from "../../shared/protocol.ts";
 import { ASK_QUESTION, toolLabels } from "../tools.ts";
+import { isSearchLimit, SEARCH_LIMIT_LABEL } from "../web/web-tools.ts";
 
 /** Turns Pi's events into what the UI shows during a run, and times how long the tutor worked. */
 export function runProgress(
@@ -26,11 +28,15 @@ export function runProgress(
 			const labels = toolLabels(event.toolName, event.args, attachmentName);
 			onEvent({ type: "tool_start", id: event.toolCallId, name: event.toolName, ...labels });
 		} else if (event.type === "tool_execution_end" && event.toolName !== ASK_QUESTION) {
+			const { content = [] } = (event.result ?? {}) as { content?: TextContent[] };
 			onEvent({
 				type: "tool_end",
 				id: event.toolCallId,
 				isError: event.isError,
 				durationMs: event.durationMs,
+				...(isSearchLimit({ isError: event.isError, content })
+					? { label: SEARCH_LIMIT_LABEL }
+					: {}),
 			});
 		}
 	}

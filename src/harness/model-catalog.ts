@@ -18,6 +18,12 @@ import {
 	voiceModels,
 	type VoiceKeySources,
 } from "./voice/engines.ts";
+import {
+	connectedSearchService,
+	hasSearchEnvironmentKey,
+	isSearchService,
+	searchServices,
+} from "./web/search-keys.ts";
 
 /** How an engine's Pi providers get their keys. The fake model has neither. */
 export interface KeySources extends VoiceKeySources {
@@ -118,6 +124,7 @@ async function readStatus(models: Models, sources?: KeySources): Promise<EngineS
 		...catalog,
 		keysUnavailable,
 		voice: sources ? await voiceEngines(models, sources) : [],
+		search: sources ? await searchServices(sources) : [],
 		...(catalog.providers.length > 0 ? {} : { reason: notReadyReason(keysUnavailable) }),
 	};
 }
@@ -125,11 +132,11 @@ async function readStatus(models: Models, sources?: KeySources): Promise<EngineS
 async function saveKey(models: Models, sources: KeySources | undefined, id: string, key: string) {
 	const reason = sources ? sources.keys.unavailableReason() : NO_FAKE_KEYS;
 	if (!sources || reason) throw new ProviderKeyError(reason ?? NO_FAKE_KEYS, 503);
-	const voiceOnly = isVoiceOnly(id);
-	if (!voiceOnly && !canSaveKey(models, id))
+	const ownKey = isVoiceOnly(id) || isSearchService(id);
+	if (!ownKey && !canSaveKey(models, id))
 		throw new ProviderKeyError("That provider can't use a saved key.", 400);
-	const fromEnvironment = voiceOnly
-		? await hasVoiceEnvironmentKey(sources, id)
+	const fromEnvironment = ownKey
+		? (await hasVoiceEnvironmentKey(sources, id)) || (await hasSearchEnvironmentKey(sources, id))
 		: await isConfigured(sources.environment, id);
 	if (fromEnvironment)
 		throw new ProviderKeyError("This provider's key already comes from the environment.", 409);
@@ -150,5 +157,6 @@ export function engineFromModels(models: Models, sources?: KeySources): Engine {
 		voiceModels: (engineId) => voiceModels(models, sources, engineId),
 		transcribe: (engineId, recording, model) =>
 			transcribe(models, sources, engineId, recording, model),
+		searchService: async () => (sources ? connectedSearchService(sources) : undefined),
 	};
 }

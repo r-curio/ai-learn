@@ -1,6 +1,8 @@
 import type { AgentTool } from "@earendil-works/pi-agent-core";
 import { z } from "zod";
 import { INLINE_TEXT_CHARS, type AttachmentStore } from "./attachments.ts";
+import type { SearchService } from "./web/search-service.ts";
+import { webLabels, webTools } from "./web/web-tools.ts";
 
 const readAttachmentInput = z.object({
 	id: z.string().describe("The attachment id from its <attachment> tag."),
@@ -27,13 +29,16 @@ export function toolLabels(
 	attachmentName: (id: string) => string | undefined,
 ): { label: string; runningLabel: string } {
 	if (name === ASK_QUESTION) return { label: "Ask a question", runningLabel: "Asking a question" };
+	const web = webLabels(name, args);
+	if (web) return web;
 	if (name !== "read_attachment") return { label: name, runningLabel: name };
 	const id = (args as { id?: unknown } | undefined)?.id;
 	const target = (typeof id === "string" && attachmentName(id)) || "attachment";
 	return { label: `Read ${target}`, runningLabel: `Reading ${target}` };
 }
 
-export function createTools(attachments: AttachmentStore): AgentTool[] {
+/** The tutor's tools. Without a connected search service, `web_search` isn't offered. */
+export function createTools(attachments: AttachmentStore, search?: SearchService): AgentTool[] {
 	return [
 		{
 			name: "read_attachment",
@@ -61,5 +66,6 @@ export function createTools(attachments: AttachmentStore): AgentTool[] {
 				details: undefined,
 			}),
 		},
+		...webTools(search),
 	];
 }

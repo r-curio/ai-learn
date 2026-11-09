@@ -53,6 +53,7 @@ Preferences live in `preferences.json` in the same folder. The desktop app's ser
 - **Attachments:** their contents are marked as material to work with, not as instructions to the tutor. Prompt injection is still possible, because that marking only guides the model.
 - **PDFs:** pdf.js draws pages to canvases in a worker, under the same content security policy as the app. Links, forms, and scripts inside a PDF aren't rendered or run.
 - **Electron window:** the page has no Node access, runs sandboxed, and can't navigate away from the local server. Web links open in the system browser. It may use the microphone, and only from the app's own page. Every other permission is denied.
+- **Web pages and search:** the tutor's `read_page` tool fetches pages from the local server, and refuses addresses on the learner's computer or network, checking again after each redirect. `web_search` sends only the query to the search service the learner added a key for. Both results are marked as material to check, not instructions, and they're saved as tool results, so an old chat replays without fetching again. One run can search at most 25 times.
 - **Voice:** recordings go to the local server, which sends them to the voice engine the learner chose. The page never holds a key (ADR 0011).
 
 ## Not built yet

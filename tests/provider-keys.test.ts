@@ -233,3 +233,24 @@ test("a voice-only key is saved, removed, and never sent back, and the environme
 	assert.equal((await deepgram(fromEnv))?.keySource, "environment");
 	assert.equal((await saveKey(fromEnv, "deepgram", SECRET)).status, 409);
 });
+
+test("a search key is saved, removed, and never sent back, and the environment wins", async () => {
+	const dataDir = await tempDir();
+	const { app } = appFor(dataDir, testCipher());
+	const tavily = async (target: App) =>
+		(await statusOf(target)).search.find(({ id }) => id === "tavily");
+	assert.deepEqual(await tavily(app), { id: "tavily", label: "Tavily", connected: false });
+
+	assert.equal((await saveKey(app, "tavily", SECRET)).status, 200);
+	const body = await (await app.request(`${BASE}/api/status`, { headers: auth })).text();
+	assert.ok(!body.includes(SECRET));
+	assert.equal((await tavily(app))?.keySource, "saved");
+	assert.ok(!(await readFile(join(dataDir, FILE), "utf8")).includes(SECRET));
+
+	await app.request(`${BASE}/api/providers/tavily/key`, { method: "DELETE", headers: auth });
+	assert.equal((await tavily(app))?.connected, false);
+
+	const fromEnv = appFor(await tempDir(), testCipher(), { TAVILY_API_KEY: "tvly-from-env" }).app;
+	assert.equal((await tavily(fromEnv))?.keySource, "environment");
+	assert.equal((await saveKey(fromEnv, "tavily", SECRET)).status, 409);
+});

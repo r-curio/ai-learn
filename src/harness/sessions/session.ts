@@ -31,6 +31,7 @@ import {
 } from "./questions.ts";
 import { runProgress } from "./run-progress.ts";
 import { createTools } from "../tools.ts";
+import { isSearchLimit, searchGuard, SEARCH_LIMIT_NOTICE } from "../web/web-tools.ts";
 import { SYSTEM_PROMPT, viewingTag } from "./tutor-prompt.ts";
 import {
 	addUsage,
@@ -74,6 +75,7 @@ export class Session {
 	private readonly systemPrompt: string;
 	private chatType: ChatType;
 	private running = false;
+	private readonly guard = searchGuard();
 
 	constructor(engine: Engine, dataDir: string, restored?: Restored) {
 		this.engine = engine;
@@ -95,6 +97,9 @@ export class Session {
 			},
 			streamFn: engine.streamFn,
 			...questionHooks,
+			beforeToolCall: async (context, signal) =>
+				(await questionHooks.beforeToolCall?.(context, signal)) ??
+				this.guard.check(context.toolCall.name),
 			sessionId: this.id,
 			identity: { attribution: { name: "ai-learn", url: "https://github.com/r-curio/ai-learn" } },
 		});
@@ -196,7 +201,10 @@ export class Session {
 			(citation) => this.attachments.hasCitation(citation),
 		);
 		const canRetry = this.canRetry;
-		if (canRetry && !isFailedReply(this.messages.at(-1))) markInterrupted(messages);
+		const tail = this.messages.at(-1);
+		const stopped = tail?.role === "toolResult" && isSearchLimit(tail);
+		if (canRetry && !isFailedReply(tail))
+			markInterrupted(messages, stopped ? SEARCH_LIMIT_NOTICE : undefined);
 		const usage = { ...this.usage };
 		return {
 			id: this.id,
@@ -248,7 +256,10 @@ export class Session {
 		});
 
 		let failure: string | undefined;
+		this.guard.reset();
 		try {
+			// Asked each run, so a search key added or removed in Settings counts from the next message.
+			this.agent.state.tools = createTools(this.attachments, await this.engine.searchService());
 			await start();
 			await this.writeSummary();
 		} catch (error) {
