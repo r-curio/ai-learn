@@ -27,6 +27,12 @@ function removeTypedSpace(field: TextField) {
 	field.dispatchEvent(new Event("input", { bubbles: true }));
 }
 
+/** A text box names where its words go, and focus anywhere else uses the fallback. */
+function targetFor<Target extends string>(focused: Element | null, fallback: Target) {
+	const field = textField(focused);
+	return field ? (field.dataset.dictation as Target | undefined) : fallback;
+}
+
 interface HoldOptions<Target extends string> {
 	voice: VoiceRecorder;
 	/** Words can't go anywhere yet, so space is just space. */
@@ -62,12 +68,6 @@ export function useHoldToTalk<Target extends string>(options: HoldOptions<Target
 			else voice.cancel();
 		};
 
-		const targetFor = (focused: Element | null): Target | undefined => {
-			const field = textField(focused);
-			if (!field) return latest.current.fallback;
-			return (field.dataset.dictation as Target | undefined) ?? undefined;
-		};
-
 		const onKeyDown = (event: KeyboardEvent) => {
 			if (event.key !== " ") {
 				// Another key before the hold starts means the learner is typing, not talking.
@@ -83,7 +83,7 @@ export function useHoldToTalk<Target extends string>(options: HoldOptions<Target
 				return;
 			if (!latest.current.enabled || document.querySelector(OPEN_LAYER)) return;
 			const focused = document.activeElement;
-			const target = targetFor(focused);
+			const target = targetFor(focused, latest.current.fallback);
 			if (target === undefined) return;
 			pending = setTimeout(() => {
 				pending = undefined;
