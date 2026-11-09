@@ -5,6 +5,7 @@ import type {
 	ModelSelection,
 	OpenPage,
 	Preferences,
+	PreferencesChange,
 	QuestionAnswer,
 	RunEvent,
 	SearchResult,
@@ -54,7 +55,7 @@ export async function getPreferences(): Promise<Preferences> {
 	return (await request("/api/preferences")).json() as Promise<Preferences>;
 }
 
-export async function savePreferences(preferences: Partial<Preferences>): Promise<void> {
+export async function savePreferences(preferences: PreferencesChange): Promise<void> {
 	await request("/api/preferences", {
 		method: "PUT",
 		headers: { "Content-Type": "application/json" },

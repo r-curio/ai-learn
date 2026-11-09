@@ -12,7 +12,7 @@ import { SessionBusyError, SessionStateError } from "../harness/sessions/session
 import { SessionStore } from "../harness/sessions/store.ts";
 import { CHAT_TYPES, EFFORTS, type RunEvent } from "../shared/protocol.ts";
 import { addProviderKeyRoutes } from "./provider-routes.ts";
-import { preferencesInput, readPreferences, writePreferences } from "./preferences.ts";
+import { applyChange, preferencesInput, readPreferences, writePreferences } from "./preferences.ts";
 import { addVoiceRoutes } from "./voice-routes.ts";
 import { SessionLogError } from "../harness/sessions/log.ts";
 
@@ -139,7 +139,7 @@ export function createApp({ engine, dataDir, token, webRoot }: AppOptions): Hono
 	app.put("/api/preferences", async (c) => {
 		const parsed = preferencesInput.safeParse(await c.req.json().catch(() => undefined));
 		if (!parsed.success) return c.json({ error: "Invalid preferences." }, 400);
-		const preferences = { ...(await readPreferences(dataDir)), ...parsed.data };
+		const preferences = applyChange(await readPreferences(dataDir), parsed.data);
 		await writePreferences(dataDir, preferences);
 		return c.json(preferences);
 	});

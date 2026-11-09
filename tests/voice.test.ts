@@ -51,7 +51,7 @@ test("a provider's error reply never reaches the learner, even when it repeats t
 	}
 });
 
-test("the transcribe route needs a chosen engine and a supported format", async () => {
+test("the transcribe route needs a chosen engine and a supported format, and Off sticks", async () => {
 	const app = createApp({ engine: createDemoEngine(), dataDir: await tempDir(), token: TOKEN });
 	const transcribe = (type: string) =>
 		app.request(`${BASE}/api/voice/transcribe`, {
@@ -65,12 +65,19 @@ test("the transcribe route needs a chosen engine and a supported format", async 
 	assert.match(((await off.json()) as { error: string }).error, /Settings/);
 	assert.equal((await transcribe("text/html")).status, 415);
 
-	await app.request(`${BASE}/api/preferences`, {
-		method: "PUT",
-		headers: { ...auth, "Content-Type": "application/json" },
-		body: JSON.stringify({ voice: "fake-voice" }),
-	});
+	const choose = (voice: string | null) =>
+		app.request(`${BASE}/api/preferences`, {
+			method: "PUT",
+			headers: { ...auth, "Content-Type": "application/json" },
+			body: JSON.stringify({ voice }),
+		});
+	await choose("fake-voice");
 	const done = await transcribe("audio/webm;codecs=opus");
 	assert.equal(done.status, 200);
 	assert.deepEqual(await done.json(), { text: "So the query is what the word is looking for." });
+
+	// Turning voice off has to stick, or recordings keep going to the old engine.
+	const saved = (await (await choose(null)).json()) as { voice?: string };
+	assert.equal(saved.voice, undefined);
+	assert.equal((await transcribe("audio/webm")).status, 409);
 });

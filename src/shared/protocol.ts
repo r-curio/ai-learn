@@ -67,6 +67,9 @@ export interface Preferences {
 	voice?: string;
 }
 
+/** What the UI sends to change preferences. Settings left out stay as they are, and a `null` voice turns voice off. */
+export type PreferencesChange = Partial<Omit<Preferences, "voice">> & { voice?: string | null };
+
 export interface ModelOption extends ModelRef {
 	label: string;
 	contextWindow: number;

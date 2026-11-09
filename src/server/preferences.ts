@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
-import { EFFORTS, type Preferences } from "../shared/protocol.ts";
+import { EFFORTS, type Preferences, type PreferencesChange } from "../shared/protocol.ts";
 
 const savedPreferences = z.object({
 	sidebarOpen: z.boolean(),
@@ -11,8 +11,19 @@ const savedPreferences = z.object({
 	voice: z.string().max(100).optional(),
 });
 
-/** Each setting saves on its own, without needing the others. */
-export const preferencesInput = savedPreferences.partial();
+/** Each setting saves on its own, without needing the others. A `null` voice turns voice off. */
+export const preferencesInput = savedPreferences
+	.partial()
+	.extend({ voice: z.string().max(100).nullable().optional() });
+
+/** Apply a change, removing any setting it sets to `null`. */
+export function applyChange(saved: Preferences, change: PreferencesChange): Preferences {
+	const { voice, ...rest } = change;
+	const next: Preferences = { ...saved, ...rest };
+	if (voice === null) delete next.voice;
+	else if (voice !== undefined) next.voice = voice;
+	return next;
+}
 
 const DEFAULTS: Preferences = { sidebarOpen: true };
 const FILE_NAME = "preferences.json";

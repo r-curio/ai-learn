@@ -25,7 +25,7 @@ function useVoiceChoice(engines: VoiceEngineOption[]) {
 		const previous = chosen;
 		setChosen(voice);
 		setError(undefined);
-		savePreferences({ voice }).catch((cause: Error) => {
+		savePreferences({ voice: voice ?? null }).catch((cause: Error) => {
 			setChosen(previous);
 			setError(cause.message);
 		});
