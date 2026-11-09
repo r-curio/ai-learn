@@ -63,10 +63,13 @@ export function useHoldToTalk<Target extends string>(options: HoldOptions<Target
 			if (!holding) return;
 			holding = false;
 			const { voice } = latest.current;
-			// Let go while the microphone was still opening, so there's nothing to keep.
 			if (voice.phase === "recording") void voice.stop();
-			else voice.cancel();
+			// Let go while the microphone was still opening, so there's nothing to keep.
+			else if (voice.phase === "starting") voice.cancel();
 		};
+
+		const ready = () =>
+			latest.current.enabled && !latest.current.voice.busy && !document.querySelector(OPEN_LAYER);
 
 		const onKeyDown = (event: KeyboardEvent) => {
 			if (event.key !== " ") {
@@ -81,12 +84,14 @@ export function useHoldToTalk<Target extends string>(options: HoldOptions<Target
 			}
 			if (event.repeat || event.isComposing || event.ctrlKey || event.altKey || event.metaKey)
 				return;
-			if (!latest.current.enabled || document.querySelector(OPEN_LAYER)) return;
+			if (!ready()) return;
 			const focused = document.activeElement;
 			const target = targetFor(focused, latest.current.fallback);
 			if (target === undefined) return;
 			pending = setTimeout(() => {
 				pending = undefined;
+				// A recording from the mic button, or words still arriving from the last hold, are left alone.
+				if (!ready()) return;
 				holding = true;
 				const field = textField(focused);
 				if (field) removeTypedSpace(field);
