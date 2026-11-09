@@ -14,7 +14,7 @@ import type { LogEntry, LogMessage } from "../src/harness/sessions/log.ts";
 import { Session } from "../src/harness/sessions/session.ts";
 import { buildTranscript } from "../src/harness/sessions/transcript.ts";
 import { createApp } from "../src/server/app.ts";
-import type { RunEvent, SessionView } from "../src/shared/protocol.ts";
+import type { QuestionAnswer, RunEvent, SessionView } from "../src/shared/protocol.ts";
 import { FAKE_CHOICE, tempDir } from "./helpers.ts";
 
 const QUESTION = { question: "Which vector asks?", choices: ["The key", "The query"] };
@@ -264,4 +264,121 @@ test("the transcript removes a made-up citation from a question, and the log kee
 	const block = message?.blocks.find(({ kind }) => kind === "question");
 	assert.equal(block?.kind === "question" && block.text, "Which vector asks?");
 	assert.ok(JSON.stringify(entry).includes("<cite"));
+});
+
+const EXPLANATION = "SECRET-EXPLANATION: a query is what a word looks for.";
+const QUIZ = {
+	question: "Which vector asks?",
+	choices: ["The key", "The query", "The value"],
+	explanation: EXPLANATION,
+	correctAnswer: 1,
+	role: "check",
+	planStep: "Queries and keys",
+};
+const quiz = (input = QUIZ) =>
+	fauxAssistantMessage([fauxText("A check."), fauxToolCall("quiz", input)], {
+		stopReason: "toolUse",
+	});
+
+/** Anything that could carry the committed answer to the UI. */
+const leaks = (text: string) =>
+	text.includes("SECRET-EXPLANATION") || text.includes("correctAnswer");
+
+test("the committed answer never reaches the UI before the learner answers", async () => {
+	const token = "test-token";
+	const base = "http://127.0.0.1:1234";
+	const headers = {
+		Authorization: `Bearer ${token}`,
+		Host: "127.0.0.1:1234",
+		"Content-Type": "application/json",
+	};
+	const app = createApp({
+		engine: createScriptedEngine([quiz(), fauxAssistantMessage("Not quite.")]),
+		dataDir: await tempDir(),
+		token,
+	});
+	const request = async (path: string, body?: object) =>
+		(
+			await app.request(`${base}${path}`, {
+				method: body ? "POST" : "GET",
+				headers,
+				body: body && JSON.stringify(body),
+			})
+		).text();
+	const { id } = JSON.parse(await request("/api/sessions", {})) as { id: string };
+	const model = { provider: "faux", id: "fake-model", effort: "medium" };
+
+	const asking = await request(`/api/sessions/${id}/messages`, { text: "Quiz me", model });
+	const waiting = await request(`/api/sessions/${id}`);
+	const searched = await request("/api/sessions/search?q=SECRET");
+	for (const seen of [asking, waiting, searched]) assert.ok(!leaks(seen), seen);
+	const view = JSON.parse(waiting) as SessionView;
+	assert.deepEqual(view.pendingQuestion, {
+		id: view.pendingQuestion?.id,
+		text: QUIZ.question,
+		choices: QUIZ.choices,
+	});
+
+	const answer = { kind: "choice", choice: 0, confidence: 80 };
+	const questionId = view.pendingQuestion.id;
+	const answering = await request(`/api/sessions/${id}/answer`, { questionId, answer, model });
+	assert.match(answering, /"type":"graded".*"verdict":"wrong".*SECRET-EXPLANATION/);
+	const after = JSON.parse(await request(`/api/sessions/${id}`)) as SessionView;
+	assert.deepEqual(after.messages.find((message) => message.grade)?.grade, {
+		verdict: "wrong",
+		correctAnswer: 1,
+		explanation: EXPLANATION,
+		choices: QUIZ.choices,
+	});
+});
+
+async function graded(answer: QuestionAnswer) {
+	const dataDir = await tempDir();
+	let toModel = "";
+	const engine = createScriptedEngine([
+		quiz(),
+		(context) => {
+			const last = context.messages.at(-1);
+			if (last?.role === "toolResult")
+				toModel = last.content.map((part) => (part.type === "text" ? part.text : "")).join("");
+			return fauxAssistantMessage("Next.");
+		},
+	]);
+	const session = new Session(engine, dataDir);
+	await session.send({ text: "Quiz me", attachmentIds: [] }, noEvents, FAKE_CHOICE);
+	const events: RunEvent[] = [];
+	await session.answer(session.pendingQuestion!.id, answer, (e) => events.push(e), FAKE_CHOICE);
+	const reopened = await Session.load(createScriptedEngine([]), dataDir, session.id);
+	const grade = reopened.view().messages.find((message) => message.grade)?.grade;
+	const live = events.find((event) => event.type === "graded");
+	return { verdict: grade?.verdict, live: live?.type === "graded" && live.grade.verdict, toModel };
+}
+
+test("a quiz grades a choice itself, and leaves the learner's own words to the tutor", async () => {
+	const right = await graded({ kind: "choice", choice: 1, confidence: 60 });
+	assert.deepEqual([right.verdict, right.live], ["right", "right"]);
+	assert.match(right.toModel, /right answer/);
+
+	const own = await graded({ kind: "own", text: "The asking one", confidence: 40 });
+	assert.deepEqual([own.verdict, own.live], ["own", "own"]);
+	assert.match(own.toModel, /grade it against your committed answer/);
+
+	const unknown = await graded({ kind: "unknown" });
+	assert.deepEqual([unknown.verdict, unknown.live], ["unknown", "unknown"]);
+});
+
+test("a quiz whose answer isn't one of its choices fails, and nothing waits on it", async () => {
+	const engine = createScriptedEngine([
+		quiz({ ...QUIZ, correctAnswer: 3 }),
+		fauxAssistantMessage("Sorry, let me fix that."),
+	]);
+	const session = new Session(engine, await tempDir());
+	await session.send({ text: "Quiz me", attachmentIds: [] }, noEvents, FAKE_CHOICE);
+	assert.equal(session.pendingQuestion, undefined);
+	assert.equal(engine.faux.state.callCount, 2);
+	const trace = session
+		.view()
+		.messages.at(-1)
+		?.blocks.find((block) => block.kind === "tool");
+	assert.equal(trace?.kind === "tool" && trace.state, "failed");
 });

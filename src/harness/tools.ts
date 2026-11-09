@@ -20,18 +20,58 @@ export const askQuestionInput = z.strictObject({
 	choices: z.array(z.string().min(1)).min(2).max(4).describe("The answers to choose from."),
 });
 
+export const QUIZ = "quiz";
+
+/** The answer and explanation come before the learner sees anything, so the tutor can't grade generously after. */
+export const quizInput = z
+	.strictObject({
+		question: z.string().min(1).describe("The question to ask."),
+		choices: z
+			.array(z.string().min(1))
+			.min(2)
+			.max(4)
+			.describe("The answers to choose from. Each is a plain claim, with no reasoning in it."),
+		explanation: z
+			.string()
+			.min(1)
+			.describe("Why the right answer is right. The learner sees this after answering."),
+		correctAnswer: z
+			.number()
+			.int()
+			.min(0)
+			.max(3)
+			.describe("The position of the right choice, counting from 0."),
+		role: z
+			.enum(["predict", "check"])
+			.describe("predict: a guess before you teach a step. check: whether a step landed."),
+		planStep: z.string().min(1).optional().describe("The plan step this quiz belongs to."),
+	})
+	.refine((input) => input.correctAnswer < input.choices.length, {
+		message: "correctAnswer must be the position of one of the choices.",
+		path: ["correctAnswer"],
+	});
+
+/** The tools that ask the learner something and wait for their answer. */
+export const isQuestionTool = (name: string) => name === ASK_QUESTION || name === QUIZ;
+
 /** What the Activity trace calls a tool call, while it runs and once it's finished. */
 export function toolLabels(
 	name: string,
 	args: unknown,
 	attachmentName: (id: string) => string | undefined,
 ): { label: string; runningLabel: string } {
-	if (name === ASK_QUESTION) return { label: "Ask a question", runningLabel: "Asking a question" };
+	if (isQuestionTool(name)) return { label: "Ask a question", runningLabel: "Asking a question" };
 	if (name !== "read_attachment") return { label: name, runningLabel: name };
 	const id = (args as { id?: unknown } | undefined)?.id;
 	const target = (typeof id === "string" && attachmentName(id)) || "attachment";
 	return { label: `Read ${target}`, runningLabel: `Reading ${target}` };
 }
+
+// The run ends here and the learner's answer becomes the real result, so this is never saved.
+const waitForLearner = async () => ({
+	content: [{ type: "text" as const, text: "Waiting for the learner." }],
+	details: undefined,
+});
 
 export function createTools(attachments: AttachmentStore): AgentTool[] {
 	return [
@@ -55,11 +95,20 @@ export function createTools(attachments: AttachmentStore): AgentTool[] {
 			description:
 				"Show the learner a multiple-choice question and wait for their answer. They can pick a choice, write their own answer, or say they don't know. Unless they don't know, they say how sure they are from 0 to 100, and they can add their reasoning. The question has its own card, so don't repeat it or its choices in your text.",
 			parameters: z.toJSONSchema(askQuestionInput),
-			// The run ends here and the learner's answer becomes the real result, so this is never saved.
-			execute: async () => ({
-				content: [{ type: "text", text: "Waiting for the learner." }],
-				details: undefined,
-			}),
+			execute: waitForLearner,
+		},
+		{
+			name: QUIZ,
+			label: "Quiz",
+			description:
+				"Show the learner a multiple-choice question that has a right answer, and wait for their answer. Commit the right answer and an explanation now: the learner sees whether they were right, and your explanation, once they answer. They can also write their own answer, which you grade in your reply, or say they don't know. Use ask_question instead when there's no right answer. The question has its own card, so don't repeat it or its choices in your text.",
+			parameters: z.toJSONSchema(quizInput),
+			// A wrong `correctAnswer` fails here, so the tutor can fix it and nothing waits on a broken quiz.
+			execute: async (_id, params) => {
+				const input = quizInput.safeParse(params);
+				if (!input.success) throw new Error(input.error.issues[0]?.message ?? "Invalid quiz.");
+				return waitForLearner();
+			},
 		},
 	];
 }

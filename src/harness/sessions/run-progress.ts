@@ -1,6 +1,6 @@
 import type { AgentEvent } from "@earendil-works/pi-agent-core";
 import type { RunEvent } from "../../shared/protocol.ts";
-import { ASK_QUESTION, toolLabels } from "../tools.ts";
+import { isQuestionTool, toolLabels } from "../tools.ts";
 
 /** Turns Pi's events into what the UI shows during a run, and times how long the tutor worked. */
 export function runProgress(
@@ -22,10 +22,10 @@ export function runProgress(
 			event.assistantMessageEvent.type === "thinking_delta"
 		) {
 			onEvent({ type: "reasoning_delta", delta: event.assistantMessageEvent.delta });
-		} else if (event.type === "tool_execution_start" && event.toolName !== ASK_QUESTION) {
+		} else if (event.type === "tool_execution_start" && !isQuestionTool(event.toolName)) {
 			const labels = toolLabels(event.toolName, event.args, attachmentName);
 			onEvent({ type: "tool_start", id: event.toolCallId, name: event.toolName, ...labels });
-		} else if (event.type === "tool_execution_end" && event.toolName !== ASK_QUESTION) {
+		} else if (event.type === "tool_execution_end" && !isQuestionTool(event.toolName)) {
 			onEvent({
 				type: "tool_end",
 				id: event.toolCallId,

@@ -55,8 +55,12 @@ A SQLite file that copies session summaries and each chat's visible text for fas
 _Avoid_: Database, session store
 
 **Question**:
-Something the tutor asks through its `ask_question` tool, with 2 to 4 choices. A run ends when it asks one.
-_Avoid_: Quiz, prompt
+Something the tutor asks the learner, with 2 to 4 choices, through `ask_question` when there's no right answer or `quiz` when there is. A run ends when it asks one.
+_Avoid_: Prompt
+
+**Quiz**:
+A question with a right answer. The tutor commits the answer and an explanation before the learner sees it, and the learner sees both only after answering. A picked choice is graded right or wrong straight away, an answer in the learner's own words is graded by the tutor in its reply, and "I don't know" just shows the answer. Its role is `predict`, a guess before a step is taught, or `check`, whether a step landed.
+_Avoid_: Test, exam
 
 **Pending question**:
 A question with no answer yet. It's saved as a tool call with no result, and the session can't continue until it's answered.

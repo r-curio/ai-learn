@@ -150,6 +150,7 @@ export function useConversation(onRunEnd: () => void) {
 
 	function answer(question: Question, given: QuestionAnswer, model: ModelSelection) {
 		const replyId = makeKey();
+		const answerId = makeKey();
 		const text = answerText(question.choices, given);
 		const id = sessionId!;
 		setPendingQuestion(undefined);
@@ -157,7 +158,7 @@ export function useConversation(onRunEnd: () => void) {
 		setMessages((current) => [
 			...current,
 			{
-				id: makeKey(),
+				id: answerId,
 				role: "user",
 				blocks: [{ kind: "text", text }],
 				...("confidence" in given ? { confidence: given.confidence } : {}),
@@ -174,7 +175,17 @@ export function useConversation(onRunEnd: () => void) {
 			setRefusedAnswer({ answer: given, message });
 			return true;
 		};
-		void follow(replyId, (onEvent) => answerQuestion(id, body, onEvent), bringBackCard);
+		// A quiz's grade belongs to the answer, and arrives before the tutor's reply starts.
+		const showGrade = (event: RunEvent) => {
+			const grade = event.type === "graded" && { ...event.grade, choices: question.choices };
+			if (grade) update(answerId, (message) => ({ ...message, grade }));
+			return Boolean(grade);
+		};
+		void follow(
+			replyId,
+			(onEvent) => answerQuestion(id, body, (event) => showGrade(event) || onEvent(event)),
+			bringBackCard,
+		);
 	}
 
 	const stop = () => {

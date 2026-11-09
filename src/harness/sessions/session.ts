@@ -25,9 +25,11 @@ import {
 } from "./recovery.ts";
 import {
 	answerResult,
+	gradeOf,
 	pendingQuestionIn,
 	questionHooks,
 	questionPlaceholder,
+	waitingIn,
 } from "./questions.ts";
 import { runProgress } from "./run-progress.ts";
 import { createTools } from "../tools.ts";
@@ -324,12 +326,14 @@ export class Session {
 		choice: ResolvedModel,
 	): Promise<void> {
 		if (this.running) throw new SessionBusyError();
-		const question = this.pendingQuestion;
-		if (question?.id !== questionId)
+		const asked = waitingIn(this.messages);
+		if (asked?.question.id !== questionId)
 			throw new SessionStateError("That question isn't waiting for an answer.");
 		this.use(choice);
-		const result = answerResult(question, answer);
+		const result = answerResult(asked, answer);
 		const start = () => {
+			// The answer is on disk now, so the learner can see how a quiz went before the tutor replies.
+			if (asked.key) onEvent({ type: "graded", grade: gradeOf(asked.key, answer) });
 			this.agent.state.messages.push(result);
 			return this.agent.continue();
 		};
