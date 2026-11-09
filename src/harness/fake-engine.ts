@@ -226,21 +226,20 @@ const FAKE_DEFAULT_MODEL = "fake-speech-fast";
 const FAKE_VOICE_MODELS = [FAKE_DEFAULT_MODEL, "fake-speech-accurate"];
 const FAKE_SPEECH = "So the query is what the word is looking for.";
 
+/** What the fake tutor says once a tool has finished. */
+function afterTool(toolName: string): string {
+	if (isQuestionTool(toolName)) return "Thanks for answering. **Fake model** reply.";
+	if (toolName === WEB_SEARCH) return FAKE_SEARCH_ANSWER;
+	if (isDrawingTool(toolName)) return "Ask about any box. **Fake model** reply.";
+	return "I read that attachment with a tool. **Fake model** reply.";
+}
+
 /** A free offline stand-in for trying the app without a key (AI_LEARN_FAKE_MODEL=1). */
 export function createDemoEngine(): Engine {
 	const forcedReply = createForcedReplies();
 	const respond: FauxResponseFactory = (context) => {
 		const last = context.messages.at(-1);
-		if (last?.role === "toolResult" && isQuestionTool(last.toolName))
-			return fauxAssistantMessage("Thanks for answering. **Fake model** reply.");
-		if (last?.role === "toolResult" && last.toolName === WEB_SEARCH)
-			return fauxAssistantMessage(FAKE_SEARCH_ANSWER);
-		if (last?.role === "toolResult" && isDrawingTool(last.toolName))
-			return fauxAssistantMessage(
-				last.isError ? "That drawing didn't work." : "Ask about any box. **Fake model** reply.",
-			);
-		if (last?.role === "toolResult")
-			return fauxAssistantMessage("I read that attachment with a tool. **Fake model** reply.");
+		if (last?.role === "toolResult") return fauxAssistantMessage(afterTool(last.toolName));
 		const parts = last?.role === "user" && Array.isArray(last.content) ? last.content : [];
 		const text = parts.flatMap((part) => (part.type === "text" ? [part.text] : [])).join("\n");
 		const forced = forcedReply(text);
