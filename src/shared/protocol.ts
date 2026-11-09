@@ -35,6 +35,8 @@ export type RunEvent =
 	| { type: "reply_start"; workedMs: number }
 	| { type: "tool_start"; id: string; name: string; label: string; runningLabel: string }
 	| { type: "tool_end"; id: string; isError: boolean; durationMs?: number }
+	/** A quiz's answer is saved, so the learner can now see how it went. */
+	| { type: "graded"; grade: QuizGrade }
 	| {
 			type: "done";
 			stopReason: string;
@@ -169,6 +171,17 @@ export type QuestionAnswer =
 	| { kind: "own"; text: string; confidence: number; reasoning?: string }
 	| { kind: "unknown"; reasoning?: string };
 
+/**
+ * How a quiz answer went, shown only once it's saved. Words in the learner's own are graded by the
+ * tutor in its reply, and "I don't know" is never wrong, so both just reveal the answer.
+ */
+export interface QuizGrade {
+	verdict: "right" | "wrong" | "own" | "unknown";
+	/** The position of the right choice. */
+	correctAnswer: number;
+	explanation: string;
+}
+
 /** An answer as the learner sees it. Their reasoning goes to the tutor and isn't part of this. */
 export function answerText(choices: string[], answer: QuestionAnswer): string {
 	if (answer.kind === "choice") return choices[answer.choice] ?? "";
@@ -200,6 +213,8 @@ export interface TranscriptMessage {
 	workedMs?: number;
 	/** On a learner's answer: how sure they were, from 0 to 100. */
 	confidence?: number;
+	/** On a learner's answer to a quiz: how it went, and the choices it was graded against. */
+	grade?: QuizGrade & { choices: string[] };
 }
 
 export interface SessionView {

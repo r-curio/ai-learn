@@ -11,7 +11,7 @@ import {
 } from "@earendil-works/pi-ai";
 import type { Engine } from "./engine.ts";
 import { engineFromModels } from "./model-catalog.ts";
-import { ASK_QUESTION } from "./tools.ts";
+import { ASK_QUESTION, isQuestionTool, QUIZ } from "./tools.ts";
 import { VoiceError } from "./voice/voice-error.ts";
 
 const FAKE_INPUT: ("text" | "image")[] = ["text", "image"];
@@ -69,6 +69,22 @@ function mathsReply(text: string) {
 	return undefined;
 }
 
+/** A predict quiz whose right answer is B, so either verdict can be tried. */
+const fakeQuiz = () =>
+	fauxAssistantMessage(
+		[
+			fauxText("Guess first."),
+			fauxToolCall(QUIZ, {
+				question: 'In "the bank of the river", which vector says what "bank" is looking for?',
+				choices: ["The key", "The query", "The value", "Its position in the sentence"],
+				explanation: "The query is what a word is looking for. Keys are what other words offer.",
+				correctAnswer: 1,
+				role: "predict",
+			}),
+		],
+		{ stopReason: "toolUse" },
+	);
+
 /** Replies that force one state, so each can be tried by putting its word in a message. */
 function createForcedReplies() {
 	let failedLastTime = false;
@@ -83,6 +99,7 @@ function createForcedReplies() {
 				`The model compares each query with every key. ${tag} Want to try it?`,
 			);
 		}
+		if (text.includes("fake:quiz")) return fakeQuiz();
 		if (text.includes("fake:ask-long"))
 			return fauxAssistantMessage(
 				[
@@ -137,7 +154,7 @@ export function createDemoEngine(): Engine {
 	const forcedReply = createForcedReplies();
 	const respond: FauxResponseFactory = (context) => {
 		const last = context.messages.at(-1);
-		if (last?.role === "toolResult" && last.toolName === ASK_QUESTION)
+		if (last?.role === "toolResult" && isQuestionTool(last.toolName))
 			return fauxAssistantMessage("Thanks for answering. **Fake model** reply.");
 		if (last?.role === "toolResult")
 			return fauxAssistantMessage("I read that attachment with a tool. **Fake model** reply.");
