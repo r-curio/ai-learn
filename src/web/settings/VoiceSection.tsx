@@ -1,38 +1,15 @@
 import { Check } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { AddableProvider, VoiceEngineOption } from "../../shared/protocol.ts";
-import { getPreferences, savePreferences } from "../api.ts";
 import { Button } from "../components/button.tsx";
 import { RadioGroup, RadioGroupItem } from "../components/form/radio-group.tsx";
 import { Notice } from "../components/Notice.tsx";
 import { AddKeyRow, Section } from "./ProvidersView.tsx";
+import { useVoiceChoice, VOICE_OFF } from "./useVoiceChoice.ts";
+import { VoiceModelMenu } from "./VoiceModelMenu.tsx";
 
-const OFF = "off";
 const ROW = "flex h-[52px] items-center gap-2.5 pr-2.5 not-last:border-b not-last:border-border";
 const HINT = "text-[12px] leading-4 text-muted-foreground";
-
-/** The saved voice engine. Nothing chosen, or one that's no longer offered, means off. */
-function useVoiceChoice(engines: VoiceEngineOption[]) {
-	const [chosen, setChosen] = useState<string>();
-	const [error, setError] = useState<string>();
-	useEffect(() => {
-		getPreferences()
-			.then((preferences) => setChosen(preferences.voice))
-			.catch((cause: Error) => setError(cause.message));
-	}, []);
-	const choose = (id: string) => {
-		const voice = id === OFF ? undefined : id;
-		const previous = chosen;
-		setChosen(voice);
-		setError(undefined);
-		savePreferences({ voice: voice ?? null }).catch((cause: Error) => {
-			setChosen(previous);
-			setError(cause.message);
-		});
-	};
-	const usable = engines.some(({ id, connected }) => id === chosen && connected);
-	return { value: usable && chosen ? chosen : OFF, choose, error };
-}
 
 function ChoiceRow(props: { value: string; label: string; hint: string; disabled?: boolean }) {
 	return (
@@ -55,11 +32,13 @@ function ChoiceRow(props: { value: string; label: string; hint: string; disabled
 	);
 }
 
-/** A cloud engine. Without a key it can't be chosen, and offers to add one in place. */
+/** A cloud engine. Without a key it can't be chosen, and offers to add one in place. Once chosen, it offers its models. */
 function EngineRow(props: {
 	engine: VoiceEngineOption;
 	canAddKey: boolean;
 	onConnect: (key: string) => Promise<void>;
+	/** Only the chosen engine has a model menu. */
+	model?: { current?: string; onChoose: (model: string) => void };
 }) {
 	const { engine } = props;
 	const [adding, setAdding] = useState(false);
@@ -93,6 +72,14 @@ function EngineRow(props: {
 					Add key
 				</Button>
 			)}
+			{props.model && (
+				<VoiceModelMenu
+					engineId={engine.id}
+					engineLabel={engine.label}
+					current={props.model.current}
+					onChoose={props.model.onChoose}
+				/>
+			)}
 		</div>
 	);
 }
@@ -106,7 +93,7 @@ interface VoiceSectionProps {
 
 /** How the learner's speech becomes text. The recording goes to the engine chosen here. */
 export function VoiceSection({ engines, addable, keysUnavailable, onConnect }: VoiceSectionProps) {
-	const { value, choose, error } = useVoiceChoice(engines);
+	const voice = useVoiceChoice(engines);
 
 	return (
 		<section aria-labelledby="voice-heading" className="flex flex-col gap-5">
@@ -120,13 +107,13 @@ export function VoiceSection({ engines, addable, keysUnavailable, onConnect }: V
 			</header>
 			<Section title="Speech to text">
 				<RadioGroup
-					value={value}
-					onValueChange={choose}
+					value={voice.engine}
+					onValueChange={voice.chooseEngine}
 					className="gap-0"
 					aria-label="Speech to text"
 				>
 					<div className={ROW}>
-						<ChoiceRow value={OFF} label="Off" hint="Voice input is off." />
+						<ChoiceRow value={VOICE_OFF} label="Off" hint="Voice input is off." />
 					</div>
 					{engines.map((engine) => (
 						<EngineRow
@@ -134,6 +121,11 @@ export function VoiceSection({ engines, addable, keysUnavailable, onConnect }: V
 							engine={engine}
 							canAddKey={!keysUnavailable && addable.some(({ id }) => id === engine.id)}
 							onConnect={(key) => onConnect(engine.id, key)}
+							model={
+								engine.id === voice.engine
+									? { current: voice.model, onChoose: voice.chooseModel }
+									: undefined
+							}
 						/>
 					))}
 				</RadioGroup>
@@ -141,9 +133,9 @@ export function VoiceSection({ engines, addable, keysUnavailable, onConnect }: V
 			{keysUnavailable && engines.some(({ connected }) => !connected) && (
 				<Notice>{keysUnavailable}</Notice>
 			)}
-			{error && (
+			{voice.error && (
 				<p role="alert" className="text-[13px] leading-[18px] text-destructive">
-					{error}
+					{voice.error}
 				</p>
 			)}
 		</section>

@@ -11,6 +11,7 @@ import type {
 	SearchResult,
 	SessionSummary,
 	SessionView,
+	VoiceModels,
 } from "../shared/protocol.ts";
 
 const STORAGE_KEY = "ai-learn-token";
@@ -194,4 +195,11 @@ async function streamRun(
 			if (data) onEvent(JSON.parse(data) as RunEvent);
 		}
 	}
+}
+
+/** The models a connected voice engine offers, with its default first. */
+export async function getVoiceModels(engineId: string): Promise<VoiceModels> {
+	return (
+		await request(`/api/voice/engines/${encodeURIComponent(engineId)}/models`)
+	).json() as Promise<VoiceModels>;
 }

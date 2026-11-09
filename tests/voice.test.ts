@@ -2,7 +2,7 @@ import type { Models } from "@earendil-works/pi-ai";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createDemoEngine } from "../src/harness/fake-engine.ts";
-import { transcribeInCloud, VoiceError } from "../src/harness/transcription.ts";
+import { cloudVoiceModels, transcribeInCloud, VoiceError } from "../src/harness/transcription.ts";
 import { createApp } from "../src/server/app.ts";
 import { tempDir } from "./helpers.ts";
 
@@ -31,6 +31,47 @@ test("a cloud transcription sends the key only to the provider, and returns its 
 		assert.equal(await transcribeInCloud(modelsWithKey, "groq", RECORDING), "Hello there.");
 		assert.equal(stub.sent[0]?.url, "https://api.groq.com/openai/v1/audio/transcriptions");
 		assert.deepEqual(stub.sent[0]?.init?.headers, { Authorization: `Bearer ${KEY}` });
+	} finally {
+		stub.restore();
+	}
+});
+
+test("a chosen model reaches the provider, and a missing one gets a safe message", async () => {
+	const stub = stubFetch(Response.json({ text: "Hi." }));
+	try {
+		await transcribeInCloud(modelsWithKey, "groq", RECORDING, "whisper-large-v3");
+		assert.equal((stub.sent[0]?.init?.body as FormData).get("model"), "whisper-large-v3");
+	} finally {
+		stub.restore();
+	}
+	const missing = stubFetch(new Response("{}", { status: 404 }));
+	try {
+		await assert.rejects(transcribeInCloud(modelsWithKey, "groq", RECORDING, "gone"), {
+			message: "That model isn't available from Groq. Choose another in Settings.",
+		});
+	} finally {
+		missing.restore();
+	}
+});
+
+test("only speech models are offered, with the default first", async () => {
+	const stub = stubFetch(
+		Response.json({
+			data: [
+				{ id: "gpt-5" },
+				{ id: "whisper-1" },
+				{ id: "gpt-4o-transcribe" },
+				{ id: "gpt-4o-realtime-preview" },
+				{ id: "gpt-4o-transcribe-diarize" },
+				{ id: "gpt-4o-mini-transcribe" },
+			],
+		}),
+	);
+	try {
+		assert.deepEqual(await cloudVoiceModels(modelsWithKey, "openai"), {
+			models: ["gpt-4o-mini-transcribe", "gpt-4o-transcribe", "whisper-1"],
+			defaultModel: "gpt-4o-mini-transcribe",
+		});
 	} finally {
 		stub.restore();
 	}
@@ -65,19 +106,19 @@ test("the transcribe route needs a chosen engine and a supported format, and Off
 	assert.match(((await off.json()) as { error: string }).error, /Settings/);
 	assert.equal((await transcribe("text/html")).status, 415);
 
-	const choose = (voice: string | null) =>
+	const choose = (change: { voice?: string | null; voiceModel?: string | null }) =>
 		app.request(`${BASE}/api/preferences`, {
 			method: "PUT",
 			headers: { ...auth, "Content-Type": "application/json" },
-			body: JSON.stringify({ voice }),
+			body: JSON.stringify(change),
 		});
-	await choose("fake-voice");
+	await choose({ voice: "fake-voice", voiceModel: "fake-speech-accurate" });
 	const done = await transcribe("audio/webm;codecs=opus");
 	assert.equal(done.status, 200);
 	assert.deepEqual(await done.json(), { text: "So the query is what the word is looking for." });
 
 	// Turning voice off has to stick, or recordings keep going to the old engine.
-	const saved = (await (await choose(null)).json()) as { voice?: string };
-	assert.equal(saved.voice, undefined);
+	const saved = (await (await choose({ voice: null, voiceModel: null })).json()) as object;
+	assert.deepEqual(saved, { sidebarOpen: true });
 	assert.equal((await transcribe("audio/webm")).status, 409);
 });

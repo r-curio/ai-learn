@@ -65,10 +65,15 @@ export interface Preferences {
 	effort?: Effort;
 	/** The voice engine that turns the learner's speech into text. Missing means voice is off. */
 	voice?: string;
+	/** The voice engine's model. Missing means the engine's default. */
+	voiceModel?: string;
 }
 
-/** What the UI sends to change preferences. Settings left out stay as they are, and a `null` voice turns voice off. */
-export type PreferencesChange = Partial<Omit<Preferences, "voice">> & { voice?: string | null };
+/** What the UI sends to change preferences. Settings left out stay as they are, and `null` clears a voice setting. */
+export type PreferencesChange = Partial<Omit<Preferences, "voice" | "voiceModel">> & {
+	voice?: string | null;
+	voiceModel?: string | null;
+};
 
 export interface ModelOption extends ModelRef {
 	label: string;
@@ -100,6 +105,12 @@ export interface VoiceEngineOption {
 	id: string;
 	label: string;
 	connected: boolean;
+}
+
+/** A voice engine's models. The learner can pick any of them, and the default is listed first. */
+export interface VoiceModels {
+	models: string[];
+	defaultModel: string;
 }
 
 export interface EngineStatus {
