@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { Fragment, useEffect, useRef, type ReactNode } from "react";
 import type { Citation } from "../../shared/citations.ts";
 import type {
 	AttachmentInfo,
@@ -8,6 +8,7 @@ import type {
 } from "../../shared/protocol.ts";
 import { Notice } from "../components/Notice.tsx";
 import { SegmentedTabs } from "../components/tabs.tsx";
+import { QuizGrade } from "../answer/QuizGrade.tsx";
 import { MessageView } from "./MessageView.tsx";
 
 interface ChatViewProps {
@@ -61,10 +62,28 @@ function EmptyScreen({
 	);
 }
 
+/** Each reply and answer, with a quiz's grade under the answer it belongs to. */
+function Messages(props: ChatViewProps & { sessionId: string }) {
+	const { sessionId, messages, running, runStartedAt, canRetry, onRetry } = props;
+	const last = messages.length - 1;
+	return messages.map((message, index) => (
+		<Fragment key={message.id}>
+			<MessageView
+				message={message}
+				sessionId={sessionId}
+				pendingQuestionId={props.pendingQuestionId}
+				liveSince={running && index === last ? runStartedAt : undefined}
+				onRetry={canRetry && !running && index === last ? onRetry : undefined}
+				onOpenAttachment={props.onOpenAttachment}
+				onOpenCitation={props.onOpenCitation}
+			/>
+			{message.grade && <QuizGrade grade={message.grade} />}
+		</Fragment>
+	));
+}
+
 export function ChatView(props: ChatViewProps) {
-	const { status, error, sessionId, messages, running, runStartedAt, canRetry, onRetry } = props;
-	const { chatType, onChatTypeChange, onOpenAttachment, onOpenCitation } = props;
-	const { pendingQuestionId } = props;
+	const { status, error, sessionId, messages, chatType, onChatTypeChange } = props;
 	const scroller = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
@@ -106,19 +125,7 @@ export function ChatView(props: ChatViewProps) {
 						Ask a question, or attach a PDF, image or text file to work through.
 					</EmptyScreen>
 				)}
-				{sessionId &&
-					messages.map((message, index) => (
-						<MessageView
-							message={message}
-							sessionId={sessionId}
-							key={message.id}
-							pendingQuestionId={pendingQuestionId}
-							liveSince={running && index === messages.length - 1 ? runStartedAt : undefined}
-							onRetry={canRetry && !running && index === messages.length - 1 ? onRetry : undefined}
-							onOpenAttachment={onOpenAttachment}
-							onOpenCitation={onOpenCitation}
-						/>
-					))}
+				{sessionId && <Messages {...props} sessionId={sessionId} />}
 			</main>
 		</div>
 	);

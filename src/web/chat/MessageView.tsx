@@ -1,13 +1,13 @@
 import { cn } from "cn";
 import type { MouseEvent } from "react";
 import Markdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { parseCitations, type Citation } from "../../shared/citations.ts";
 import type { AttachmentInfo, TranscriptMessage } from "../../shared/protocol.ts";
 import { AnsweredConfidence } from "../answer/AnsweredConfidence.tsx";
 import { Button } from "../components/button.tsx";
 import { Notice } from "../components/Notice.tsx";
 import { ActivityBlock, hasActivity } from "./ActivityBlock.tsx";
+import { markdownPlugins } from "./markdown.ts";
 import styles from "./prose.module.css";
 import { SavedImage } from "./SavedImage.tsx";
 import { isDocument, SentDocument, SentFile } from "./SentFile.tsx";
@@ -28,7 +28,7 @@ function ReplyText({
 	return (
 		<div className={styles.prose}>
 			<Markdown
-				remarkPlugins={[remarkGfm]}
+				{...markdownPlugins}
 				components={{
 					a({ href, children }) {
 						const citation = citations[Number(href?.match(CITATION_HREF)?.[1] ?? -1)];

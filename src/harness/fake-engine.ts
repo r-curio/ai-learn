@@ -11,7 +11,7 @@ import {
 } from "@earendil-works/pi-ai";
 import type { Engine } from "./engine.ts";
 import { engineFromModels } from "./model-catalog.ts";
-import { ASK_QUESTION } from "./tools.ts";
+import { ASK_QUESTION, isQuestionTool, QUIZ } from "./tools.ts";
 import { VoiceError } from "./voice/voice-error.ts";
 import type { SearchService } from "./web/search-service.ts";
 import { WEB_SEARCH } from "./web/web-tools.ts";
@@ -45,10 +45,54 @@ const FAKE_REASONING =
 const LONG_PARAGRAPH =
 	"This is a long **fake model** reply, so there's time to stop it or close the app part way through. It says the same thing a few times.";
 
+const MATHS_REPLY = [
+	"For a right triangle with legs $a$ and $b$, the hypotenuse $c$ satisfies $a^2 + b^2 = c^2$.",
+	"The quadratic formula solves $ax^2 + bx + c = 0$:",
+	"$$\nx = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}\n$$",
+	"> [!IMPORTANT]\n> The discriminant $b^2 - 4ac$ tells you how many real roots there are.",
+	"And a sum to finish: $$\\sum_{k=1}^{n} k = \\frac{n(n+1)}{2}$$",
+].join("\n\n");
+
+/** Replies with maths, including one cut off part way through a formula. */
+function mathsReply(text: string) {
+	if (text.includes("fake:maths-cut"))
+		return fauxAssistantMessage("The roots are $$\nx = \\frac{-b \\pm \\sqrt{b^2", {
+			stopReason: "length",
+		});
+	if (text.includes("fake:ask-maths"))
+		return fauxAssistantMessage(
+			fauxToolCall(ASK_QUESTION, {
+				question: "If $x^2 - 5x + 6 = 0$, what are the roots? $$\\Delta = b^2 - 4ac$$",
+				choices: ["2 and 3", "-2 and -3", "1 and 6", "There are none"],
+			}),
+			{ stopReason: "toolUse" },
+		);
+	if (text.includes("fake:maths")) return fauxAssistantMessage(MATHS_REPLY);
+	return undefined;
+}
+
+/** A predict quiz whose right answer is B, so either verdict can be tried. */
+const fakeQuiz = () =>
+	fauxAssistantMessage(
+		[
+			fauxText("Guess first."),
+			fauxToolCall(QUIZ, {
+				question: 'In "the bank of the river", which vector says what "bank" is looking for?',
+				choices: ["The key", "The query", "The value", "Its position in the sentence"],
+				explanation: "The query is what a word is looking for. Keys are what other words offer.",
+				correctAnswer: 1,
+				role: "predict",
+			}),
+		],
+		{ stopReason: "toolUse" },
+	);
+
 /** Replies that force one state, so each can be tried by putting its word in a message. */
 function createForcedReplies() {
 	let failedLastTime = false;
 	return (text: string) => {
+		const maths = mathsReply(text);
+		if (maths) return maths;
 		const cite = text.match(/fake:cite (\d+) ([^\n]+)/);
 		if (cite) {
 			const id = text.match(/<attachment id="([^"]+)" name="[^"]*" kind="pdf"/)?.[1];
@@ -57,6 +101,7 @@ function createForcedReplies() {
 				`The model compares each query with every key. ${tag} Want to try it?`,
 			);
 		}
+		if (text.includes("fake:quiz")) return fakeQuiz();
 		if (text.includes("fake:ask-long"))
 			return fauxAssistantMessage(
 				[
@@ -136,7 +181,7 @@ export function createDemoEngine(): Engine {
 	const forcedReply = createForcedReplies();
 	const respond: FauxResponseFactory = (context) => {
 		const last = context.messages.at(-1);
-		if (last?.role === "toolResult" && last.toolName === ASK_QUESTION)
+		if (last?.role === "toolResult" && isQuestionTool(last.toolName))
 			return fauxAssistantMessage("Thanks for answering. **Fake model** reply.");
 		if (last?.role === "toolResult" && last.toolName === WEB_SEARCH)
 			return fauxAssistantMessage(FAKE_SEARCH_ANSWER);

@@ -23,7 +23,13 @@ import {
 	messagesFromLog,
 	unresolvedToolCalls,
 } from "./recovery.ts";
-import { answerResult, pendingQuestionIn, questionPlaceholder } from "./questions.ts";
+import {
+	answerResult,
+	gradeOf,
+	pendingQuestionIn,
+	questionPlaceholder,
+	waitingIn,
+} from "./questions.ts";
 import { runProgress } from "./run-progress.ts";
 import { createTutorAgent, offerTools } from "../tutor-agent.ts";
 import { searchLimitNotice } from "../web/web-tools.ts";
@@ -292,18 +298,17 @@ export class Session {
 			message: toStored(message, this.attachments),
 			display: { text, attachmentIds },
 		};
-		await this.saveThenRun(entry, () => this.agent.prompt(message), onEvent, true);
+		await this.saveThenRun(entry, () => this.agent.prompt(message), onEvent);
 	}
 
 	private async saveThenRun(
 		entry: LogEntry,
 		start: () => Promise<void>,
 		onEvent: (event: RunEvent) => void,
-		toolsFirst = false,
 	): Promise<void> {
 		this.running = true;
 		try {
-			if (toolsFirst) await this.offerTools();
+			if (entry.type === "message" && entry.message.role === "user") await this.offerTools();
 			await this.record(entry);
 		} catch (error) {
 			this.running = false;
@@ -320,15 +325,16 @@ export class Session {
 		choice: ResolvedModel,
 	): Promise<void> {
 		if (this.running) throw new SessionBusyError();
-		const question = this.pendingQuestion;
-		if (question?.id !== questionId)
+		const asked = waitingIn(this.messages);
+		if (asked?.question.id !== questionId)
 			throw new SessionStateError("That question isn't waiting for an answer.");
 		this.use(choice);
-		const result = answerResult(question, answer);
-		const start = async () => {
+		const result = answerResult(asked, answer);
+		const start = () => {
+			// The answer is on disk now, so the learner can see how a quiz went before the tutor replies.
+			if (asked.key) onEvent({ type: "graded", grade: gradeOf(asked.key, answer) });
 			this.agent.state.messages.push(result);
-			await this.offerTools();
-			return this.agent.continue();
+			return this.offerTools().then(() => this.agent.continue());
 		};
 		await this.saveThenRun({ type: "message", message: result, answer }, start, onEvent);
 	}

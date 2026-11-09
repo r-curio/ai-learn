@@ -11,7 +11,7 @@ import type {
 import { keepCitations, stripCitations, type Citation } from "../../shared/citations.ts";
 import { answerText, noticeFor } from "../../shared/protocol.ts";
 import type { LogEntry } from "./log.ts";
-import { questionIn } from "./questions.ts";
+import { askedIn, gradeOf, type QuizKey } from "./questions.ts";
 import { toolLabels } from "../tools.ts";
 import { isSearchLimit, SEARCH_LIMIT_LABEL } from "../web/web-tools.ts";
 
@@ -26,8 +26,11 @@ function addReplyParts(
 	toolBlocks: Map<string, ToolBlock>,
 	attachmentInfo: (id: string) => AttachmentInfo | undefined,
 	citationIsReal: (citation: Citation) => boolean,
+	quizKeys: Map<string, QuizKey>,
 ): void {
-	const question = questionIn(reply);
+	const asked = askedIn(reply);
+	const question = asked?.question;
+	if (asked?.key) quizKeys.set(asked.question.id, asked.key);
 	for (const part of reply.content) {
 		if (part.type === "text" && part.text) {
 			blocks.push({ kind: "text", text: keepCitations(part.text, citationIsReal) });
@@ -51,22 +54,25 @@ function settleTool(block: ToolBlock, result: { isError: boolean; content: { typ
 	if (isSearchLimit(result)) block.label = SEARCH_LIMIT_LABEL;
 }
 
-/** A learner's answer as they see it, using the choices from the reply that asked. */
+/** A learner's answer as they see it, using the choices from the reply that asked, and how a quiz went. */
 function answerMessage(
 	id: string,
 	questionId: string,
 	answer: QuestionAnswer,
+	quizKeys: Map<string, QuizKey>,
 	asked: TranscriptMessage | undefined,
 ): TranscriptMessage {
 	const question = asked?.blocks.find(
 		(block) => block.kind === "question" && block.id === questionId,
 	);
 	const choices = question?.kind === "question" ? question.choices : [];
+	const key = quizKeys.get(questionId);
 	return {
 		id,
 		role: "user",
 		blocks: [{ kind: "text", text: answerText(choices, answer) }],
 		...("confidence" in answer ? { confidence: answer.confidence } : {}),
+		...(key ? { grade: { ...gradeOf(key, answer), choices } } : {}),
 	};
 }
 
@@ -98,6 +104,7 @@ export function buildTranscript(
 	let current: TranscriptMessage | undefined;
 	let failedFrom: number | undefined;
 	let toolBlocks = new Map<string, ToolBlock>();
+	const keys = new Map<string, QuizKey>();
 	const turn = { start: 0, end: 0 };
 
 	entries.forEach((entry, index) => {
@@ -132,7 +139,7 @@ export function buildTranscript(
 
 		// An answer sits between two parts of a turn, so the tutor's next words start a new reply.
 		if (message.role === "toolResult" && entry.answer) {
-			messages.push(answerMessage(`m${index}`, message.toolCallId, entry.answer, current));
+			messages.push(answerMessage(`m${index}`, message.toolCallId, entry.answer, keys, current));
 			current = undefined;
 			failedFrom = undefined;
 			toolBlocks = new Map();
@@ -147,7 +154,7 @@ export function buildTranscript(
 
 		if (message.role === "assistant") {
 			const start = current.blocks.length;
-			addReplyParts(current.blocks, message, toolBlocks, attachmentInfo, citationIsReal);
+			addReplyParts(current.blocks, message, toolBlocks, attachmentInfo, citationIsReal, keys);
 			turn.end = message.timestamp + (message.durationMs ?? 0);
 			const ending = noticeFor(message.stopReason, message.errorMessage);
 			if (ending) {

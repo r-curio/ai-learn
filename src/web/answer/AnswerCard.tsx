@@ -1,7 +1,6 @@
 import { cn } from "cn";
 import { useState } from "react";
 import Markdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { stripCitations } from "../../shared/citations.ts";
 import type {
 	ContextUsage,
@@ -12,6 +11,7 @@ import type {
 } from "../../shared/protocol.ts";
 import { Button } from "../components/button.tsx";
 import { Notice } from "../components/Notice.tsx";
+import { markdownPlugins } from "../chat/markdown.ts";
 import styles from "../chat/prose.module.css";
 import type { ModelChoice } from "../composer/useModelChoice.ts";
 import { AnswerChoices } from "./AnswerChoices.tsx";
@@ -48,7 +48,7 @@ type Dictation = "reasoning" | "own";
 function QuestionText({ text }: { text: string }) {
 	return (
 		<div className={cn(styles.prose, "flex-none text-[17px] leading-[25px] font-medium")}>
-			<Markdown remarkPlugins={[remarkGfm]}>{stripCitations(text)}</Markdown>
+			<Markdown {...markdownPlugins}>{stripCitations(text)}</Markdown>
 		</div>
 	);
 }
