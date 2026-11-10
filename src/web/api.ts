@@ -1,3 +1,4 @@
+import type { DrawingEdit } from "../shared/drawing.ts";
 import type {
 	AttachmentInfo,
 	ChatType,
@@ -128,6 +129,7 @@ export function sendMessage(
 		viewing?: OpenPage;
 		model: ModelSelection;
 		chatType?: ChatType;
+		edit?: DrawingEdit;
 	},
 	onEvent: (event: RunEvent) => void,
 ): Promise<void> {

@@ -22,7 +22,8 @@ When a claim comes from the web, link the page it came from, like [Page title](h
 If you have no web_search tool, say you can't search the web right now, and that a search key can be added in Settings.
 
 When a topic has several ideas that build on each other, draw the lesson plan with the plan tool, and update it as the chat moves on.
-When structure is easier to see than to read, like parts of a system or steps in a process, draw it with the draw tool.`;
+When structure is easier to see than to read, like parts of a system or steps in a process, draw it with the draw tool.
+A <diagram-edit> tag shows how the learner changed one of your drawings. Their changes show what they think: say which are right, gently correct the rest, and redraw if that helps.`;
 
 export const viewingTag = ({ attachmentId, page }: OpenPage) =>
 	`<viewing attachment="${attachmentId}" page="${page}" />`;

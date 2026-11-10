@@ -6,7 +6,16 @@ import type { AttachmentInfo, TranscriptBlock, TranscriptMessage } from "../../s
 import { AnsweredConfidence } from "../answer/AnsweredConfidence.tsx";
 import { Button } from "../components/button.tsx";
 import { Notice } from "../components/Notice.tsx";
-import { DrawingCard } from "../diagram/DrawingCard.tsx";
+import type { Drawing } from "../../shared/drawing.ts";
+import { DrawingCard, EditedDrawingCard } from "../diagram/DrawingCard.tsx";
+
+/** How drawings in the transcript are numbered and opened for editing. */
+export interface DrawingActions {
+	/** Which version of its drawing a `draw` or `plan` call made. */
+	version: (callId: string) => number;
+	/** Missing while the learner can't send, like during a reply or a waiting question. */
+	onEdit?: (callId: string, drawing: Drawing) => void;
+}
 import { ActivityBlock, hasActivity } from "./ActivityBlock.tsx";
 import { markdownPlugins } from "./markdown.ts";
 import styles from "./prose.module.css";
@@ -154,13 +163,13 @@ function MessageParts({
 	parts,
 	learner,
 	live,
-	drawingVersion,
+	drawings,
 	onOpenCitation,
 }: {
 	parts: ReturnType<typeof visibleParts>;
 	learner: boolean;
 	live: boolean;
-	drawingVersion: (callId: string) => number;
+	drawings: DrawingActions;
 	onOpenCitation: (citation: Citation) => void;
 }) {
 	return parts.map((part, index) =>
@@ -173,8 +182,23 @@ function MessageParts({
 				key={index}
 			/>
 		) : (
-			<DrawingCard drawing={part.drawing} version={drawingVersion(part.id)} key={part.id} />
+			<DrawingCard
+				drawing={part.drawing}
+				version={drawings.version(part.id)}
+				onEdit={drawings.onEdit && (() => drawings.onEdit?.(part.id, part.drawing))}
+				key={part.id}
+			/>
 		),
+	);
+}
+
+/** The learner's edits of the tutor's drawings, shown above their words. */
+function EditedDrawings({ message }: { message: TranscriptMessage }) {
+	return message.blocks.map(
+		(block) =>
+			block.kind === "drawing-edit" && (
+				<EditedDrawingCard title={block.title} elements={block.elements} key={block.callId} />
+			),
 	);
 }
 
@@ -190,7 +214,7 @@ export function MessageView({
 	onRetry,
 	liveSince,
 	pendingQuestionId,
-	drawingVersion,
+	drawings,
 	onOpenAttachment,
 	onOpenCitation,
 }: {
@@ -200,8 +224,7 @@ export function MessageView({
 	/** When this reply's run started, while it's still running. */
 	liveSince?: number;
 	pendingQuestionId?: string;
-	/** Which version of its drawing a `draw` or `plan` call made. */
-	drawingVersion: (callId: string) => number;
+	drawings: DrawingActions;
 	onOpenAttachment: (attachment: AttachmentInfo) => void;
 	onOpenCitation: (citation: Citation) => void;
 }) {
@@ -219,6 +242,7 @@ export function MessageView({
 			}
 		>
 			{showActivity && <ActivityBlock message={message} liveSince={liveSince} />}
+			<EditedDrawings message={message} />
 			{message.attachments && message.attachments.length > 0 && (
 				<SentAttachments
 					attachments={message.attachments}
@@ -232,7 +256,7 @@ export function MessageView({
 						parts={parts}
 						learner={learner}
 						live={liveSince !== undefined}
-						drawingVersion={drawingVersion}
+						drawings={drawings}
 						onOpenCitation={onOpenCitation}
 					/>
 					{learner && confidence !== undefined && <AnsweredConfidence confidence={confidence} />}

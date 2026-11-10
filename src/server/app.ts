@@ -31,12 +31,34 @@ const modelSelection = z.object({
 	effort: z.enum(EFFORTS).optional(),
 });
 
+/** An Excalidraw element. Only what the harness reads is checked; the rest is kept as sent. */
+const sceneElement = z.looseObject({
+	id: z.string().max(200),
+	type: z.string().max(40),
+	x: z.number(),
+	y: z.number(),
+	width: z.number(),
+	height: z.number(),
+	isDeleted: z.boolean().optional(),
+	text: z.string().max(2_000).optional(),
+	containerId: z.string().nullable().optional(),
+	startBinding: z.looseObject({ elementId: z.string() }).nullable().optional(),
+	endBinding: z.looseObject({ elementId: z.string() }).nullable().optional(),
+});
+
+const drawingEdit = z.object({
+	callId: z.string().max(200),
+	elements: z.array(sceneElement).max(2_000),
+	pictureId: z.string().optional(),
+});
+
 const messageInput = z.object({
 	text: z.string().max(200_000),
 	attachmentIds: z.array(z.string()).max(20).default([]),
 	viewing: z.object({ attachmentId: z.string(), page: z.number().int().min(1) }).optional(),
 	model: modelSelection,
 	chatType: z.enum(CHAT_TYPES).optional(),
+	edit: drawingEdit.optional(),
 });
 
 const retryInput = z.object({ model: modelSelection });
@@ -206,10 +228,11 @@ export function createApp({ engine, dataDir, token, webRoot }: AppOptions): Hono
 
 		const parsed = messageInput.safeParse(await c.req.json().catch(() => undefined));
 		if (!parsed.success) return c.json({ error: "Invalid message." }, 400);
-		const { text, attachmentIds, viewing, model, chatType } = parsed.data;
-		if (!text.trim() && attachmentIds.length === 0)
+		const { text, attachmentIds, viewing, model, chatType, edit } = parsed.data;
+		if (!text.trim() && attachmentIds.length === 0 && !edit)
 			return c.json({ error: "Message is empty." }, 400);
-		const unknown = attachmentIds.find((id) => !session.attachments.has(id));
+		const picture = edit?.pictureId ? [edit.pictureId] : [];
+		const unknown = [...attachmentIds, ...picture].find((id) => !session.attachments.has(id));
 		if (unknown) return c.json({ error: "Unknown attachment." }, 400);
 		if (viewing && !session.attachments.hasPage(viewing.attachmentId, viewing.page))
 			return c.json({ error: "Unknown page." }, 400);
@@ -218,7 +241,7 @@ export function createApp({ engine, dataDir, token, webRoot }: AppOptions): Hono
 		if (chatType) session.chooseType(chatType);
 
 		return streamRun(c, session, (onEvent) =>
-			session.send({ text, attachmentIds, viewing }, onEvent, choice),
+			session.send({ text, attachmentIds, viewing, edit }, onEvent, choice),
 		);
 	});
 

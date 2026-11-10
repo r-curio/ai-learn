@@ -1,6 +1,6 @@
 /** The wire contract between the local server and the UI. */
 
-import type { Drawing } from "./drawing.ts";
+import type { Drawing, SceneElement } from "./drawing.ts";
 
 export type AttachmentKind = "image" | "pdf" | "text";
 
@@ -208,6 +208,8 @@ export type TranscriptBlock =
 	| { kind: "reasoning"; text: string }
 	/** `id` is the tool call that drew it. */
 	| { kind: "drawing"; id: string; drawing: Drawing }
+	/** The learner's edit of the drawing from tool call `callId`, as they left it. */
+	| { kind: "drawing-edit"; callId: string; title: string; elements: SceneElement[] }
 	| {
 			kind: "tool";
 			id: string;

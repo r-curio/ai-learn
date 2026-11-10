@@ -9,6 +9,7 @@ import type {
 } from "@earendil-works/pi-ai";
 import { appendFile, mkdir, readFile, truncate } from "node:fs/promises";
 import { dirname } from "node:path";
+import type { SceneElement } from "../../shared/drawing.ts";
 import type { ChatType, QuestionAnswer } from "../../shared/protocol.ts";
 import type { AttachmentStore } from "../attachments.ts";
 
@@ -38,6 +39,8 @@ export interface LogMessage {
 	workedMs?: number;
 	/** On the result of a question: the learner's answer, as they gave it. The model gets the result's text. */
 	answer?: QuestionAnswer;
+	/** On a learner's message: their edit of one of the tutor's drawings. The model gets a `<diagram-edit>` tag. */
+	drawingEdit?: { callId: string; elements: SceneElement[] };
 }
 
 /** Marks a failed reply as replaced, so it's no longer shown or resent. */

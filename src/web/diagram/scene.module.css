@@ -1,8 +1,11 @@
-/* The card is view-only for now, so Excalidraw's menus and toolbars are hidden at every width. */
+/* The card is view-only, so Excalidraw's menus and toolbars are hidden at every width. The extra
+   `.excalidraw` outranks Excalidraw's own rules, which load again with the editor. */
 .scene {
 	height: 100%;
 }
 
-.scene :global(:is(.layer-ui__wrapper, .App-bottom-bar, .App-top-bar, .App-menu)) {
+.scene
+	:global(.excalidraw)
+	:global(:is(.layer-ui__wrapper, .App-bottom-bar, .App-top-bar, .App-menu)) {
 	display: none;
 }

@@ -11,7 +11,7 @@ import {
 } from "@earendil-works/pi-ai";
 import type { Engine } from "./engine.ts";
 import { engineFromModels } from "./model-catalog.ts";
-import { DRAW, isDrawingTool, PLAN } from "./drawing-tools.ts";
+import { DRAW, isDrawingTool, PLAN } from "./drawings/tools.ts";
 import { ASK_QUESTION, isQuestionTool, QUIZ } from "./tools.ts";
 import { VoiceError } from "./voice/voice-error.ts";
 import type { SearchService } from "./web/search-service.ts";
@@ -124,8 +124,10 @@ const FAKE_DIAGRAM = {
 	],
 };
 
-/** `fake:plan` draws the lesson plan, and `fake:draw` a diagram. */
+/** `fake:plan` draws the lesson plan, and `fake:draw` a diagram. An edit gets its first change read back. */
 function drawingReply(text: string) {
+	const change = text.match(/<diagram-edit[^>]*>\n[^\n]*\n- ([^\n]+)/)?.[1];
+	if (change) return fauxAssistantMessage(`I see your edit: ${change}. **Fake model** reply.`);
 	const [intro, name, args] = text.includes("fake:plan")
 		? ["Here's where we're headed.", PLAN, FAKE_PLAN]
 		: ["Here's how the parts connect.", DRAW, FAKE_DIAGRAM];

@@ -112,7 +112,39 @@ function withStableIds(elements: readonly ExcalidrawElement[]): ExcalidrawElemen
 	});
 }
 
-/** The saved layout as Excalidraw elements. The same drawing always gives the same elements. */
-export function toExcalidraw(drawing: Drawing): ExcalidrawElement[] {
-	return withStableIds(convertToExcalidrawElements(skeletons(drawing), { regenerateIds: false }));
+/** Ties each arrow to the boxes it joins, so in the editor it follows a box that's moved. */
+function bindArrows(drawing: Drawing, elements: ExcalidrawElement[]): ExcalidrawElement[] {
+	const bound = new Map<string, string[]>();
+	const ends = new Map<string, { from: string; to: string }>();
+	drawing.arrows.forEach((arrow, index) => {
+		const id = `arrow-${index}`;
+		const from = `box-${arrow.from}`;
+		const to = `box-${arrow.to}`;
+		ends.set(id, { from, to });
+		for (const box of [from, to]) bound.set(box, [...(bound.get(box) ?? []), id]);
+	});
+	return elements.map((element) => {
+		const end = ends.get(element.id);
+		if (end)
+			return {
+				...element,
+				startBinding: { elementId: end.from, focus: 0, gap: 4 },
+				endBinding: { elementId: end.to, focus: 0, gap: 4 },
+			} as ExcalidrawElement;
+		const arrows = bound.get(element.id);
+		if (!arrows) return element;
+		const extra = arrows.map((id) => ({ id, type: "arrow" as const }));
+		return { ...element, boundElements: [...(element.boundElements ?? []), ...extra] };
+	});
+}
+
+/**
+ * The saved layout as Excalidraw elements. The same drawing always gives the same elements.
+ * The editor asks for arrows bound to their boxes, which the view-only card doesn't need.
+ */
+export function toExcalidraw(drawing: Drawing, { bind = false } = {}): ExcalidrawElement[] {
+	const elements = withStableIds(
+		convertToExcalidrawElements(skeletons(drawing), { regenerateIds: false }),
+	);
+	return bind ? bindArrows(drawing, elements) : elements;
 }

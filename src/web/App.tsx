@@ -7,6 +7,8 @@ import { useChat } from "./chat/useChat.ts";
 import { Composer } from "./composer/Composer.tsx";
 import { useDrafts } from "./composer/useDrafts.ts";
 import { useFileDrop } from "./composer/useFileDrop.ts";
+import { DrawingEditor } from "./diagram/DrawingEditor.tsx";
+import { useDrawingEdit } from "./diagram/useDrawingEdit.ts";
 import { useModelChoice } from "./composer/useModelChoice.ts";
 import { SidebarInset, SidebarProvider } from "./components/sidebar.tsx";
 import { ChatSidebar } from "./shell/ChatSidebar.tsx";
@@ -32,15 +34,18 @@ export function App() {
 	const [settingsPage, setSettingsPage] = useState<SettingsPage>("providers");
 	const [chatType, setChatType] = useState<ChatType>("learning");
 	const { clearDrafts, addFiles } = files;
+	const drawingEdit = useDrawingEdit();
+	const { clear: clearEdit } = drawingEdit;
 	const pane = useAttachmentPane();
 	const { close: closePane } = pane;
 
 	const onChatChange = useCallback(() => {
 		clearDrafts();
+		clearEdit();
 		setText("");
 		setChatType("learning");
 		closePane();
-	}, [clearDrafts, closePane]);
+	}, [clearDrafts, clearEdit, closePane]);
 	const onReady = useCallback(() => textArea.current?.focus(), []);
 	const chat = useChat({ onChatChange, onReady });
 	const { sessionId, status, running } = chat;
@@ -66,7 +71,7 @@ export function App() {
 		[addFiles, sessionId, canAddFiles],
 	);
 	const { dragging, dropHandlers } = useFileDrop(attach);
-	const hasContent = Boolean(text.trim() || files.attachments.length > 0);
+	const hasContent = Boolean(text.trim() || files.attachments.length > 0 || drawingEdit.edit);
 	// Recording never sends, and the last words must arrive before the message can go.
 	const canSend = Boolean(
 		sessionId &&
@@ -74,6 +79,9 @@ export function App() {
 		hasModel &&
 		!running &&
 		!files.uploading &&
+		!drawingEdit.uploading &&
+		// A failed picture must be removed or redone, or the edit would quietly go unsent.
+		drawingEdit.draft?.state !== "failed" &&
 		!voice.busy &&
 		hasContent,
 	);
@@ -91,9 +99,10 @@ export function App() {
 		if (!canSend || !modelChoice.selection) return;
 		const viewing =
 			openPdf && openPage ? { attachmentId: openPdf.attachment.id, page: openPage } : undefined;
-		chat.send(text, files.attachments, modelChoice.selection, chatType, viewing);
+		chat.send(text, files.attachments, modelChoice.selection, chatType, viewing, drawingEdit.edit);
 		setText("");
 		clearDrafts();
+		clearEdit();
 		voice.dismiss();
 	}
 
@@ -166,6 +175,11 @@ export function App() {
 										error={chat.error}
 										sessionId={sessionId}
 										messages={chat.messages}
+										onEditDrawing={
+											canAddFiles && !running
+												? (callId, drawing) => drawingEdit.start(sessionId!, callId, drawing)
+												: undefined
+										}
 										running={running}
 										runStartedAt={chat.runStartedAt}
 										canRetry={chat.canRetry}
@@ -214,6 +228,12 @@ export function App() {
 											textArea={textArea}
 											isNewChat={chat.messages.length === 0}
 											drafts={files.drafts}
+											edit={
+												drawingEdit.draft && {
+													draft: drawingEdit.draft,
+													onRemove: drawingEdit.remove,
+												}
+											}
 											canAttach={canAddFiles}
 											canSend={canSend}
 											running={running}
@@ -239,6 +259,7 @@ export function App() {
 										/>
 									)}
 								</div>
+								<DrawingEditor {...drawingEdit.editor} />
 								<AttachmentPane
 									target={pane.target}
 									open={pane.open}

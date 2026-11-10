@@ -1,48 +1,27 @@
 import "@excalidraw/excalidraw/index.css";
 import { Excalidraw } from "@excalidraw/excalidraw";
 import type { AppState, ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import type { Drawing } from "../../shared/drawing.ts";
+import { useEffect, useRef, useState } from "react";
 import styles from "./scene.module.css";
-import { FONT_NAME, toExcalidraw } from "./toExcalidraw.ts";
-
-const DARK = "(prefers-color-scheme: dark)";
-function subscribe(onChange: () => void) {
-	const query = matchMedia(DARK);
-	query.addEventListener("change", onChange);
-	return () => query.removeEventListener("change", onChange);
-}
-const isDark = () => matchMedia(DARK).matches && document.documentElement.dataset.theme !== "light";
-
-const UI_OPTIONS = {
-	canvasActions: {
-		changeViewBackgroundColor: false,
-		clearCanvas: false,
-		export: false,
-		loadScene: false,
-		saveAsImage: false,
-		saveToActiveFile: false,
-		toggleTheme: false,
-	},
-} as const;
+import { sceneReady, UI_OPTIONS, useExcalidrawTheme, type SceneSource } from "./sceneSetup.ts";
 
 const MARGIN = 24;
 
-/** The whole drawing, centred, shrunk to fit the frame but never enlarged past its saved size. */
-function viewFor(drawing: Drawing, frame: DOMRect) {
+/** The whole scene, centred, shrunk to fit the frame but never enlarged past its saved size. */
+function viewFor({ x, y, width, height }: SceneSource["bounds"], frame: DOMRect) {
 	const zoom = Math.max(
 		0.1,
-		Math.min(1, (frame.width - MARGIN) / drawing.width, (frame.height - MARGIN) / drawing.height),
+		Math.min(1, (frame.width - MARGIN) / width, (frame.height - MARGIN) / height),
 	);
 	return {
 		zoom: { value: zoom } as AppState["zoom"],
-		scrollX: (frame.width / zoom - drawing.width) / 2,
-		scrollY: (frame.height / zoom - drawing.height) / 2,
+		scrollX: frame.width / zoom / 2 - (x + width / 2),
+		scrollY: frame.height / zoom / 2 - (y + height / 2),
 	};
 }
 
 /** The view is set before the first paint, and again whenever the card changes size. */
-function useFittedView(drawing: Drawing) {
+function useFittedView(bounds: SceneSource["bounds"]) {
 	const frame = useRef<HTMLDivElement>(null);
 	const [view, setView] = useState<ReturnType<typeof viewFor>>();
 	const api = useRef<ExcalidrawImperativeAPI>(undefined);
@@ -50,41 +29,20 @@ function useFittedView(drawing: Drawing) {
 		const element = frame.current;
 		if (!element) return;
 		const observer = new ResizeObserver(() => {
-			const next = viewFor(drawing, element.getBoundingClientRect());
+			const next = viewFor(bounds, element.getBoundingClientRect());
 			setView((current) => current ?? next);
 			api.current?.updateScene({ appState: next });
 		});
 		observer.observe(element);
 		return () => observer.disconnect();
-	}, [drawing]);
+	}, [bounds]);
 	return { frame, view, setApi: (value: ExcalidrawImperativeAPI) => (api.current = value) };
 }
 
-const FONT_WAIT_MS = 2000;
-
-/** Excalidraw adds its font to the page while it sets up its scene, just after mounting. */
-async function fontAdded(): Promise<void> {
-	const started = Date.now();
-	while (![...document.fonts].some((face) => face.family === FONT_NAME)) {
-		if (Date.now() - started > FONT_WAIT_MS) return;
-		await new Promise((resolve) => setTimeout(resolve, 20));
-	}
-	await document.fonts.load(`16px ${FONT_NAME}`).catch(() => undefined);
-}
-
-/**
- * Excalidraw sizes each label when its element is made and keeps that size, so the canvas mounts
- * empty and the drawing is added once the font has loaded. Sized with a fallback font, labels are cut off.
- */
-async function addOnceFontLoads(api: ExcalidrawImperativeAPI, drawing: Drawing) {
-	await fontAdded();
-	api.updateScene({ elements: toExcalidraw(drawing) });
-}
-
-/** Excalidraw is large, so this file loads only when a chat has a drawing. It's view-only for now. */
-export default function DrawingScene({ drawing }: { drawing: Drawing }) {
-	const dark = useSyncExternalStore(subscribe, isDark);
-	const { frame, view, setApi } = useFittedView(drawing);
+/** A view-only canvas. Excalidraw is large, so this file loads only when a chat has a drawing. */
+export default function DrawingScene({ source }: { source: SceneSource }) {
+	const theme = useExcalidrawTheme();
+	const { frame, view, setApi } = useFittedView(source.bounds);
 	return (
 		<div ref={frame} className={styles.scene}>
 			{view && (
@@ -92,11 +50,11 @@ export default function DrawingScene({ drawing }: { drawing: Drawing }) {
 					initialData={{ appState: { viewBackgroundColor: "transparent", ...view } }}
 					excalidrawAPI={(api) => {
 						setApi(api);
-						void addOnceFontLoads(api, drawing);
+						void sceneReady(api).then(() => api.updateScene({ elements: source.make() }));
 					}}
 					viewModeEnabled
 					zenModeEnabled
-					theme={dark ? "dark" : "light"}
+					theme={theme}
 					UIOptions={UI_OPTIONS}
 					detectScroll={false}
 					handleKeyboardGlobally={false}

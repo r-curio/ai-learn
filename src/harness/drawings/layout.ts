@@ -5,7 +5,7 @@ import type {
 	DrawingBox,
 	DrawingGroup,
 	DrawingKind,
-} from "../shared/drawing.ts";
+} from "../../shared/drawing.ts";
 
 /** What the tutor describes: what's in the drawing and how it connects, never where things go. */
 export interface DrawingDescription {

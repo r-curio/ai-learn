@@ -10,7 +10,7 @@ import { z } from "zod";
 import { INLINE_TEXT_CHARS, type AttachmentStore } from "./attachments.ts";
 import type { SearchService } from "./web/search-service.ts";
 import { webLabels, webTools } from "./web/web-tools.ts";
-import { createDrawingTools, DRAW, PLAN } from "./drawing-tools.ts";
+import { createDrawingTools, DRAW, PLAN } from "./drawings/tools.ts";
 
 const readAttachmentInput = z.object({
 	id: z.string().describe("The attachment id from its <attachment> tag."),
