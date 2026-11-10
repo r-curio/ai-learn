@@ -8,10 +8,12 @@ import {
 	type FauxProviderHandle,
 	type FauxResponseFactory,
 	type FauxResponseStep,
+	type Message,
 } from "@earendil-works/pi-ai";
 import type { Engine } from "./engine.ts";
 import { engineFromModels } from "./model-catalog.ts";
 import { DRAW, isDrawingTool, PLAN } from "./drawings/tools.ts";
+import { TITLE_PROMPT, writeTitle } from "./title.ts";
 import { ASK_QUESTION, isQuestionTool, QUIZ } from "./tools.ts";
 import { VoiceError } from "./voice/voice-error.ts";
 import type { SearchService } from "./web/search-service.ts";
@@ -37,7 +39,8 @@ export function createScriptedEngine(
 	const models = createModels();
 	models.setProvider(faux.provider);
 	faux.setResponses(responses);
-	return { faux, ...engineFromModels(models) };
+	// A title call would take the next scripted reply, so tests that want one set their own.
+	return { faux, ...engineFromModels(models), writeTitle: async () => undefined };
 }
 
 const FAKE_REASONING =
@@ -236,11 +239,25 @@ function afterTool(toolName: string): string {
 	return "I read that attachment with a tool. **Fake model** reply.";
 }
 
+/** The first three words the learner wrote, or a failure for `fake:title-fail`. */
+function fakeTitle(request: Message | undefined) {
+	const text = typeof request?.content === "string" ? request.content : "";
+	if (text.includes("fake:title-fail"))
+		return fauxAssistantMessage("", { stopReason: "error", errorMessage: "Title call failed." });
+	const words = text
+		.match(/<learner>\n([^\n]*)/)?.[1]
+		?.split(/\s+/)
+		.slice(0, 3)
+		.join(" ");
+	return fauxAssistantMessage(`Fake title: ${words || "a file"}`);
+}
+
 /** A free offline stand-in for trying the app without a key (AI_LEARN_FAKE_MODEL=1). */
 export function createDemoEngine(): Engine {
 	const forcedReply = createForcedReplies();
 	const respond: FauxResponseFactory = (context) => {
 		const last = context.messages.at(-1);
+		if (context.messages[0]?.content === TITLE_PROMPT) return fakeTitle(last);
 		if (last?.role === "toolResult") return fauxAssistantMessage(afterTool(last.toolName));
 		const parts = last?.role === "user" && Array.isArray(last.content) ? last.content : [];
 		const text = parts.flatMap((part) => (part.type === "text" ? [part.text] : [])).join("\n");
@@ -263,6 +280,10 @@ export function createDemoEngine(): Engine {
 		]);
 	};
 	const engine = createScriptedEngine([], 60);
+	const streamFn: Engine["streamFn"] = (model, context, options) => {
+		engine.faux.appendResponses([respond]);
+		return engine.streamFn(model, context, options);
+	};
 	return {
 		...engine,
 		status: async () => ({
@@ -286,9 +307,7 @@ export function createDemoEngine(): Engine {
 				);
 			return FAKE_SPEECH;
 		},
-		streamFn: (model, context, options) => {
-			engine.faux.appendResponses([respond]);
-			return engine.streamFn(model, context, options);
-		},
+		streamFn,
+		writeTitle: (model, source) => writeTitle(streamFn, model, source),
 	};
 }

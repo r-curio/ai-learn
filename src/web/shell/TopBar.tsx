@@ -1,4 +1,5 @@
 import type { UsageSummary } from "../../shared/protocol.ts";
+import { ChatTitle } from "./ChatTitle.tsx";
 
 function formatCost(usage: UsageSummary): string {
 	const total = (usage.inputTokens + usage.outputTokens).toLocaleString();
@@ -14,12 +15,19 @@ export function UsageLabel({ usage }: { usage?: UsageSummary }) {
 	);
 }
 
-export function TopBar({ title, usage }: { title?: string; usage?: UsageSummary }) {
+export function TopBar({
+	title,
+	usage,
+	onRename,
+}: {
+	title?: string;
+	usage?: UsageSummary;
+	/** Missing while the chat can't be renamed, like during a reply. */
+	onRename?: (title: string) => Promise<void>;
+}) {
 	return (
 		<header className="flex h-[52px] flex-none items-center gap-2 px-6">
-			{title && (
-				<h1 className="min-w-0 truncate text-[14px] leading-[18px] font-medium">{title}</h1>
-			)}
+			{title && <ChatTitle title={title} onRename={onRename} />}
 			<UsageLabel usage={usage} />
 		</header>
 	);

@@ -26,6 +26,10 @@ _Avoid_: Conversation, thread
 Whether a session is Learning or Practice, chosen when it starts and fixed after that. Saved in the session log's header, and a log with none counts as Learning. A Learning chat starts with a probe, and a Practice chat keeps the single prompt every chat had before phases.
 _Avoid_: Mode, category
 
+**Chat title**:
+The name a session shows in the sidebar, header and search. The tutor writes it after the first reply, and again from a finished probe's goal. The learner can rename it, and their title is never replaced. Until then it's the start of the first message.
+_Avoid_: Name, label, subject
+
 **Turn**:
 One message from the learner and everything the tutor does in response.
 _Avoid_: Exchange, round

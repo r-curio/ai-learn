@@ -36,8 +36,11 @@ function keepingReplyKey(view: SessionView, replyId: string): SessionView {
 	return { ...view, messages: [...view.messages.slice(0, -1), { ...tail, id: replyId }] };
 }
 
-/** The open chat: its messages, and sending to it. `onRunEnd` fires after each reply finishes. */
-export function useConversation(onRunEnd: () => void) {
+/**
+ * The open chat: its messages, and sending to it. `onRunEnd` fires after each reply finishes, and
+ * `onTitle` when the chat gets a new title, which can be after the reply.
+ */
+export function useConversation(onRunEnd: () => void, onTitle: () => void) {
 	const [sessionId, setSessionId] = useState<string>();
 	const [messages, setMessages] = useState<TranscriptMessage[]>([]);
 	const [canRetry, setCanRetry] = useState(false);
@@ -83,7 +86,9 @@ export function useConversation(onRunEnd: () => void) {
 		setCanRetry(false);
 		try {
 			await startRun((event) => {
-				if (event.type === "done") {
+				if (event.type === "title") {
+					onTitle();
+				} else if (event.type === "done") {
 					setUsage(event.sessionUsage);
 					if (event.context) setContext(event.context);
 					const ending = noticeFor(event.stopReason, event.errorMessage);

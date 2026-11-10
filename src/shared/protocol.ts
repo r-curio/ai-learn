@@ -42,6 +42,8 @@ export type RunEvent =
 	| { type: "graded"; grade: QuizGrade }
 	/** A `draw` or `plan` call finished, so its card can show before the reply ends. */
 	| { type: "drawing"; id: string; drawing: Drawing }
+	/** The chat has a new title. It can arrive after `done`, from a call made once the first reply is saved. */
+	| { type: "title"; title: string }
 	| {
 			type: "done";
 			stopReason: string;

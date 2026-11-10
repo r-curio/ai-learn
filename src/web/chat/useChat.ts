@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import type { EngineStatus, SessionSummary } from "../../shared/protocol.ts";
-import { createSession, deleteSession, getSession, getStatus, listSessions } from "../api.ts";
+import {
+	createSession,
+	deleteSession,
+	getSession,
+	getStatus,
+	listSessions,
+	renameSession,
+} from "../api.ts";
 import { useConversation } from "./useConversation.ts";
 
 interface ChatOptions {
@@ -27,7 +34,7 @@ export function useChat({ onChatChange, onReady }: ChatOptions) {
 	const conversation = useConversation(() => {
 		refreshSessions();
 		onReady();
-	});
+	}, refreshSessions);
 	const { sessionId, showEmpty, showView } = conversation;
 
 	const startNewChat = useCallback(async () => {
@@ -66,8 +73,18 @@ export function useChat({ onChatChange, onReady }: ChatOptions) {
 		}
 	}
 
+	/** Throws if the server refuses, so the title field can say why. */
+	async function renameChat(id: string, title: string) {
+		const saved = await renameSession(id, title);
+		setSessions((current) =>
+			current.map((row) => (row.id === id ? { ...row, title: saved } : row)),
+		);
+		refreshSessions();
+	}
+
 	return {
 		...conversation,
+		renameChat,
 		status,
 		refreshStatus,
 		sessions,
