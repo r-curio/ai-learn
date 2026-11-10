@@ -155,7 +155,9 @@ test("a new reply streams its reasoning, and reopening shows the same time and t
 	const reply = reloaded.view().messages.at(-1)!;
 	assert.equal(reply.workedMs, replyStart.workedMs);
 	assert.deepEqual(
-		reply.blocks.map((block) => (block.kind === "tool" ? block.label : block.text)),
+		reply.blocks.map((block) =>
+			block.kind === "tool" ? block.label : "text" in block ? block.text : block.kind,
+		),
 		["Reading first.", "Read notes.txt", "Now answering.", "Answer."],
 	);
 

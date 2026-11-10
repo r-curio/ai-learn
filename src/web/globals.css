@@ -46,6 +46,11 @@
 	--sidebar-ring: var(--ring);
 	--page: #ffffff;
 	--highlight: #ffe600;
+	/* Drawings use the light palette in both themes, because Excalidraw makes its dark theme by inverting the picture. */
+	--diagram-stroke: #5b5fc7;
+	--diagram-fill: #e6e7f7;
+	--diagram-group: #5e6078;
+	--diagram-text: #23243a;
 	--shadow-popover-value: 0 4px 16px rgb(35 36 58 / 0.1);
 }
 

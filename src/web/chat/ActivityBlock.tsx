@@ -16,12 +16,12 @@ const FILLER_WORDS = [
 ];
 const FILLER_SECONDS = 3;
 
-type TraceBlock = Exclude<TranscriptBlock, { kind: "text" }>;
+type TraceBlock = Extract<TranscriptBlock, { kind: "reasoning" | "tool" }>;
 type ToolBlock = Extract<TranscriptBlock, { kind: "tool" }>;
 
 const traceOf = (message: TranscriptMessage) =>
 	message.blocks.filter(
-		(block): block is TraceBlock => block.kind !== "text" && block.kind !== "question",
+		(block): block is TraceBlock => block.kind === "reasoning" || block.kind === "tool",
 	);
 
 /** A plain reply saved before this block existed has nothing to report, so it shows nothing. */

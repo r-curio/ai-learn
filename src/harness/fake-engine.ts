@@ -11,6 +11,7 @@ import {
 } from "@earendil-works/pi-ai";
 import type { Engine } from "./engine.ts";
 import { engineFromModels } from "./model-catalog.ts";
+import { DRAW, isDrawingTool, PLAN } from "./drawing-tools.ts";
 import { ASK_QUESTION, isQuestionTool, QUIZ } from "./tools.ts";
 import { VoiceError } from "./voice/voice-error.ts";
 import type { SearchService } from "./web/search-service.ts";
@@ -87,6 +88,53 @@ const fakeQuiz = () =>
 		{ stopReason: "toolUse" },
 	);
 
+const FAKE_PLAN = {
+	title: "Understand attention",
+	nodes: [
+		{ id: "vectors", label: "Words as vectors" },
+		{ id: "dot", label: "Dot products measure similarity" },
+		{ id: "softmax", label: "Softmax turns scores into weights" },
+		{ id: "qkv", label: "Queries, keys and values" },
+		{ id: "attention", label: "Attention" },
+	],
+	edges: [
+		{ from: "vectors", to: "dot" },
+		{ from: "dot", to: "qkv" },
+		{ from: "softmax", to: "attention" },
+		{ from: "qkv", to: "attention" },
+	],
+	groups: [{ id: "maths", label: "The maths", nodes: ["dot", "softmax"] }],
+};
+
+const FAKE_DIAGRAM = {
+	id: "attention-flow",
+	title: "How one word attends",
+	nodes: [
+		{ id: "word", label: "The word's vector" },
+		{ id: "query", label: "Query" },
+		{ id: "keys", label: "Every word's key" },
+		{ id: "scores", label: "Scores" },
+		{ id: "values", label: "Weighted values" },
+	],
+	edges: [
+		{ from: "word", to: "query", label: "times W_Q" },
+		{ from: "query", to: "scores", label: "compared" },
+		{ from: "keys", to: "scores", label: "dot product" },
+		{ from: "scores", to: "values", label: "softmax" },
+	],
+};
+
+/** `fake:plan` draws the lesson plan, and `fake:draw` a diagram. */
+function drawingReply(text: string) {
+	const [intro, name, args] = text.includes("fake:plan")
+		? ["Here's where we're headed.", PLAN, FAKE_PLAN]
+		: ["Here's how the parts connect.", DRAW, FAKE_DIAGRAM];
+	if (!text.includes("fake:plan") && !text.includes("fake:draw")) return undefined;
+	return fauxAssistantMessage([fauxText(intro), fauxToolCall(name, args)], {
+		stopReason: "toolUse",
+	});
+}
+
 /** Replies that force one state, so each can be tried by putting its word in a message. */
 function createForcedReplies() {
 	let failedLastTime = false;
@@ -125,6 +173,8 @@ function createForcedReplies() {
 				{ stopReason: "toolUse" },
 			);
 		if (text.includes("fake:search")) return fakeSearchCall();
+		const drawing = drawingReply(text);
+		if (drawing) return drawing;
 		if (text.includes("fake:plain")) return fauxAssistantMessage("**Fake model** plain reply.");
 		if (text.includes("fake:long"))
 			return fauxAssistantMessage(Array(16).fill(LONG_PARAGRAPH).join("\n\n"));
@@ -176,17 +226,20 @@ const FAKE_DEFAULT_MODEL = "fake-speech-fast";
 const FAKE_VOICE_MODELS = [FAKE_DEFAULT_MODEL, "fake-speech-accurate"];
 const FAKE_SPEECH = "So the query is what the word is looking for.";
 
+/** What the fake tutor says once a tool has finished. */
+function afterTool(toolName: string): string {
+	if (isQuestionTool(toolName)) return "Thanks for answering. **Fake model** reply.";
+	if (toolName === WEB_SEARCH) return FAKE_SEARCH_ANSWER;
+	if (isDrawingTool(toolName)) return "Ask about any box. **Fake model** reply.";
+	return "I read that attachment with a tool. **Fake model** reply.";
+}
+
 /** A free offline stand-in for trying the app without a key (AI_LEARN_FAKE_MODEL=1). */
 export function createDemoEngine(): Engine {
 	const forcedReply = createForcedReplies();
 	const respond: FauxResponseFactory = (context) => {
 		const last = context.messages.at(-1);
-		if (last?.role === "toolResult" && isQuestionTool(last.toolName))
-			return fauxAssistantMessage("Thanks for answering. **Fake model** reply.");
-		if (last?.role === "toolResult" && last.toolName === WEB_SEARCH)
-			return fauxAssistantMessage(FAKE_SEARCH_ANSWER);
-		if (last?.role === "toolResult")
-			return fauxAssistantMessage("I read that attachment with a tool. **Fake model** reply.");
+		if (last?.role === "toolResult") return fauxAssistantMessage(afterTool(last.toolName));
 		const parts = last?.role === "user" && Array.isArray(last.content) ? last.content : [];
 		const text = parts.flatMap((part) => (part.type === "text" ? [part.text] : [])).join("\n");
 		const forced = forcedReply(text);

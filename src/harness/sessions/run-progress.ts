@@ -1,6 +1,7 @@
 import type { AgentEvent } from "@earendil-works/pi-agent-core";
 import type { TextContent } from "@earendil-works/pi-ai";
 import type { RunEvent } from "../../shared/protocol.ts";
+import { drawingIn } from "../drawing-tools.ts";
 import { isQuestionTool, toolLabels } from "../tools.ts";
 import { isSearchLimit, SEARCH_LIMIT_LABEL } from "../web/web-tools.ts";
 
@@ -38,6 +39,9 @@ export function runProgress(
 					? { label: SEARCH_LIMIT_LABEL }
 					: {}),
 			});
+			const result = event.result as { details?: unknown } | undefined;
+			const drawing = drawingIn({ ...event, details: result?.details });
+			if (drawing) onEvent({ type: "drawing", id: event.toolCallId, drawing });
 		}
 	}
 

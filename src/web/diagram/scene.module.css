@@ -1,0 +1,8 @@
+/* The card is view-only for now, so Excalidraw's menus and toolbars are hidden at every width. */
+.scene {
+	height: 100%;
+}
+
+.scene :global(:is(.layer-ui__wrapper, .App-bottom-bar, .App-top-bar, .App-menu)) {
+	display: none;
+}

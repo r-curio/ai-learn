@@ -2,10 +2,11 @@ import { cn } from "cn";
 import type { MouseEvent } from "react";
 import Markdown from "react-markdown";
 import { parseCitations, type Citation } from "../../shared/citations.ts";
-import type { AttachmentInfo, TranscriptMessage } from "../../shared/protocol.ts";
+import type { AttachmentInfo, TranscriptBlock, TranscriptMessage } from "../../shared/protocol.ts";
 import { AnsweredConfidence } from "../answer/AnsweredConfidence.tsx";
 import { Button } from "../components/button.tsx";
 import { Notice } from "../components/Notice.tsx";
+import { DrawingCard } from "../diagram/DrawingCard.tsx";
 import { ActivityBlock, hasActivity } from "./ActivityBlock.tsx";
 import { markdownPlugins } from "./markdown.ts";
 import styles from "./prose.module.css";
@@ -137,12 +138,44 @@ function ReplyNotice({ message, onRetry }: { message: TranscriptMessage; onRetry
 	);
 }
 
-/** The waiting question is left out, because the answer card shows it. */
-function visibleTexts(message: TranscriptMessage, pendingQuestionId?: string) {
-	return message.blocks.flatMap((block) => {
+type DrawingBlock = Extract<TranscriptBlock, { kind: "drawing" }>;
+
+/** Words and drawings in the order they came. The waiting question is left out, because the answer card shows it. */
+function visibleParts(message: TranscriptMessage, pendingQuestionId?: string) {
+	return message.blocks.flatMap((block): (string | DrawingBlock)[] => {
 		if (block.kind === "question") return block.id === pendingQuestionId ? [] : [block.text];
+		if (block.kind === "drawing") return [block];
 		return block.kind === "text" ? [block.text] : [];
 	});
+}
+
+/** A message's words and drawings, in the order they came. */
+function MessageParts({
+	parts,
+	learner,
+	live,
+	drawingVersion,
+	onOpenCitation,
+}: {
+	parts: ReturnType<typeof visibleParts>;
+	learner: boolean;
+	live: boolean;
+	drawingVersion: (callId: string) => number;
+	onOpenCitation: (citation: Citation) => void;
+}) {
+	return parts.map((part, index) =>
+		typeof part === "string" ? (
+			<MessageText
+				text={part}
+				learner={learner}
+				live={live}
+				onOpenCitation={onOpenCitation}
+				key={index}
+			/>
+		) : (
+			<DrawingCard drawing={part.drawing} version={drawingVersion(part.id)} key={part.id} />
+		),
+	);
 }
 
 const learnerBubble = (isAnswer: boolean) =>
@@ -157,6 +190,7 @@ export function MessageView({
 	onRetry,
 	liveSince,
 	pendingQuestionId,
+	drawingVersion,
 	onOpenAttachment,
 	onOpenCitation,
 }: {
@@ -166,14 +200,16 @@ export function MessageView({
 	/** When this reply's run started, while it's still running. */
 	liveSince?: number;
 	pendingQuestionId?: string;
+	/** Which version of its drawing a `draw` or `plan` call made. */
+	drawingVersion: (callId: string) => number;
 	onOpenAttachment: (attachment: AttachmentInfo) => void;
 	onOpenCitation: (citation: Citation) => void;
 }) {
 	const learner = message.role === "user";
 	const showActivity = !learner && hasActivity(message, liveSince);
-	const texts = visibleTexts(message, pendingQuestionId);
+	const parts = visibleParts(message, pendingQuestionId);
 	const { confidence } = message;
-	const hasBody = texts.length > 0 || Boolean(message.notice);
+	const hasBody = parts.length > 0 || Boolean(message.notice);
 	return (
 		<article
 			className={
@@ -192,15 +228,13 @@ export function MessageView({
 			)}
 			{hasBody && (
 				<div className={learner ? learnerBubble(confidence !== undefined) : "flex flex-col gap-3"}>
-					{texts.map((text, index) => (
-						<MessageText
-							text={text}
-							learner={learner}
-							live={liveSince !== undefined}
-							onOpenCitation={onOpenCitation}
-							key={index}
-						/>
-					))}
+					<MessageParts
+						parts={parts}
+						learner={learner}
+						live={liveSince !== undefined}
+						drawingVersion={drawingVersion}
+						onOpenCitation={onOpenCitation}
+					/>
 					{learner && confidence !== undefined && <AnsweredConfidence confidence={confidence} />}
 					<ReplyNotice message={message} onRetry={onRetry} />
 				</div>

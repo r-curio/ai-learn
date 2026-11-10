@@ -1,4 +1,4 @@
-import type { RunEvent, TranscriptMessage } from "../../shared/protocol.ts";
+import { placeDrawing, type RunEvent, type TranscriptMessage } from "../../shared/protocol.ts";
 
 type StreamedKind = "text" | "reasoning";
 
@@ -29,6 +29,13 @@ export function applyRunEvent(message: TranscriptMessage, event: RunEvent): Tran
 			...message,
 			workedMs: undefined,
 			blocks: [...message.blocks, { kind: "tool", id, label, runningLabel, state: "running" }],
+		};
+	}
+	if (event.type === "drawing") {
+		const { id, drawing } = event;
+		return {
+			...message,
+			blocks: placeDrawing([...message.blocks], { kind: "drawing", id, drawing }),
 		};
 	}
 	if (event.type === "tool_end") {
