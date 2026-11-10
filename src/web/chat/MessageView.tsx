@@ -8,6 +8,7 @@ import { Button } from "../components/button.tsx";
 import { Notice } from "../components/Notice.tsx";
 import type { Drawing } from "../../shared/drawing.ts";
 import { DrawingCard, EditedDrawingCard } from "../diagram/DrawingCard.tsx";
+import type { CardEdit } from "../diagram/useDrawingEdit.ts";
 
 /** How drawings in the transcript are numbered and opened for editing. */
 export interface DrawingActions {
@@ -15,6 +16,8 @@ export interface DrawingActions {
 	version: (callId: string) => number;
 	/** Missing while the learner can't send, like during a reply or a waiting question. */
 	onEdit?: (callId: string, drawing: Drawing) => void;
+	/** The card being edited in place. Other cards hide Edit meanwhile. */
+	editing?: CardEdit;
 }
 import { ActivityBlock, hasActivity } from "./ActivityBlock.tsx";
 import { markdownPlugins } from "./markdown.ts";
@@ -185,7 +188,12 @@ function MessageParts({
 			<DrawingCard
 				drawing={part.drawing}
 				version={drawings.version(part.id)}
-				onEdit={drawings.onEdit && (() => drawings.onEdit?.(part.id, part.drawing))}
+				onEdit={
+					drawings.onEdit && !drawings.editing
+						? () => drawings.onEdit?.(part.id, part.drawing)
+						: undefined
+				}
+				editing={drawings.editing?.callId === part.id ? drawings.editing : undefined}
 				key={part.id}
 			/>
 		),

@@ -3,13 +3,13 @@ import { Excalidraw, exportToBlob as untypedExportToBlob } from "@excalidraw/exc
 import type { ExcalidrawElement } from "@excalidraw/excalidraw/element/types";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import type { SceneElement } from "../../shared/drawing.ts";
-import { sceneReady, UI_OPTIONS, useExcalidrawTheme } from "./sceneSetup.ts";
-
-/** What the learner made: the scene, and a picture of it when it has freehand marks. */
-export interface FinishedEdit {
-	elements: SceneElement[];
-	picture?: Blob;
-}
+import {
+	sceneReady,
+	UI_OPTIONS,
+	useExcalidrawTheme,
+	type CanvasHandle,
+	type FinishedEdit,
+} from "./sceneSetup.ts";
 
 /** Excalidraw's export types don't resolve from its package, so the part used here is written out. */
 const exportToBlob = untypedExportToBlob as unknown as (options: {
@@ -23,9 +23,13 @@ const exportToBlob = untypedExportToBlob as unknown as (options: {
 const pageColour = () =>
 	getComputedStyle(document.documentElement).getPropertyValue("--diagram-page").trim();
 
+/** Excalidraw changes elements in place, so what leaves the canvas is a copy. */
+const copyOf = (api: ExcalidrawImperativeAPI) =>
+	structuredClone(api.getSceneElements()) as unknown as SceneElement[];
+
 async function finish(api: ExcalidrawImperativeAPI): Promise<FinishedEdit> {
 	const live = api.getSceneElements();
-	const elements = structuredClone(live) as unknown as SceneElement[];
+	const elements = copyOf(api);
 	if (!live.some((element) => element.type === "freedraw")) return { elements };
 	const picture = await exportToBlob({
 		elements: live,
@@ -36,17 +40,17 @@ async function finish(api: ExcalidrawImperativeAPI): Promise<FinishedEdit> {
 	return { elements, picture };
 }
 
-/** The full editor. Excalidraw is large, so this loads only when the learner opens it. */
+/** An editing canvas, in a card or the full-size editor. Excalidraw is large, so this loads only when the learner edits. */
 export default function EditorCanvas(props: {
 	initial: () => ExcalidrawElement[];
-	onReady: (finish: () => Promise<FinishedEdit>) => void;
+	onReady: (handle: CanvasHandle) => void;
 }) {
 	const theme = useExcalidrawTheme();
 	return (
 		<Excalidraw
 			initialData={{ appState: { viewBackgroundColor: "transparent" } }}
 			excalidrawAPI={(api) => {
-				props.onReady(() => finish(api));
+				props.onReady({ finish: () => finish(api), elements: () => copyOf(api) });
 				void sceneReady(api).then(() => {
 					api.updateScene({ elements: props.initial() });
 					api.scrollToContent(undefined, { fitToViewport: true, viewportZoomFactor: 0.7 });
