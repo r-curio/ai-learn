@@ -33,9 +33,11 @@ import {
 	waitingIn,
 } from "./questions.ts";
 import { runProgress } from "./run-progress.ts";
+import { initialSystemMessage } from "../tools.ts";
 import { createTutorAgent, offerTools } from "../tutor-agent.ts";
 import { searchLimitNotice } from "../web/web-tools.ts";
-import { SYSTEM_PROMPT, viewingTag } from "./tutor-prompt.ts";
+import { promptFor, type SessionPrompt } from "../prompts/phases.ts";
+import { viewingTag } from "../prompts/tutor-prompt.ts";
 import {
 	addUsage,
 	buildTranscript,
@@ -75,7 +77,7 @@ export class Session {
 	private readonly agent: Agent;
 	private readonly entries: LogEntry[];
 	private readonly usage: UsageSummary;
-	private readonly systemPrompt: string;
+	private prompt: SessionPrompt;
 	private chatType: ChatType;
 	private running = false;
 	private readonly offerTools: () => Promise<void>;
@@ -89,18 +91,20 @@ export class Session {
 		this.entries = restored?.entries ?? [];
 		this.usage = usageOf(this.entries);
 		const header = this.entries[0] as LogHeader | undefined;
-		// A session keeps the prompt it started with, so old history replays exactly.
-		this.systemPrompt = header?.systemPrompt ?? SYSTEM_PROMPT;
 		this.chatType = chatTypeOf(header?.chatType);
+		// A session keeps the prompts it started with, so old history replays exactly.
+		this.prompt = header
+			? { systemPrompt: header.systemPrompt, ...(header.phases && { phases: header.phases }) }
+			: promptFor(this.chatType);
 		this.agent = createTutorAgent({
 			sessionId: this.id,
-			systemPrompt: this.systemPrompt,
+			prompt: this.prompt,
 			attachments: this.attachments,
 			messages: restored?.messages ?? [],
 			streamFn: engine.streamFn,
 		});
 		this.offerTools = () =>
-			offerTools(this.agent.state, this.attachments, engine, (e) => this.record(e));
+			offerTools(this.agent.state, this.prompt, this.attachments, engine, (e) => this.record(e));
 	}
 
 	/** Rebuild a session from disk and settle anything a crash left unfinished. */
@@ -147,9 +151,12 @@ export class Session {
 		return this.entries.length > 0;
 	}
 
-	/** Set the type before the first message. It's saved in the header, so it can't change after. */
+	/** Set the type, and with it the prompt, before the first message. Both are saved in the header. */
 	chooseType(chatType: ChatType): void {
-		if (!this.hasContent) this.chatType = chatType;
+		if (this.hasContent) return;
+		this.chatType = chatType;
+		this.prompt = promptFor(chatType);
+		this.agent.state.messages = initialSystemMessage(this.prompt, this.attachments);
 	}
 
 	private async record(entry: LogEntry): Promise<void> {
@@ -159,7 +166,7 @@ export class Session {
 				version: LOG_VERSION,
 				id: this.id,
 				createdAt: Date.now(),
-				systemPrompt: this.systemPrompt,
+				...this.prompt,
 				chatType: this.chatType,
 			};
 			this.entries.push(header);

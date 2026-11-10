@@ -2,6 +2,7 @@ import { Agent, type AgentState, type StreamFn } from "@earendil-works/pi-agent-
 import type { Message } from "@earendil-works/pi-ai";
 import type { AttachmentStore } from "./attachments.ts";
 import type { Engine } from "./engine.ts";
+import { phaseOf, phaseSwitch, type SessionPrompt } from "./prompts/phases.ts";
 import type { LogTools } from "./sessions/log.ts";
 import { questionHooks } from "./sessions/questions.ts";
 import { createTools, initialSystemMessage, toolChange } from "./tools.ts";
@@ -10,7 +11,7 @@ import { searchGuard } from "./web/web-tools.ts";
 /** The Pi agent behind one session, with its question hooks and a runaway search guard that resets each run. */
 export function createTutorAgent(options: {
 	sessionId: string;
-	systemPrompt: string;
+	prompt: SessionPrompt;
 	attachments: AttachmentStore;
 	messages: Message[];
 	streamFn: StreamFn;
@@ -18,13 +19,9 @@ export function createTutorAgent(options: {
 	const guard = searchGuard();
 	const agent = new Agent({
 		initialState: {
-			systemPrompt: options.systemPrompt,
-			tools: createTools(options.attachments),
+			tools: createTools(options.attachments, undefined, options.prompt.phases !== undefined),
 			// Built here, since a saved log can start with a tool change, which Pi would take as the first message.
-			messages: [
-				...initialSystemMessage(options.systemPrompt, options.attachments),
-				...options.messages,
-			],
+			messages: [...initialSystemMessage(options.prompt, options.attachments), ...options.messages],
 		},
 		streamFn: options.streamFn,
 		...questionHooks,
@@ -40,20 +37,22 @@ export function createTutorAgent(options: {
 }
 
 /**
- * Offer the tools a run can use, so a search key added or removed counts from the next message.
- * A change is saved, then added before Pi would add it itself, so the log matches what's sent.
- * It goes before a new message, as Pi places it, and after an answer, since nothing may come
- * between a tool call and its result.
+ * Offer the tools and prompt a run can use, so a search key added or removed counts from the next
+ * message, and a finished probe hands over to the teacher. A change is saved, then added before
+ * Pi would add it itself, so the log matches what's sent. It goes before a new message, as Pi
+ * places it, and after an answer, since nothing may come between a tool call and its result.
  */
 export async function offerTools(
 	state: AgentState,
+	prompt: SessionPrompt,
 	attachments: AttachmentStore,
 	engine: Pick<Engine, "searchService">,
 	record: (entry: LogTools) => Promise<void>,
 ): Promise<void> {
-	const tools = createTools(attachments, await engine.searchService());
+	const probing = phaseOf(prompt, state.messages) === "prober";
+	const tools = createTools(attachments, await engine.searchService(), probing);
 	state.tools = tools;
-	const change = toolChange(state.messages, tools);
+	const change = toolChange(state.messages, tools, phaseSwitch(prompt, state.messages));
 	if (!change) return;
 	await record({ type: "tools", message: change });
 	state.messages.push(change);

@@ -1,6 +1,5 @@
 import type { AgentMessage, AgentTool } from "@earendil-works/pi-agent-core";
 import {
-	createInitialSystemMessage,
 	getCurrentTools,
 	getToolStateChanges,
 	toToolDeclaration,
@@ -11,6 +10,8 @@ import { INLINE_TEXT_CHARS, type AttachmentStore } from "./attachments.ts";
 import type { SearchService } from "./web/search-service.ts";
 import { webLabels, webTools } from "./web/web-tools.ts";
 import { createDrawingTools, DRAW, PLAN } from "./drawings/tools.ts";
+import { FINISH_PROBE, finishProbeTool } from "./prompts/finish-probe.ts";
+import { leadingMessage, type SessionPrompt } from "./prompts/phases.ts";
 
 const readAttachmentInput = z.object({
 	id: z.string().describe("The attachment id from its <attachment> tag."),
@@ -75,6 +76,8 @@ export function toolLabels(
 	if (web) return web;
 	if (name === PLAN) return { label: "Draw the plan", runningLabel: "Drawing the plan" };
 	if (name === DRAW) return { label: "Draw a diagram", runningLabel: "Drawing a diagram" };
+	if (name === FINISH_PROBE)
+		return { label: "Finish the probe", runningLabel: "Finishing the probe" };
 	if (name !== "read_attachment") return { label: name, runningLabel: name };
 	const id = (args as { id?: unknown } | undefined)?.id;
 	const target = (typeof id === "string" && attachmentName(id)) || "attachment";
@@ -87,8 +90,15 @@ const waitForLearner = async () => ({
 	details: undefined,
 });
 
-/** The tutor's tools. Without a connected search service, `web_search` isn't offered. */
-export function createTools(attachments: AttachmentStore, search?: SearchService): AgentTool[] {
+/**
+ * The tutor's tools. Without a connected search service, `web_search` isn't offered, and
+ * `finish_probe` is only offered while a Learning chat is probing.
+ */
+export function createTools(
+	attachments: AttachmentStore,
+	search?: SearchService,
+	probing = false,
+): AgentTool[] {
 	return [
 		{
 			name: "read_attachment",
@@ -127,36 +137,37 @@ export function createTools(attachments: AttachmentStore, search?: SearchService
 		},
 		...webTools(search),
 		...createDrawingTools(),
+		...(probing ? [finishProbeTool] : []),
 	];
 }
 
 /** A session's first message: its prompt, and the tools every session starts with. It's rebuilt on each load. */
 export function initialSystemMessage(
-	prompt: string,
+	prompt: SessionPrompt,
 	attachments: AttachmentStore,
 ): SystemMessage[] {
-	const message = createInitialSystemMessage(
-		prompt,
-		createTools(attachments).map(toToolDeclaration),
-	);
+	const tools = createTools(attachments, undefined, prompt.phases !== undefined);
+	const message = leadingMessage(prompt, tools.map(toToolDeclaration));
 	return message ? [message] : [];
 }
 
 /**
- * The message that tells the model its tools changed, shaped as Pi makes it, or nothing if they
- * didn't. The session saves it, so a reloaded chat sends the same history as the live one.
+ * The message that tells the model its tools or prompt sections changed, shaped as Pi makes it,
+ * or nothing if neither did. The session saves it, so a reloaded chat sends the same history as the live one.
  */
 export function toolChange(
 	messages: readonly AgentMessage[],
 	tools: AgentTool[],
+	sections?: Record<string, string>,
 ): SystemMessage | undefined {
 	const current = getCurrentTools(messages);
 	const { toolsAdded, toolsRemoved } = getToolStateChanges(current, tools.map(toToolDeclaration));
-	if (toolsAdded.length === 0 && toolsRemoved.length === 0) return undefined;
+	if (toolsAdded.length === 0 && toolsRemoved.length === 0 && !sections) return undefined;
 	return {
 		role: "system",
 		content: "",
 		timestamp: Date.now(),
+		...(sections ? { sections } : {}),
 		...(toolsAdded.length > 0 ? { toolsAdded } : {}),
 		...(toolsRemoved.length > 0 ? { toolsRemoved } : {}),
 	};
