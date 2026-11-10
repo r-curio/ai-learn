@@ -10,7 +10,7 @@ function TitleButton({ title, onClick }: { title: string; onClick: () => void })
 	return (
 		<Button
 			variant="ghost"
-			className={`-ml-2.5 h-8 max-w-full justify-start gap-2 px-2.5 ${TITLE_TYPE}`}
+			className={`-ml-2.5 h-8 min-w-0 shrink justify-start gap-2 px-2.5 ${TITLE_TYPE}`}
 			onClick={onClick}
 		>
 			<span className="truncate">{title}</span>
@@ -115,7 +115,7 @@ export function ChatTitle({
 
 	if (!editing || !onRename)
 		return (
-			<h1 className="min-w-0">
+			<h1 className="flex min-w-0">
 				{onRename ? (
 					<TitleButton title={title} onClick={() => setEditing(true)} />
 				) : (
