@@ -87,7 +87,7 @@ export class Session {
 	private chatType: ChatType;
 	private running = false;
 	private readonly offerTools: () => Promise<void>;
-	private readonly titles: ChatTitles;
+	readonly titles: ChatTitles;
 	private readonly summaryFile: SummaryWriter;
 
 	constructor(engine: Engine, dataDir: string, restored?: Restored) {

@@ -147,6 +147,7 @@ export class SessionStore {
 		if (!session) return false;
 		if (session.isRunning) throw new SessionBusyError();
 		this.open.delete(id);
+		session.titles.close();
 		await rm(join(this.dataDir, "sessions", id), { recursive: true, force: true });
 		this.index.remove(id);
 		return true;

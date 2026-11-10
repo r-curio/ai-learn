@@ -1,5 +1,6 @@
 import { fauxAssistantMessage, fauxText, fauxToolCall } from "@earendil-works/pi-ai";
 import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -165,6 +166,33 @@ test("a learner's rename before the tutor's title arrives is kept, and the tutor
 	const restarted = new SessionStore(createScriptedEngine([]), dir);
 	assert.equal((await restarted.list())[0]?.title, "My biology notes");
 	assert.equal((await restarted.search("biology notes"))[0]?.id, session.id);
+});
+
+test("deleting a chat while its title is being written leaves nothing behind", async () => {
+	const dir = await tempDir();
+	let release: (title: string) => void = () => undefined;
+	let called: () => void = () => undefined;
+	const asking = new Promise<void>((resolve) => (called = resolve));
+	const { engine } = titledEngine(
+		[fauxAssistantMessage("Sure.")],
+		() =>
+			new Promise((resolve) => {
+				release = resolve;
+				called();
+			}),
+	);
+	const store = new SessionStore(engine, dir);
+	const session = store.create();
+	const { events, done } = say(session, FIRST);
+	await asking;
+	assert.equal(await store.delete(session.id), true);
+	release("Too late");
+	await done;
+
+	assert.ok(!events.some((event) => event.type === "title"));
+	assert.equal(existsSync(join(dir, "sessions", session.id)), false);
+	assert.deepEqual(await store.list(), []);
+	assert.deepEqual(await new SessionStore(createScriptedEngine([]), dir).list(), []);
 });
 
 test("an empty rename is refused, and so is one before anything is saved", async () => {

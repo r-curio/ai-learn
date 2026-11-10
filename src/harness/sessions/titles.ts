@@ -86,6 +86,8 @@ interface TitleOptions {
 }
 
 export class ChatTitles {
+	private closed = false;
+
 	constructor(
 		private readonly entries: LogEntry[],
 		private readonly options: TitleOptions,
@@ -100,7 +102,13 @@ export class ChatTitles {
 		return titles(this.entries).length === 0 && !hasReply(this.entries);
 	}
 
-	private async saveTutorTitle(title: string): Promise<string> {
+	/** The chat is being deleted, so a title call that finishes later must not recreate its folder. */
+	close(): void {
+		this.closed = true;
+	}
+
+	private async saveTutorTitle(title: string): Promise<string | undefined> {
+		if (this.closed) return undefined;
 		await this.options.save({ type: "title", title, by: "tutor", timestamp: Date.now() });
 		return title;
 	}
