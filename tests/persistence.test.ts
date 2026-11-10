@@ -49,7 +49,9 @@ test("a reloaded session sends the model byte-identical history", async () => {
 
 	// The image is stored as a reference, so it isn't copied into the log.
 	const log = await readFile(logPath(dir, session.id), "utf8");
-	assert.ok(log.length < 10_000, `log was ${log.length} bytes`);
+	// The header holds the prompt, so measure what follows it.
+	const afterHeader = log.slice(log.indexOf("\n") + 1);
+	assert.ok(afterHeader.length < 10_000, `log after its header was ${afterHeader.length} bytes`);
 	assert.match(log, new RegExp(`"attachmentId":"${image.id}"`));
 
 	const second = createScriptedEngine([capture(seen, "Three.")]);
@@ -158,7 +160,7 @@ test("a log from a newer version is refused", async () => {
 	const session = new Session(createScriptedEngine([fauxAssistantMessage("Fine.")]), dir);
 	await run(session, "Hello");
 	const path = logPath(dir, session.id);
-	await writeFile(path, (await readFile(path, "utf8")).replace('"version":1', '"version":99'));
+	await writeFile(path, (await readFile(path, "utf8")).replace(/"version":\d+/, '"version":99'));
 	await assert.rejects(Session.load(createScriptedEngine([]), dir, session.id), /newer version/);
 });
 

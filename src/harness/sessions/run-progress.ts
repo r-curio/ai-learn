@@ -2,6 +2,7 @@ import type { AgentEvent } from "@earendil-works/pi-agent-core";
 import type { TextContent } from "@earendil-works/pi-ai";
 import type { RunEvent } from "../../shared/protocol.ts";
 import { drawingIn } from "../drawings/tools.ts";
+import { SEND_TO_USER } from "../prompts/send-to-user.ts";
 import { isQuestionTool, toolLabels } from "../tools.ts";
 import { isSearchLimit, SEARCH_LIMIT_LABEL } from "../web/web-tools.ts";
 
@@ -13,13 +14,22 @@ export function runProgress(
 	const startedAt = performance.now();
 	let workedMs: number | undefined;
 
+	function text(delta: string): void {
+		if (workedMs === undefined) {
+			workedMs = Math.round(performance.now() - startedAt);
+			onEvent({ type: "reply_start", workedMs });
+		}
+		onEvent({ type: "text_delta", delta });
+	}
+
 	function report(event: AgentEvent): void {
+		// A message sent with `send_to_user` is the tutor's text, not a step in the Activity trace.
+		if (event.type === "tool_execution_end" && event.toolName === SEND_TO_USER) return;
 		if (event.type === "message_update" && event.assistantMessageEvent.type === "text_delta") {
-			if (workedMs === undefined) {
-				workedMs = Math.round(performance.now() - startedAt);
-				onEvent({ type: "reply_start", workedMs });
-			}
-			onEvent({ type: "text_delta", delta: event.assistantMessageEvent.delta });
+			text(event.assistantMessageEvent.delta);
+		} else if (event.type === "tool_execution_start" && event.toolName === SEND_TO_USER) {
+			const message = (event.args as { message?: unknown } | undefined)?.message;
+			if (typeof message === "string") text(message);
 		} else if (
 			event.type === "message_update" &&
 			event.assistantMessageEvent.type === "thinking_delta"

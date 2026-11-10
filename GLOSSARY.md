@@ -23,7 +23,7 @@ One saved conversation between a learner and the tutor. The UI calls this a "cha
 _Avoid_: Conversation, thread
 
 **Chat type**:
-Whether a session is Learning or Practice, chosen when it starts and fixed after that. Saved in the session log's header, and a log with none counts as Learning. For now it only organizes the chat list, and the tutor behaves the same in both.
+Whether a session is Learning or Practice, chosen when it starts and fixed after that. Saved in the session log's header, and a log with none counts as Learning. A Learning chat starts with a probe, and a Practice chat keeps the single prompt every chat had before phases.
 _Avoid_: Mode, category
 
 **Turn**:
@@ -94,9 +94,21 @@ _Avoid_: Sketch, canvas, chart
 The learner's change to one of the tutor's drawings, made in the full-size editor and sent with their next message. The tutor reads what changed.
 _Avoid_: Annotation, correction, markup
 
+**Probe**:
+The start of a Learning chat, where the tutor measures what the learner wants to understand and where their understanding ends on each thread the goal needs. It ends when the tutor calls `finish_probe`, which holds the result, and the learner can ask to skip it.
+_Avoid_: Assessment, placement test, quiz
+
+**Phase**:
+Which part of the system prompt the tutor runs under in a Learning chat: the prober during the probe, then the teacher. Both are saved in the session log's header, and the switch is saved where it happened. "Teacher" names the phase only; the role is still the tutor.
+_Avoid_: Mode, stage
+
 **Lesson plan**:
-The drawing of what a chat will cover, with the goal at the top and foundations at the bottom. A chat has one, and the tutor's `plan` tool replaces it with a new version.
+The drawing of what a chat will cover, with the goal at the top and foundations at the bottom. A chat has one, and the tutor's `plan` tool replaces it with a new version. "Plan" alone means this.
 _Avoid_: Roadmap, curriculum, plan diagram
+
+**Foundation**:
+A fact the lesson needs that the learner can accept at face value, with no conditions attached, because nothing they hold leads to it. The tutor teaches foundations first and builds every other step on them.
+_Avoid_: Prerequisite, basics, axiom
 
 ## How a reply can end
 

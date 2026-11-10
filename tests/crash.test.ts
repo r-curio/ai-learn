@@ -16,6 +16,8 @@ async function startServer(dataDir: string): Promise<ChildProcess> {
 		[
 			"--import",
 			"tsx",
+			"--import",
+			"./scripts/markdown-imports.mjs",
 			"--input-type=module",
 			"-e",
 			`

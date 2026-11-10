@@ -60,10 +60,10 @@
   },
   "main": "electron/main.mjs",
   "scripts": {
-    "dev": "concurrently -k -n server,web \"tsx watch src/server/dev.ts\" \"vite\"",
+    "dev": "concurrently -k -n server,web \"tsx watch --import ./scripts/markdown-imports.mjs src/server/dev.ts\" \"vite\"",
     "build": "vite build && esbuild src/server/index.ts --bundle --platform=node --format=esm --packages=external --outfile=dist/server/index.mjs",
     "desktop": "npm run build && electron .",
-    "test": "NODE_ENV=test tsx --test tests/*.test.ts tests/*/*.test.ts",
+    "test": "NODE_ENV=test tsx --import ./scripts/markdown-imports.mjs --test tests/*.test.ts tests/*/*.test.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "format": "prettier --write .",

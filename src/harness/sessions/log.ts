@@ -13,7 +13,8 @@ import type { SceneElement } from "../../shared/drawing.ts";
 import type { ChatType, QuestionAnswer } from "../../shared/protocol.ts";
 import type { AttachmentStore } from "../attachments.ts";
 
-export const LOG_VERSION = 1;
+/** 2 added `phases` to the header. Version 1 logs have a single prompt and read as before. */
+export const LOG_VERSION = 2;
 
 /**
  * The session log is the source of truth: one JSON record per line, only ever appended to.
@@ -25,7 +26,10 @@ export interface LogHeader {
 	version: number;
 	id: string;
 	createdAt: number;
+	/** The whole prompt, or in a phased chat the part every phase shares. */
 	systemPrompt: string;
+	/** A Learning chat's phase prompts, each sent as the `phase` section. Older logs and Practice chats have none. */
+	phases?: { prober: string; teacher: string };
 	/** Older logs don't have this, and count as Learning. */
 	chatType?: ChatType;
 }
@@ -49,7 +53,10 @@ export interface LogRetry {
 	timestamp: number;
 }
 
-/** Pi's note that the tools changed, like a search key being added. Kept so a reload sends the same history. */
+/**
+ * Pi's note that the tools or the prompt changed, like a search key being added or the probe handing
+ * over to the teacher. Kept so a reload sends the same history.
+ */
 export interface LogTools {
 	type: "tools";
 	message: SystemMessage;
