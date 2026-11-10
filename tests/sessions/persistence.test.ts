@@ -7,11 +7,11 @@ import assert from "node:assert/strict";
 import { appendFile, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { test } from "node:test";
-import { createScriptedEngine } from "../src/harness/fake-engine.ts";
-import { readLog, SessionLogError } from "../src/harness/sessions/log.ts";
-import { Session } from "../src/harness/sessions/session.ts";
-import type { RunEvent } from "../src/shared/protocol.ts";
-import { FAKE_CHOICE, PNG, tempDir } from "./helpers.ts";
+import { createScriptedEngine } from "../../src/harness/fake-engine.ts";
+import { readLog, SessionLogError } from "../../src/harness/sessions/log.ts";
+import { Session } from "../../src/harness/sessions/session.ts";
+import type { RunEvent } from "../../src/shared/protocol.ts";
+import { FAKE_CHOICE, PNG, tempDir } from "../helpers.ts";
 
 const logPath = (dir: string, id: string) => join(dir, "sessions", id, "session.jsonl");
 

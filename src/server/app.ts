@@ -1,18 +1,18 @@
 import { serveStatic } from "@hono/node-server/serve-static";
 import { timingSafeEqual } from "node:crypto";
 import { relative } from "node:path";
-import { Hono, type Context } from "hono";
+import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
-import { streamSSE } from "hono/streaming";
 import { z } from "zod";
 import { AttachmentError, MAX_FILE_BYTES } from "../harness/attachments.ts";
 import type { Engine } from "../harness/engine.ts";
-import type { Session } from "../harness/sessions/session.ts";
-import { SessionBusyError, SessionStateError } from "../harness/sessions/session.ts";
+import { SessionBusyError } from "../harness/sessions/session.ts";
 import { SessionStore } from "../harness/sessions/store.ts";
-import { CHAT_TYPES, EFFORTS, type RunEvent } from "../shared/protocol.ts";
+import { CHAT_TYPES, EFFORTS } from "../shared/protocol.ts";
 import { addProviderKeyRoutes } from "./provider-routes.ts";
 import { applyChange, preferencesInput, readPreferences, writePreferences } from "./preferences.ts";
+import { streamRun } from "./stream-run.ts";
+import { addTitleRoutes } from "./title-routes.ts";
 import { addVoiceRoutes } from "./voice-routes.ts";
 import { SessionLogError } from "../harness/sessions/log.ts";
 
@@ -97,37 +97,6 @@ function tokensMatch(given: string | undefined, expected: string): boolean {
 	return a.length === b.length && timingSafeEqual(a, b);
 }
 
-const NO_USAGE = { inputTokens: 0, outputTokens: 0, costUsd: 0 };
-
-/** Stream a run's events to the client. A client that disconnects stops the run. */
-function streamRun(
-	c: Context,
-	session: Session,
-	run: (onEvent: (event: RunEvent) => void) => Promise<void>,
-) {
-	return streamSSE(c, async (stream) => {
-		stream.onAbort(() => session.abort());
-		let writes = Promise.resolve();
-		const emit = (event: RunEvent) => {
-			writes = writes.then(() => stream.writeSSE({ data: JSON.stringify(event) }));
-		};
-		try {
-			await run(emit);
-		} catch (error) {
-			const expected = error instanceof SessionBusyError || error instanceof SessionStateError;
-			if (!expected) console.error(error);
-			emit({
-				type: "done",
-				stopReason: "error",
-				errorMessage: expected ? error.message : "The response failed.",
-				usage: NO_USAGE,
-				sessionUsage: NO_USAGE,
-			});
-		}
-		await writes;
-	});
-}
-
 export function createApp({ engine, dataDir, token, webRoot }: AppOptions): Hono {
 	const app = new Hono();
 	const store = new SessionStore(engine, dataDir);
@@ -168,6 +137,7 @@ export function createApp({ engine, dataDir, token, webRoot }: AppOptions): Hono
 
 	addProviderKeyRoutes(app, engine);
 	addVoiceRoutes(app, engine, dataDir);
+	addTitleRoutes(app, store);
 
 	app.get("/api/sessions", async (c) => c.json(await store.list()));
 

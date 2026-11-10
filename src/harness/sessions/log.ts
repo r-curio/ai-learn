@@ -7,10 +7,10 @@ import type {
 	ToolResultMessage,
 	UserMessage,
 } from "@earendil-works/pi-ai";
-import { appendFile, mkdir, readFile, truncate } from "node:fs/promises";
+import { appendFile, mkdir, readFile, rename, truncate, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import type { SceneElement } from "../../shared/drawing.ts";
-import type { ChatType, QuestionAnswer } from "../../shared/protocol.ts";
+import type { ChatType, QuestionAnswer, SessionSummary } from "../../shared/protocol.ts";
 import type { AttachmentStore } from "../attachments.ts";
 
 /** 2 added `phases` to the header. Version 1 logs have a single prompt and read as before. */
@@ -62,7 +62,18 @@ export interface LogTools {
 	message: SystemMessage;
 }
 
-export type LogEntry = LogHeader | LogMessage | LogRetry | LogTools;
+/**
+ * A chat's title, written by the tutor or set by the learner. The learner's latest one wins, then the
+ * tutor's latest, then the start of the first message. It's never sent to the model, and older builds skip it.
+ */
+export interface LogTitle {
+	type: "title";
+	title: string;
+	by: "tutor" | "learner";
+	timestamp: number;
+}
+
+export type LogEntry = LogHeader | LogMessage | LogRetry | LogTools | LogTitle;
 
 /** An image in the log is a reference to its attachment, which keeps the log small. */
 export interface StoredImage {
@@ -162,6 +173,25 @@ export class LogWriter {
 		const write = this.queue.then(async () => {
 			await mkdir(dirname(this.path), { recursive: true });
 			await appendFile(this.path, `${JSON.stringify(entry)}\n`, { flush: true });
+		});
+		this.queue = write.catch(() => undefined);
+		return write;
+	}
+}
+
+/**
+ * Replaces `summary.json`, which the sidebar reads instead of opening every log. It can always be
+ * rebuilt. Writes take turns, since a title can arrive while the next reply is saving.
+ */
+export class SummaryWriter {
+	private queue: Promise<void> = Promise.resolve();
+
+	constructor(private readonly path: string) {}
+
+	write(summary: SessionSummary): Promise<void> {
+		const write = this.queue.then(async () => {
+			await writeFile(`${this.path}.tmp`, JSON.stringify(summary));
+			await rename(`${this.path}.tmp`, this.path);
 		});
 		this.queue = write.catch(() => undefined);
 		return write;

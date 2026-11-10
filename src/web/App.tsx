@@ -171,6 +171,7 @@ export function App() {
 									<TopBar
 										title={chat.sessions.find((summary) => summary.id === sessionId)?.title}
 										usage={pane.open ? undefined : chat.usage}
+										onRename={running ? undefined : (title) => chat.renameChat(sessionId!, title)}
 									/>
 									<ChatView
 										status={status}

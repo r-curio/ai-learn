@@ -5,6 +5,7 @@ import type { EngineStatus, ModelRef, ModelSelection, VoiceModels } from "../sha
 import { engineFromModels } from "./model-catalog.ts";
 import { ProviderKeyStore, type KeyCipher } from "./provider-keys.ts";
 import type { Recording } from "./voice/voice-error.ts";
+import type { TitleSource } from "./title.ts";
 import type { SearchService } from "./web/search-service.ts";
 
 export interface ResolvedModel {
@@ -28,6 +29,8 @@ export interface Engine {
 	transcribe(engineId: string, recording: Recording, model?: string): Promise<string>;
 	/** The web search service with a key, or nothing. Asked before each run, so a new key works on the next message. */
 	searchService(): Promise<SearchService | undefined>;
+	/** A short title for a chat from its first turn, written by the chat's own model, or nothing if the call fails. */
+	writeTitle(model: Model<string>, source: TitleSource): Promise<string | undefined>;
 }
 
 export interface EngineOptions {

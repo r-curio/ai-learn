@@ -10,6 +10,7 @@ import type {
 import { EFFORTS } from "../shared/protocol.ts";
 import type { Engine, ResolvedModel } from "./engine.ts";
 import { ProviderKeyError, type ProviderKeyStore } from "./provider-keys.ts";
+import { writeTitle } from "./title.ts";
 import {
 	hasVoiceEnvironmentKey,
 	isVoiceOnly,
@@ -145,8 +146,9 @@ async function saveKey(models: Models, sources: KeySources | undefined, id: stri
 
 /** An engine over any set of Pi providers, so the fake model behaves like the real ones. */
 export function engineFromModels(models: Models, sources?: KeySources): Engine {
+	const streamFn = models.streamSimple.bind(models);
 	return {
-		streamFn: models.streamSimple.bind(models),
+		streamFn,
 		resolve: (selection) => resolveSelection(models, selection),
 		status: () => readStatus(models, sources),
 		contextLimit: ({ provider, id }) => models.getModel(provider, id)?.contextWindow,
@@ -158,5 +160,6 @@ export function engineFromModels(models: Models, sources?: KeySources): Engine {
 		transcribe: (engineId, recording, model) =>
 			transcribe(models, sources, engineId, recording, model),
 		searchService: async () => (sources ? connectedSearchService(sources) : undefined),
+		writeTitle: (model, source) => writeTitle(streamFn, model, source),
 	};
 }

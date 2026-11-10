@@ -255,18 +255,3 @@ export function usageOf(entries: LogEntry[]): UsageSummary {
 	}
 	return total;
 }
-
-export function titleOf(
-	entries: LogEntry[],
-	attachmentInfo: (id: string) => AttachmentInfo | undefined,
-): string {
-	for (const entry of entries) {
-		if (entry.type !== "message" || entry.message.role !== "user") continue;
-		const text = entry.display?.text.trim().replace(/\s+/g, " ");
-		if (text) return text.length > 60 ? `${text.slice(0, 59)}…` : text;
-		const first = entry.display?.attachmentIds[0];
-		const name = first ? attachmentInfo(first)?.name : undefined;
-		if (name) return name;
-	}
-	return "New chat";
-}

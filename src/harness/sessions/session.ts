@@ -1,7 +1,6 @@
 import type { Agent, AgentEvent } from "@earendil-works/pi-agent-core";
-import type { AssistantMessage, Message } from "@earendil-works/pi-ai";
+import type { AssistantMessage, Message, Model } from "@earendil-works/pi-ai";
 import { randomUUID } from "node:crypto";
-import { rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { DrawingEdit } from "../../shared/drawing.ts";
 import {
@@ -18,7 +17,15 @@ import {
 import { AttachmentStore } from "../attachments.ts";
 import { editContent } from "../drawings/edits.ts";
 import type { Engine, ResolvedModel } from "../engine.ts";
-import { LOG_VERSION, LogWriter, readLog, toStored, type LogEntry, type LogHeader } from "./log.ts";
+import {
+	LOG_VERSION,
+	LogWriter,
+	readLog,
+	SummaryWriter,
+	toStored,
+	type LogEntry,
+	type LogHeader,
+} from "./log.ts";
 import {
 	interruptedToolResult,
 	isFailedReply,
@@ -33,17 +40,17 @@ import {
 	waitingIn,
 } from "./questions.ts";
 import { runProgress } from "./run-progress.ts";
+import { ChatTitles, lastMessageAt } from "./titles.ts";
 import { initialSystemMessage } from "../tools.ts";
 import { createTutorAgent, offerTools } from "../tutor-agent.ts";
 import { searchLimitNotice } from "../web/web-tools.ts";
 import { promptFor, promptOf, type SessionPrompt } from "../prompts/phases.ts";
-import { viewingTag } from "../prompts/tutor-prompt.ts";
+import { learnerContent } from "../prompts/tutor-prompt.ts";
 import {
 	addUsage,
 	buildTranscript,
 	contextOf,
 	markInterrupted,
-	titleOf,
 	usageOf,
 	searchTextOf,
 } from "./transcript.ts";
@@ -72,7 +79,6 @@ export class Session {
 	/** Called after each saved summary, so the session index can stay current. */
 	onSummary?: (summary: SessionSummary) => void;
 	private readonly engine: Engine;
-	private readonly dir: string;
 	private readonly log: LogWriter;
 	private readonly agent: Agent;
 	private readonly entries: LogEntry[];
@@ -81,13 +87,16 @@ export class Session {
 	private chatType: ChatType;
 	private running = false;
 	private readonly offerTools: () => Promise<void>;
+	private readonly titles: ChatTitles;
+	private readonly summaryFile: SummaryWriter;
 
 	constructor(engine: Engine, dataDir: string, restored?: Restored) {
 		this.engine = engine;
 		this.id = restored?.id ?? randomUUID();
-		this.dir = join(dataDir, "sessions", this.id);
-		this.attachments = restored?.attachments ?? new AttachmentStore(join(this.dir, "attachments"));
-		this.log = new LogWriter(join(this.dir, "session.jsonl"));
+		const dir = join(dataDir, "sessions", this.id);
+		this.attachments = restored?.attachments ?? new AttachmentStore(join(dir, "attachments"));
+		this.log = new LogWriter(join(dir, "session.jsonl"));
+		this.summaryFile = new SummaryWriter(join(dir, "summary.json"));
 		this.entries = restored?.entries ?? [];
 		this.usage = usageOf(this.entries);
 		const header = this.entries[0] as LogHeader | undefined;
@@ -102,6 +111,13 @@ export class Session {
 		});
 		this.offerTools = () =>
 			offerTools(this.agent.state, this.prompt, this.attachments, engine, (e) => this.record(e));
+		this.titles = new ChatTitles(this.entries, {
+			attachmentInfo: (id) => this.attachments.info(id),
+			// A new title keeps the chat's place in the list, since nothing new was said.
+			save: (entry) =>
+				this.record(entry).then(() => this.writeSummary(lastMessageAt(this.entries))),
+			write: (source) => engine.writeTitle(this.agent.state.model as Model<string>, source),
+		});
 	}
 
 	/** Rebuild a session from disk and settle anything a crash left unfinished. */
@@ -173,25 +189,18 @@ export class Session {
 		await this.log.append(entry);
 	}
 
-	/** The sidebar reads this small file instead of opening every log. It can always be rebuilt. */
-	private async writeSummary(): Promise<void> {
-		const path = join(this.dir, "summary.json");
-		const summary = this.summary();
-		await writeFile(`${path}.tmp`, JSON.stringify(summary));
-		await rename(`${path}.tmp`, path);
+	private async writeSummary(updatedAt?: number): Promise<void> {
+		const summary = this.summary(updatedAt);
+		await this.summaryFile.write(summary);
 		this.onSummary?.(summary);
 	}
 
-	summary(): SessionSummary {
-		return { id: this.id, title: this.title(), updatedAt: Date.now(), chatType: this.chatType };
+	summary(updatedAt = Date.now()): SessionSummary {
+		return { id: this.id, title: this.titles.current, updatedAt, chatType: this.chatType };
 	}
 
 	searchText(): string {
 		return searchTextOf(this.entries);
-	}
-
-	private title(): string {
-		return titleOf(this.entries, (id) => this.attachments.info(id));
 	}
 
 	view(): SessionView {
@@ -206,7 +215,7 @@ export class Session {
 		const usage = { ...this.usage };
 		return {
 			id: this.id,
-			title: this.title(),
+			title: this.titles.current,
 			messages,
 			canRetry,
 			usage,
@@ -225,6 +234,7 @@ export class Session {
 		let writeFailure: string | undefined;
 		const placeholders = new Set<string>();
 		const progress = runProgress(onEvent, (id) => this.attachments.info(id)?.name);
+		const firstReply = this.titles.awaitingFirstReply;
 		const unsubscribe = this.agent.subscribe(async (event: AgentEvent) => {
 			progress.report(event);
 			if (event.type !== "message_end") return;
@@ -247,6 +257,8 @@ export class Session {
 					message: toStored(message, this.attachments),
 					...worked,
 				});
+				const named = message.role === "toolResult" && (await this.titles.fromProbe(last, message));
+				if (named) onEvent({ type: "title", title: named });
 			} catch (error) {
 				writeFailure = `Couldn't save this session: ${(error as Error).message}`;
 				this.agent.abort();
@@ -275,6 +287,9 @@ export class Session {
 			sessionUsage: { ...this.usage },
 			context: this.context(),
 		});
+		// After `done`, so the learner can carry on while the chat is named.
+		const named = firstReply && (await this.titles.fromFirstReply());
+		if (named) onEvent({ type: "title", title: named });
 	}
 
 	/** Each saved reply names its model, so a new choice needs no record of its own. */
@@ -296,12 +311,8 @@ export class Session {
 		const seesImages = choice.model.input.includes("image");
 		const edited = edit && editContent(this.messages, edit, this.attachments, seesImages);
 		if (edit && !edited) throw new SessionStateError("That drawing isn't in this chat.");
-		const content = [
-			...this.attachments.toContent(attachmentIds),
-			...(viewing ? [{ type: "text" as const, text: viewingTag(viewing) }] : []),
-			...(edited ?? []),
-			...(text.trim() ? [{ type: "text" as const, text }] : []),
-		];
+		const files = this.attachments.toContent(attachmentIds);
+		const content = learnerContent(files, viewing, edited, text);
 		const message: Message = { role: "user", content, timestamp: Date.now() };
 		const entry: LogEntry = {
 			type: "message",
@@ -367,6 +378,13 @@ export class Session {
 			throw error;
 		}
 		await this.run(() => this.agent.continue(), onEvent);
+	}
+
+	/** The learner's own title, which the tutor's never replaces. */
+	async rename(title: string): Promise<string> {
+		if (this.running) throw new SessionBusyError();
+		if (!this.hasContent) throw new SessionStateError("Send a message before naming this chat.");
+		return this.titles.rename(title);
 	}
 
 	get isRunning(): boolean {

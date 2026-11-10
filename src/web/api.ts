@@ -100,6 +100,16 @@ export async function getSession(id: string): Promise<SessionView> {
 	return (await request(`/api/sessions/${id}`)).json() as Promise<SessionView>;
 }
 
+/** Gives back the title as saved, with its spacing tidied. */
+export async function renameSession(id: string, title: string): Promise<string> {
+	const response = await request(`/api/sessions/${id}/title`, {
+		method: "PUT",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({ title }),
+	});
+	return ((await response.json()) as { title: string }).title;
+}
+
 export async function deleteSession(id: string): Promise<void> {
 	await request(`/api/sessions/${id}`, { method: "DELETE" });
 }
@@ -173,13 +183,9 @@ export function answerQuestion(
 	);
 }
 
-/** Read server-sent events and call `onEvent` for each until the run ends. */
-async function streamRun(
-	pending: Promise<Response>,
-	onEvent: (event: RunEvent) => void,
-): Promise<void> {
-	const response = await pending;
-	const reader = response.body!.pipeThrough(new TextDecoderStream()).getReader();
+/** Each event in a server-sent event stream, in order. */
+async function* readEvents(body: NonNullable<Response["body"]>): AsyncGenerator<RunEvent> {
+	const reader = body.pipeThrough(new TextDecoderStream()).getReader();
 	let buffer = "";
 	for (;;) {
 		const { done, value } = await reader.read();
@@ -194,9 +200,30 @@ async function streamRun(
 				.filter((line) => line.startsWith("data:"))
 				.map((line) => line.slice(5).trimStart())
 				.join("\n");
-			if (data) onEvent(JSON.parse(data) as RunEvent);
+			if (data) yield JSON.parse(data) as RunEvent;
 		}
 	}
+}
+
+/**
+ * Call `onEvent` for each event, resolving once the run is `done`. A new chat's title can follow
+ * `done`, so the rest of the stream is still read, and passed on as it arrives.
+ */
+async function streamRun(
+	pending: Promise<Response>,
+	onEvent: (event: RunEvent) => void,
+): Promise<void> {
+	const events = readEvents((await pending).body!);
+	for (;;) {
+		const next = await events.next();
+		if (next.done) return;
+		onEvent(next.value);
+		if (next.value.type === "done") break;
+	}
+	void (async () => {
+		for (let next = await events.next(); !next.done; next = await events.next())
+			onEvent(next.value);
+	})().catch(() => undefined);
 }
 
 /** The models a connected voice engine offers, with its default first. */

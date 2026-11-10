@@ -3,10 +3,10 @@ import assert from "node:assert/strict";
 import { appendFile, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { test } from "node:test";
-import { createScriptedEngine } from "../src/harness/fake-engine.ts";
-import type { Session } from "../src/harness/sessions/session.ts";
-import { SessionStore } from "../src/harness/sessions/store.ts";
-import { FAKE_CHOICE, tempDir } from "./helpers.ts";
+import { createScriptedEngine } from "../../src/harness/fake-engine.ts";
+import type { Session } from "../../src/harness/sessions/session.ts";
+import { SessionStore } from "../../src/harness/sessions/store.ts";
+import { FAKE_CHOICE, tempDir } from "../helpers.ts";
 
 const indexPath = (dir: string) => join(dir, "session-index.sqlite");
 

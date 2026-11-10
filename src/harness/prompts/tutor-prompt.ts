@@ -1,3 +1,4 @@
+import type { ImageContent, TextContent } from "@earendil-works/pi-ai";
 import type { OpenPage } from "../../shared/protocol.ts";
 
 /**
@@ -30,3 +31,18 @@ A <diagram-edit> tag shows how the learner changed one of your drawings. Their c
 
 export const viewingTag = ({ attachmentId, page }: OpenPage) =>
 	`<viewing attachment="${attachmentId}" page="${page}" />`;
+
+/** What the model gets for a learner's message: attachments, the open page, any drawing edit, then their words. */
+export function learnerContent(
+	attachments: (TextContent | ImageContent)[],
+	viewing: OpenPage | undefined,
+	edited: (TextContent | ImageContent)[] | undefined,
+	text: string,
+): (TextContent | ImageContent)[] {
+	return [
+		...attachments,
+		...(viewing ? [{ type: "text" as const, text: viewingTag(viewing) }] : []),
+		...(edited ?? []),
+		...(text.trim() ? [{ type: "text" as const, text }] : []),
+	];
+}
