@@ -57,25 +57,35 @@ const TEACH_FIRST =
 /** At most this many refusals per turn, so a model that can't comply doesn't loop. */
 const TEACH_FIRST_LIMIT = 2;
 
-/** Whether a reply shows the learner something before this tool call: text, or a `send_to_user` message. */
-const shownBefore = (reply: AssistantMessage, callId: string): boolean => {
+/** The tutor's work since the learner's latest message or answer, which is one turn for the guard. */
+const sinceLearner = (messages: readonly AgentMessage[]): readonly AgentMessage[] =>
+	messages.slice(
+		messages.findLastIndex(
+			(message) =>
+				message.role === "user" ||
+				(message.role === "toolResult" && isQuestionTool(message.toolName) && !message.isError),
+		) + 1,
+	);
+
+const shows = (part: AssistantMessage["content"][number]): boolean =>
+	part.type === "text" ? part.text.trim() !== "" : sentText(part) !== undefined;
+
+/** Whether the learner has been shown something this turn before this call: text, or a `send_to_user` message. */
+const shownBefore = (reply: AssistantMessage, callId: string, turn: readonly AgentMessage[]) => {
+	const earlier = turn.some(
+		(message) => message !== reply && message.role === "assistant" && message.content.some(shows),
+	);
 	const at = reply.content.findIndex((part) => part.type === "toolCall" && part.id === callId);
-	return reply.content
-		.slice(0, at)
-		.some((part) =>
-			part.type === "text" ? part.text.trim() !== "" : sentText(part) !== undefined,
-		);
+	return earlier || reply.content.slice(0, at).some(shows);
 };
 
-const refusedThisTurn = (messages: readonly AgentMessage[]): number => {
-	const turn = messages.slice(messages.findLastIndex((message) => message.role === "user") + 1);
-	return turn.filter(
+const refusals = (turn: readonly AgentMessage[]): number =>
+	turn.filter(
 		(message) =>
 			message.role === "toolResult" &&
 			message.isError &&
 			message.content.some((part) => part.type === "text" && part.text === TEACH_FIRST),
 	).length;
-};
 
 /** A teacher's check must come after teaching the learner can see. */
 const untaughtCheck = (
@@ -87,8 +97,8 @@ const untaughtCheck = (
 	call.name === QUIZ &&
 	(args as { role?: unknown } | undefined)?.role === "check" &&
 	teaching(messages) &&
-	!shownBefore(reply, call.id) &&
-	refusedThisTurn(messages) < TEACH_FIRST_LIMIT;
+	!shownBefore(reply, call.id, sinceLearner(messages)) &&
+	refusals(sinceLearner(messages)) < TEACH_FIRST_LIMIT;
 
 export const questionHooks: Pick<AgentOptions, "beforeToolCall" | "finishTurn"> = {
 	// A reply gets one question, so only one can ever be waiting. An invalid one fails in its tool instead.

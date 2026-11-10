@@ -151,7 +151,7 @@ async function teacherTurn(replies: ReturnType<typeof fauxAssistantMessage>[]) {
 	const results = (await readLog(logPath(dir, session.id))).flatMap((entry) =>
 		entry.type === "message" && entry.message.role === "toolResult" ? [entry.message] : [],
 	);
-	return { session, events, results };
+	return { dir, session, events, results };
 }
 
 const asks = (id: string) => fauxAssistantMessage(check(id), { stopReason: "toolUse" });
@@ -176,4 +176,30 @@ test("send_to_user teaching shows as the tutor's text, and its check waits", asy
 	const streamed = events.flatMap((event) => (event.type === "text_delta" ? [event.delta] : []));
 	assert.deepEqual(streamed, ["Each halving divides by $2$ again."]);
 	assert.ok(!events.some((event) => event.type === "tool_start"));
+});
+
+test("teaching sent in an earlier step of the turn counts, and the limit restarts after an answer", async () => {
+	const teach = fauxToolCall(SEND_TO_USER, { message: "Each halving divides by 2 again." });
+	const { dir, session, results } = await teacherTurn([
+		fauxAssistantMessage(teach, { stopReason: "toolUse" }),
+		asks("after-teaching"),
+		asks("untaught-1"),
+		asks("untaught-2"),
+		asks("allowed"),
+		asks("untaught-3"),
+		fauxAssistantMessage("Stopped."),
+	]);
+	assert.equal(session.pendingQuestion?.id, "after-teaching");
+	assert.ok(!results.some((result) => result.isError));
+
+	const answer = { kind: "choice", choice: 0, confidence: 80 } as const;
+	await session.answer("after-teaching", answer, () => undefined, FAKE_CHOICE);
+	assert.equal(session.pendingQuestion?.id, "allowed");
+	await session.answer("allowed", answer, () => undefined, FAKE_CHOICE);
+	const refusedIds = (await readLog(logPath(dir, session.id))).flatMap((entry) =>
+		entry.type === "message" && entry.message.role === "toolResult" && entry.message.isError
+			? [entry.message.toolCallId]
+			: [],
+	);
+	assert.deepEqual(refusedIds, ["untaught-1", "untaught-2", "untaught-3"]);
 });

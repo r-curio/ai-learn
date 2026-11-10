@@ -36,7 +36,7 @@ import { runProgress } from "./run-progress.ts";
 import { initialSystemMessage } from "../tools.ts";
 import { createTutorAgent, offerTools } from "../tutor-agent.ts";
 import { searchLimitNotice } from "../web/web-tools.ts";
-import { promptFor, type SessionPrompt } from "../prompts/phases.ts";
+import { promptFor, promptOf, type SessionPrompt } from "../prompts/phases.ts";
 import { viewingTag } from "../prompts/tutor-prompt.ts";
 import {
 	addUsage,
@@ -92,10 +92,7 @@ export class Session {
 		this.usage = usageOf(this.entries);
 		const header = this.entries[0] as LogHeader | undefined;
 		this.chatType = chatTypeOf(header?.chatType);
-		// A session keeps the prompts it started with, so old history replays exactly.
-		this.prompt = header
-			? { systemPrompt: header.systemPrompt, ...(header.phases && { phases: header.phases }) }
-			: promptFor(this.chatType);
+		this.prompt = promptOf(header, this.chatType);
 		this.agent = createTutorAgent({
 			sessionId: this.id,
 			prompt: this.prompt,

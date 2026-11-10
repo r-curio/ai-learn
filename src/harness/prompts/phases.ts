@@ -51,6 +51,12 @@ const LEARNING: SessionPrompt = {
 export const promptFor = (chatType: ChatType): SessionPrompt =>
 	chatType === "learning" ? LEARNING : { systemPrompt: SYSTEM_PROMPT };
 
+/** A session's prompt: the one its header saved, or a new chat's, since a session keeps the prompt it started with. */
+export const promptOf = (saved: SessionPrompt | undefined, chatType: ChatType): SessionPrompt =>
+	saved
+		? { systemPrompt: saved.systemPrompt, ...(saved.phases && { phases: saved.phases }) }
+		: promptFor(chatType);
+
 /** A session's first message: the shared prompt with the prober's section, or a single prompt. */
 export function leadingMessage(prompt: SessionPrompt, tools: Tool[]): SystemMessage | undefined {
 	const message = createInitialSystemMessage(prompt.systemPrompt, tools);
