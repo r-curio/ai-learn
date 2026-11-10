@@ -1,5 +1,5 @@
 import type { ExcalidrawElement } from "@excalidraw/excalidraw/element/types";
-import { lazy, Suspense, useRef, useState } from "react";
+import { lazy, Suspense } from "react";
 import { Button } from "../components/button.tsx";
 import {
 	Sheet,
@@ -9,12 +9,14 @@ import {
 	SheetTitle,
 } from "../components/sheet.tsx";
 import { Skeleton } from "../components/skeleton.tsx";
-import { loadExcalidraw } from "./DrawingCard.tsx";
-import type { FinishedEdit } from "./EditorCanvas.tsx";
+import { loadExcalidraw, useCanvasDone, type FinishedEdit } from "./sceneSetup.ts";
 
 const EditorCanvas = lazy(loadExcalidraw(() => import("./EditorCanvas.tsx")));
 
-/** A full-size editor for one drawing. Done hands the edit back; nothing is sent until the learner sends a message. */
+/**
+ * The full-size editor, opened by Expand on a card being edited. Done hands the edit back, and
+ * Cancel goes back to the card. Nothing is sent until the learner sends a message.
+ */
 export function DrawingEditor(props: {
 	title?: string;
 	initial?: () => ExcalidrawElement[];
@@ -22,17 +24,7 @@ export function DrawingEditor(props: {
 	onDone: (edit: FinishedEdit) => void;
 }) {
 	const { title, initial, onCancel, onDone } = props;
-	const finish = useRef<() => Promise<FinishedEdit>>(undefined);
-	const [saving, setSaving] = useState(false);
-	const done = async () => {
-		if (!finish.current) return;
-		setSaving(true);
-		try {
-			onDone(await finish.current());
-		} finally {
-			setSaving(false);
-		}
-	};
+	const { saving, done, onReady } = useCanvasDone(onDone);
 	return (
 		<Sheet open={Boolean(initial)} onOpenChange={(open) => !open && onCancel()}>
 			<SheetContent
@@ -59,7 +51,7 @@ export function DrawingEditor(props: {
 				<div className="relative min-h-0 flex-1">
 					{initial && (
 						<Suspense fallback={<Skeleton className="size-full rounded-none" />}>
-							<EditorCanvas initial={initial} onReady={(next) => (finish.current = next)} />
+							<EditorCanvas initial={initial} onReady={onReady} />
 						</Suspense>
 					)}
 				</div>

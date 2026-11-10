@@ -1,8 +1,58 @@
 import type { ExcalidrawElement } from "@excalidraw/excalidraw/element/types";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
-import { useSyncExternalStore } from "react";
+import { useRef, useState, useSyncExternalStore } from "react";
 import type { SceneElement } from "../../shared/drawing.ts";
 import { FONT_NAME } from "./toExcalidraw.ts";
+
+declare global {
+	interface Window {
+		EXCALIDRAW_ASSET_PATH?: string;
+	}
+}
+
+/**
+ * Excalidraw reads where its fonts are as it loads, so this is set first. The app serves them,
+ * and the content security policy blocks Excalidraw's CDN fallback.
+ */
+export function loadExcalidraw<T>(load: () => Promise<T>): () => Promise<T> {
+	return () => {
+		window.EXCALIDRAW_ASSET_PATH = "/excalidraw/";
+		return load();
+	};
+}
+
+/** What the learner made: the scene, and a picture of it when it has freehand marks. */
+export interface FinishedEdit {
+	elements: SceneElement[];
+	picture?: Blob;
+}
+
+/** What an editing canvas hands back once it's set up. */
+export interface CanvasHandle {
+	/** The finished edit, with its picture. */
+	finish: () => Promise<FinishedEdit>;
+	/** A copy of the scene as it is now, to carry the edit somewhere else. */
+	elements: () => SceneElement[];
+}
+
+/** Done for an editing canvas: it waits for the picture, and does nothing before the canvas is ready. */
+export function useCanvasDone(onDone: (edit: FinishedEdit) => void) {
+	const handle = useRef<CanvasHandle>(undefined);
+	const [saving, setSaving] = useState(false);
+	const done = async () => {
+		if (!handle.current) return;
+		setSaving(true);
+		try {
+			onDone(await handle.current.finish());
+		} finally {
+			setSaving(false);
+		}
+	};
+	const onReady = (next: CanvasHandle) => {
+		handle.current = next;
+	};
+	return { handle, saving, done, onReady };
+}
 
 /** What a canvas shows: elements made on demand, and the area they cover. */
 export interface SceneSource {

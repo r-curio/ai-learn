@@ -8,6 +8,7 @@ import type {
 	TranscriptMessage,
 } from "../../shared/protocol.ts";
 import { Notice } from "../components/Notice.tsx";
+import type { CardEdit } from "../diagram/useDrawingEdit.ts";
 import { SegmentedTabs } from "../components/tabs.tsx";
 import { QuizGrade } from "../answer/QuizGrade.tsx";
 import { MessageView } from "./MessageView.tsx";
@@ -17,8 +18,10 @@ interface ChatViewProps {
 	error?: string;
 	sessionId?: string;
 	messages: TranscriptMessage[];
-	/** Opens one of the tutor's drawings in the editor. Missing while the learner can't send. */
+	/** Starts editing one of the tutor's drawings in its card. Missing while the learner can't send. */
 	onEditDrawing?: (callId: string, drawing: Drawing) => void;
+	/** The card being edited in place, if any. */
+	editingDrawing?: CardEdit;
 	running: boolean;
 	runStartedAt: number;
 	canRetry: boolean;
@@ -89,7 +92,11 @@ function Messages(props: ChatViewProps & { sessionId: string }) {
 				message={message}
 				sessionId={sessionId}
 				pendingQuestionId={props.pendingQuestionId}
-				drawings={{ version: (callId) => versions.get(callId) ?? 1, onEdit: props.onEditDrawing }}
+				drawings={{
+					version: (callId) => versions.get(callId) ?? 1,
+					onEdit: props.onEditDrawing,
+					editing: props.editingDrawing,
+				}}
 				liveSince={running && index === last ? runStartedAt : undefined}
 				onRetry={canRetry && !running && index === last ? onRetry : undefined}
 				onOpenAttachment={props.onOpenAttachment}

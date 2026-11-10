@@ -80,6 +80,8 @@ export function App() {
 		!running &&
 		!files.uploading &&
 		!drawingEdit.uploading &&
+		// Sending would drop changes still being made in a card, so Done or Cancel comes first.
+		!drawingEdit.editing &&
 		// A failed picture must be removed or redone, or the edit would quietly go unsent.
 		drawingEdit.draft?.state !== "failed" &&
 		!voice.busy &&
@@ -180,6 +182,7 @@ export function App() {
 												? (callId, drawing) => drawingEdit.start(sessionId!, callId, drawing)
 												: undefined
 										}
+										editingDrawing={drawingEdit.card}
 										running={running}
 										runStartedAt={chat.runStartedAt}
 										canRetry={chat.canRetry}
