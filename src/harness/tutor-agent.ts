@@ -19,7 +19,7 @@ export function createTutorAgent(options: {
 	const guard = searchGuard();
 	const agent = new Agent({
 		initialState: {
-			tools: createTools(options.attachments, undefined, options.prompt.phases !== undefined),
+			tools: createTools(options.attachments, undefined, options.prompt.phases && "prober"),
 			// Built here, since a saved log can start with a tool change, which Pi would take as the first message.
 			messages: [...initialSystemMessage(options.prompt, options.attachments), ...options.messages],
 		},
@@ -49,8 +49,8 @@ export async function offerTools(
 	engine: Pick<Engine, "searchService">,
 	record: (entry: LogTools) => Promise<void>,
 ): Promise<void> {
-	const probing = phaseOf(prompt, state.messages) === "prober";
-	const tools = createTools(attachments, await engine.searchService(), probing);
+	const phase = phaseOf(prompt, state.messages);
+	const tools = createTools(attachments, await engine.searchService(), phase);
 	state.tools = tools;
 	const change = toolChange(state.messages, tools, phaseSwitch(prompt, state.messages));
 	if (!change) return;

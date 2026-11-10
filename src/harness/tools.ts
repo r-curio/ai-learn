@@ -11,7 +11,8 @@ import type { SearchService } from "./web/search-service.ts";
 import { webLabels, webTools } from "./web/web-tools.ts";
 import { createDrawingTools, DRAW, PLAN } from "./drawings/tools.ts";
 import { FINISH_PROBE, finishProbeTool } from "./prompts/finish-probe.ts";
-import { leadingMessage, type SessionPrompt } from "./prompts/phases.ts";
+import { leadingMessage, type Phase, type SessionPrompt } from "./prompts/phases.ts";
+import { sendToUserTool } from "./prompts/send-to-user.ts";
 
 const readAttachmentInput = z.object({
 	id: z.string().describe("The attachment id from its <attachment> tag."),
@@ -91,13 +92,13 @@ const waitForLearner = async () => ({
 });
 
 /**
- * The tutor's tools. Without a connected search service, `web_search` isn't offered, and
- * `finish_probe` is only offered while a Learning chat is probing.
+ * The tutor's tools. Without a connected search service, `web_search` isn't offered. A Learning
+ * chat, which has phases, also gets `send_to_user`, and `finish_probe` while it's probing.
  */
 export function createTools(
 	attachments: AttachmentStore,
 	search?: SearchService,
-	probing = false,
+	phase?: Phase,
 ): AgentTool[] {
 	return [
 		{
@@ -137,7 +138,8 @@ export function createTools(
 		},
 		...webTools(search),
 		...createDrawingTools(),
-		...(probing ? [finishProbeTool] : []),
+		...(phase ? [sendToUserTool] : []),
+		...(phase === "prober" ? [finishProbeTool] : []),
 	];
 }
 
@@ -146,7 +148,7 @@ export function initialSystemMessage(
 	prompt: SessionPrompt,
 	attachments: AttachmentStore,
 ): SystemMessage[] {
-	const tools = createTools(attachments, undefined, prompt.phases !== undefined);
+	const tools = createTools(attachments, undefined, prompt.phases && "prober");
 	const message = leadingMessage(prompt, tools.map(toToolDeclaration));
 	return message ? [message] : [];
 }

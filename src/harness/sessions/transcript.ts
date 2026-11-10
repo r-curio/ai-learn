@@ -15,6 +15,7 @@ import { askedIn, gradeOf, type QuizKey } from "./questions.ts";
 import { toolLabels } from "../tools.ts";
 import { isSearchLimit, SEARCH_LIMIT_LABEL } from "../web/web-tools.ts";
 import { drawingIn } from "../drawings/tools.ts";
+import { sentText } from "../prompts/send-to-user.ts";
 
 const INTERRUPTED_NOTICE = "The app closed before this reply finished.";
 
@@ -33,8 +34,9 @@ function addReplyParts(
 	const question = asked?.question;
 	if (asked?.key) quizKeys.set(asked.question.id, asked.key);
 	for (const part of reply.content) {
-		if (part.type === "text" && part.text) {
-			blocks.push({ kind: "text", text: keepCitations(part.text, citationIsReal) });
+		const text = part.type === "text" ? part.text : sentText(part);
+		if (text) {
+			blocks.push({ kind: "text", text: keepCitations(text, citationIsReal) });
 		} else if (part.type === "thinking" && part.thinking.trim()) {
 			blocks.push({ kind: "reasoning", text: part.thinking });
 		} else if (part.type === "toolCall" && part.id === question?.id) {

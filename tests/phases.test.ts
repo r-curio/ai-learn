@@ -10,6 +10,8 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { createScriptedEngine } from "../src/harness/fake-engine.ts";
 import { FINISH_PROBE } from "../src/harness/prompts/finish-probe.ts";
+import { SEND_TO_USER } from "../src/harness/prompts/send-to-user.ts";
+import type { RunEvent } from "../src/shared/protocol.ts";
 import { readLog, type LogHeader } from "../src/harness/sessions/log.ts";
 import { Session } from "../src/harness/sessions/session.ts";
 import { FAKE_CHOICE, tempDir } from "./helpers.ts";
@@ -113,4 +115,65 @@ test("a Practice chat keeps the single prompt and has no probe", async () => {
 	const [leading] = seen[0]!;
 	assert.equal(leading?.sections, undefined);
 	assert.ok(!declares(leading, FINISH_PROBE));
+});
+
+const check = (id: string) =>
+	fauxToolCall(
+		"quiz",
+		{
+			question: "How many are left after 5 halvings of 4096?",
+			choices: ["128", "409"],
+			explanation: "4096 / 2^5 = 128.",
+			correctAnswer: 0,
+			role: "check",
+		},
+		{ id },
+	);
+
+/** A Learning chat whose probe has finished, then a turn the teacher answers with these replies. */
+async function teacherTurn(replies: ReturnType<typeof fauxAssistantMessage>[]) {
+	const dir = await tempDir();
+	const engine = createScriptedEngine([
+		fauxAssistantMessage(fauxToolCall(FINISH_PROBE, { goal: "Halving", threads: [] }), {
+			stopReason: "toolUse",
+		}),
+		fauxAssistantMessage("Done."),
+		...replies,
+	]);
+	const session = new Session(engine, dir);
+	await say(session, "Teach me halving");
+	const events: RunEvent[] = [];
+	await session.send(
+		{ text: "Go on", attachmentIds: [] },
+		(event) => events.push(event),
+		FAKE_CHOICE,
+	);
+	const results = (await readLog(logPath(dir, session.id))).flatMap((entry) =>
+		entry.type === "message" && entry.message.role === "toolResult" ? [entry.message] : [],
+	);
+	return { session, events, results };
+}
+
+const asks = (id: string) => fauxAssistantMessage(check(id), { stopReason: "toolUse" });
+
+test("a check before any teaching is refused, at most twice a turn", async () => {
+	const { session, results } = await teacherTurn([asks("one"), asks("two"), asks("three")]);
+	const refused = results.filter((result) => result.isError).map((result) => result.toolCallId);
+	assert.deepEqual(refused, ["one", "two"]);
+	assert.equal(session.pendingQuestion?.id, "three");
+});
+
+test("send_to_user teaching shows as the tutor's text, and its check waits", async () => {
+	const teach = fauxToolCall(SEND_TO_USER, { message: "Each halving divides by $2$ again." });
+	const { session, events, results } = await teacherTurn([
+		fauxAssistantMessage([teach, check("taught")], { stopReason: "toolUse" }),
+	]);
+	assert.equal(session.pendingQuestion?.id, "taught");
+	assert.ok(!results.some((result) => result.isError));
+	const reply = session.view().messages.at(-1);
+	assert.deepEqual(reply?.blocks[0], { kind: "text", text: "Each halving divides by $2$ again." });
+	assert.ok(!reply?.blocks.some((block) => block.kind === "tool"), "it isn't an Activity step");
+	const streamed = events.flatMap((event) => (event.type === "text_delta" ? [event.delta] : []));
+	assert.deepEqual(streamed, ["Each halving divides by $2$ again."]);
+	assert.ok(!events.some((event) => event.type === "tool_start"));
 });

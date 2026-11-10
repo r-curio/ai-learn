@@ -63,6 +63,9 @@ const isSystem = (message: AgentMessage): message is SystemMessage => message.ro
 const switched = (messages: readonly AgentMessage[]) =>
 	messages.slice(1).some((message) => isSystem(message) && message.sections?.[PHASE] !== undefined);
 
+/** Whether the teacher's section has been sent, which is when the teaching cycle's rules apply. */
+export const teaching = (messages: readonly AgentMessage[]): boolean => switched(messages);
+
 const probeFinished = (messages: readonly AgentMessage[]) =>
 	messages.some(
 		(message) =>
